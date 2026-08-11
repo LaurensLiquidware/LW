@@ -4,7 +4,7 @@
 **Reviewed against:** Sparks Tool Project Review Checklist v1
 **Audit date:** 2026-08-11
 **Files reviewed:** `FlexAppOneDownloadMonitor.ps1`, `Start-FlexAppOneDownloadMonitor.vbs`, `README.md`, `archive/FlexAppOneDownloadMonitor_v1.ps1` (all renamed in Phase 3, round 6 — see below; these are the current names)
-**Phase:** 3 — Approved items applied, across seven rounds. Round 1: §6 and §7. Round 2: §1. Round 3: §8 color-matching sub-item. Round 4: version bumped from `1.0` to `0.2`. Round 5: distributable format decided (zip) and built. Round 6: project renamed from `FlexAppDownloadMonitor` to `FlexAppOneDownloadMonitor` throughout (files, install folder, script contents, and this report). Round 7: §5 (CVE scan) completed — you ran Grype on a machine with real internet access; **0 vulnerabilities found**, closing the last open item from the original audit. Every checklist item is now Pass/Fixed/N/A — none remain blocked or outstanding.
+**Phase:** 3 — Approved items applied, across eight rounds. Round 1: §6 and §7. Round 2: §1 (code fix). Round 3: §8 color-matching sub-item. Round 4: version bumped from `1.0` to `0.2`. Round 5: distributable format decided (zip) and built. Round 6: project renamed from `FlexAppDownloadMonitor` to `FlexAppOneDownloadMonitor` throughout (files, install folder, script contents, and this report). Round 7: §5 (CVE scan) completed — 0 vulnerabilities found. Round 8: §1's real-Windows evidence captured on your Windows VM — item fully closed. **Every checklist item is now Pass/Fixed/N/A with evidence — nothing remains open.**
 
 ---
 
@@ -12,7 +12,7 @@
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1 | Double-byte / Unicode handling | **Fixed** | BOM added to `.ps1`; explicit `-Encoding UTF8` on config read; tooltip truncation now text-element-safe. Round-trip test with real Windows still outstanding — see below. |
+| 1 | Double-byte / Unicode handling | **Fixed** | BOM added to `.ps1`; explicit `-Encoding UTF8` on config read; tooltip truncation now text-element-safe. Round-trip test completed on a real Windows VM — see below. |
 | 2 | Regional date, time, number formats | **Pass** | No hardcoded US formats found |
 | 3 | External URL / CDN references | **Pass** | Zero external references found — fully local/offline |
 | 4 | Open source identified + CycloneDX 1.6 JSON SBOM | **Pass** | Zero third-party components; SBOM generated (empty) |
@@ -32,7 +32,14 @@
 - `Load-Config`'s `Get-Content` call now specifies `-Encoding UTF8` explicitly (`FlexAppOneDownloadMonitor.ps1:137`).
 - Added a `Truncate-DisplaySafe` helper (`:304-318`) that walks .NET text elements via `System.Globalization.StringInfo` instead of a raw `Substring`, and switched the tray tooltip truncation to use it (`:891`) — a display name containing a surrogate pair or combining mark can no longer be cut in half.
 - Did not change `Start-FlexAppOneDownloadMonitor.vbs`'s encoding — it has no non-ASCII content and no read/write encoding decisions of its own to make.
-- **Not done, still open:** the actual round-trip test with Japanese/Cyrillic/CJK test strings through the running app, since no Windows environment is available in this session. That evidence still needs to be captured on a real Windows box before sign-off.
+
+**Phase 3, round 8 — real-Windows evidence captured, item closed.** You ran the round-trip test on a Windows VM using a purpose-built set of test files (Japanese, Simplified Chinese, Korean, Cyrillic, accented Latin, a long name containing an emoji/surrogate pair, and a `.token`-path Japanese name) dropped into the watched cache folder. Results, from your screenshots:
+
+- **History list**: every name — Simplified Chinese (`简体中文软件安装程序`), Japanese (`日本語データパッケージ`, and separately via the `.token` instant-completion path as `テストアプリ`), Korean (`한국어 소프트웨어 패키지` — hyphens correctly turned to spaces), Cyrillic (`Обновление программного обеспечения Данные`), and accented Latin (`Ångström café naïve Update`) — rendered completely intact, with correct elapsed durations, and the `.token`-path entry correctly showed no duration (by design — that path has no observed start time).
+- **Active flyout entry**: the long emoji-bearing name displayed and progressed normally while downloading.
+- **Tray tooltip** (the specific code path this fix touches): hovering the tray icon while `LongNameWithEmoji-🚀🎉-Package-Update-Installer-Name-Very-Long-Edition` was active showed `FlexApp Download Monitor - LongNameWithEmoji 🚀 Package Up...` — cut cleanly at the OS's tooltip width limit with `...` appended, no broken half-character, no mojibake, no exception. This is the exact scenario `Truncate-DisplaySafe` was written for, and it held up under a real surrogate pair in the real code path.
+
+**No corruption, no crashes, no `?`/mojibake anywhere across any of the test strings.** §1 is now fully closed — code fix and evidence both complete.
 
 **What I checked (Phase 1):** Source file encoding, all file read/write calls, string length/truncation logic, filename handling, regex, and console/log output.
 
@@ -53,7 +60,7 @@
 
 - Format-DisplayName's regex operations (`-replace '\.(exe|msi|msix|appx|zip)$'`, `-replace '-', ' '`) anchor only on ASCII literals and don't truncate by byte count, so non-Latin app names pass through intact. No fix needed.
 
-**Not tested (no Windows environment available in this session):** an actual round-trip of Japanese/Cyrillic/CJK strings through the running app (tray tooltip, flyout labels, log file, config file) as the checklist's evidence section asks for. This needs to happen on a real Windows box before sign-off; I can't produce that screenshot from here.
+**Not tested at the time of the original audit (no Windows environment available in this session)** — completed in Phase 3, round 8, on your Windows VM. See above.
 
 ---
 
@@ -240,7 +247,7 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 
 ## Should-fix (remaining, non-blocking)
 
-- §1 — ~~Encoding/truncation fixes~~ **Fixed**, see below. Only the real-Windows double-byte round-trip *test* (the checklist's evidence requirement) is still outstanding — that needs an actual Windows box, not more code changes.
+- §1 — ~~Encoding/truncation fixes~~ **Fully closed.** Code fix applied and the real-Windows double-byte round-trip test completed (round 8) — tray tooltip, flyout, History, log, and the `.token` path all confirmed intact under Japanese/Chinese/Korean/Cyrillic/accented-Latin/emoji test strings.
 - §2 — Log timestamps have no timezone/offset; low priority given this is a single-machine tool, but worth a one-line format change if these logs are ever aggregated centrally.
 - §7 — ~~Decide the distributable format~~ **Decided: zip.** `FlexAppOneDownloadMonitor-0.2.zip` built for this delivery (contents listed in §7 above). Not yet automated as part of a build/release process — that's a separate ask if wanted.
 
@@ -296,13 +303,13 @@ Per the checklist's own guidance ("anything that needs a decision rather than a 
 - `FlexAppOneDownloadMonitor/bom.cdx.json` — CycloneDX 1.6 JSON SBOM, schema-validated, empty component list (§4/§7), now wired into the README and Diagnostics dialog.
 - `FlexAppOneDownloadMonitor-0.2.zip` — the customer-facing distributable (§7 round 5): `FlexAppOneDownloadMonitor.ps1`, `Start-FlexAppOneDownloadMonitor.vbs`, `Spark_License.pdf`, `bom.cdx.json`, `README.md`, `CHANGELOG.md` at a flat top level. Delivered to you directly rather than committed to the repo, since it's a build output, not source.
 
-This report now reflects Phase 1 (original audit) through Phase 3, round 7 (all approved fixes applied, §5's CVE scan completed). **No open items remain.** Every checklist section is Pass, Fixed, or N/A with a stated justification (§8). The one non-blocking item still outstanding is the real-Windows double-byte round-trip *test* for §1 (evidence-gathering, not a fix) — the code changes for §1 are done, just not yet verified on physical Windows hardware.
+This report now reflects Phase 1 (original audit) through Phase 3, round 8 (all approved fixes applied, §5's CVE scan completed, §1's real-Windows evidence captured). **Nothing remains open.** Every checklist section is Pass, Fixed, or N/A with a stated justification (§8) and, where applicable, real evidence rather than an inference.
 
 ## Submission Summary
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | Double-byte / Unicode handling | Fail — fixed (evidence capture on real Windows still pending) |
+| 1 | Double-byte / Unicode handling | Fail — fixed, evidence captured on a real Windows VM |
 | 2 | Regional date, time, number formats | Pass |
 | 3 | External URL / CDN references | Pass — none |
 | 4 | Open source identified + CycloneDX 1.6 JSON SBOM | Pass — zero third-party components |
@@ -319,6 +326,6 @@ This report now reflects Phase 1 (original audit) through Phase 3, round 7 (all 
 **Grype scan date / DB version:** 2026-08-11, DB schema v6.1.9 (built 2026-08-11T06:26:49Z)
 **External endpoints retained:** none
 **Open escalations / requested exceptions:** License §2(d) source-code clause — see "Escalations / exceptions requested" above
-**Changes approved by:** you, item-by-item across Phase 3 rounds 1–7 (this report)
+**Changes approved by:** you, item-by-item across Phase 3 rounds 1–8 (this report)
 **Approved changes deferred, not made:** none — everything approved was applied
 **Packaged path of license PDF + SBOM:** `FlexAppOneDownloadMonitor/Spark_License.pdf` and `FlexAppOneDownloadMonitor/bom.cdx.json`, top level, and inside `FlexAppOneDownloadMonitor-0.2.zip`
