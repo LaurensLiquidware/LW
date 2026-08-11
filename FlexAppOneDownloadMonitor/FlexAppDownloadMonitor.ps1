@@ -17,7 +17,7 @@
     persistent History section below the active downloads.
 
 .NOTES
-    Version: 1.0
+    Version: 0.2
 
     WinForms requires an STA thread. If launched under PowerShell 7 (pwsh),
     which defaults to MTA, this script relaunches itself with -STA.
@@ -108,7 +108,7 @@ function Get-MonitoredServiceSpeedBps {
 # share can be changed (via the tray menu) without editing the script itself.
 $script:ConfigPath   = Join-Path $PSScriptRoot 'FlexAppDownloadMonitor.config.json'
 $script:LogPath      = Join-Path $PSScriptRoot 'FlexAppDownloadMonitor.log'
-$script:AppVersion   = '1.0'
+$script:AppVersion   = '0.2'
 $script:LicensePath  = Join-Path $PSScriptRoot 'Spark_License.pdf'
 $script:SbomPath     = Join-Path $PSScriptRoot 'bom.cdx.json'
 

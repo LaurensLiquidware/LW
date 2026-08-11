@@ -4,7 +4,7 @@
 **Reviewed against:** Sparks Tool Project Review Checklist v1
 **Audit date:** 2026-08-11
 **Files reviewed:** `FlexAppDownloadMonitor.ps1`, `Start-FlexAppDownloadMonitor.vbs`, `README.md`, `archive/FlexAppDownloadMonitor_v1.ps1`
-**Phase:** 3 — Approved items applied, across three rounds. Round 1: §6 and §7. Round 2: §1. Round 3: §8 color-matching sub-item. §5 remains blocked, not approved (blocked on network policy, not a code fix). Everything in Phases 1–2 below is unchanged from the original audit; a "Phase 3 — applied" note has been added to each fixed section describing exactly what was changed.
+**Phase:** 3 — Approved items applied, across four rounds. Round 1: §6 and §7. Round 2: §1. Round 3: §8 color-matching sub-item. Round 4: version bumped from `1.0` to `0.2` (§6, retroactively applied everywhere the version string appears). §5 remains blocked, not approved (blocked on network policy, not a code fix). Everything in Phases 1–2 below is unchanged from the original audit; a "Phase 3 — applied" note has been added to each fixed section describing exactly what was changed.
 
 ---
 
@@ -133,7 +133,9 @@ I installed Grype v0.90.0 (the required scanner) directly from its GitHub releas
 
 **Status: Fixed** (approved and applied)
 
-**Phase 3 — what was actually changed:** Added a single `$script:AppVersion = '1.0'` constant (`FlexAppDownloadMonitor.ps1:109`) and surfaced it in four places: the log startup line (`:166`), the flyout panel title bar (`:524`, now "FlexApp One Downloads  v1.0"), the tray tooltip's idle text (`:869`, now "FlexApp Download Monitor v1.0 - idle"), and the Diagnostics dialog (`:792`). Added `CHANGELOG.md` at the project root recording this as the 1.0 release. Did not touch the active-download tray tooltip variants, since those are already close to the 63-character `NotifyIcon` limit and the idle state already gives the version a stable, always-reachable home. The version matches `bom.cdx.json`'s `metadata.component.version` (both `1.0`).
+**Phase 3 — what was actually changed:** Added a single `$script:AppVersion` constant (`FlexAppDownloadMonitor.ps1:111`) and surfaced it in four places: the log startup line (`:166`), the flyout panel title bar (`:524`), the tray tooltip's idle text (`:869`), and the Diagnostics dialog (`:792`). Added `CHANGELOG.md` at the project root. Did not touch the active-download tray tooltip variants, since those are already close to the 63-character `NotifyIcon` limit and the idle state already gives the version a stable, always-reachable home.
+
+**Phase 3, round 2 — version bumped to 0.2:** You chose `0.2` over the initial `1.0` draft. Updated in lockstep everywhere the version appears: `AppVersion` constant, the doc-comment header (`:20`), `README.md`'s version line, `CHANGELOG.md`'s heading, and `bom.cdx.json`'s `metadata.component.version` (bumped the SBOM's own `version` field from `1` to `2` and refreshed its `timestamp`, since the document changed). All five now consistently say `0.2`.
 
 **Original finding (Phase 1), for reference:**
 
@@ -234,15 +236,16 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 - §2 — Log timestamps have no timezone/offset; low priority given this is a single-machine tool, but worth a one-line format change if these logs are ever aggregated centrally.
 - §7 — Decide what the actual customer-facing distributable artifact is (zip vs. folder copy) so "packaged together" has a concrete target.
 
-## Files actually changed in Phase 3 (§6, §7, §1, then §8 color-matching — each approved separately)
+## Files actually changed in Phase 3 (§6, §7, §1, §8 color-matching, then the version bump — each approved separately)
 
 - **Modified:** `FlexAppDownloadMonitor.ps1` —
   - §6/§7 round: added `AppVersion`/`LicensePath`/`SbomPath` constants; surfaced version in the log line, flyout title, tray idle tooltip, and Diagnostics dialog; surfaced license/SBOM paths in the Diagnostics dialog.
   - §1 round: re-saved with a UTF-8 BOM; added `-Encoding UTF8` to the config `Get-Content` call; added a `Truncate-DisplaySafe` helper and switched the tray tooltip truncation to use it instead of a raw `Substring`.
   - §8 round: re-pointed every hardcoded flyout/tray color to the nearest Liquidware style guide dark-scheme token (full mapping table in §8 above); fixed the top bar's missing `BackColor` as a natural side effect of that pass. Typeface (Segoe UI) and font-weight granularity intentionally left unchanged — see §8 for why.
-  - `README.md`: added the license/disclaimer callout up top and a `Files` table entry for the license PDF, SBOM, and changelog.
-- **Added:** `Spark_License.pdf` (renamed from the supplied `Spark_License8426.pdf`), `CHANGELOG.md`.
-- **Carried over from Phase 1, now referenced:** `bom.cdx.json` (generated during the audit for §4) is now wired into the README and Diagnostics dialog per §7.
+  - Version-bump round: `AppVersion` changed from `1.0` to `0.2`; doc-comment header (`:20`) updated to match.
+  - `README.md`: added the license/disclaimer callout up top and a `Files` table entry for the license PDF, SBOM, and changelog; version line updated to `0.2`.
+- **Added:** `Spark_License.pdf` (renamed from the supplied `Spark_License8426.pdf`), `CHANGELOG.md` (heading updated to `0.2`, with the encoding/color-matching work folded into the same entry since nothing shipped as `1.0`).
+- **Carried over from Phase 1, now referenced:** `bom.cdx.json` (generated during the audit for §4) is now wired into the README and Diagnostics dialog per §7; its `metadata.component.version` updated to `0.2` and its own `version`/`timestamp` bumped to reflect the edit.
 - **Not touched:** §5 (CVE scan) — left exactly as reported, no code changes made, blocked on network policy rather than code.
 - **Blast radius:** the §6/§7 changes are purely additive (new constants read-only, new UI text, new files, new README section). The §1 changes touch one real runtime code path — the tooltip truncation logic — the rest is encoding-only with no behavioral difference against the current ASCII-only content. Re-testing recommendation: confirm the tray tooltip still renders correctly at both the un-truncated and truncated lengths (a quick manual check, no double-byte strings needed to catch a regression in the ASCII case) — the double-byte-specific verification still needs the real Windows environment noted in §1 above.
 
@@ -252,7 +255,7 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 2. Is there a way to allow this session's egress policy to reach `grype.anchore.io` (or an internal mirror of the Grype DB), so §5 can actually complete instead of staying blocked?
 3. ~~Should colors match the style guide?~~ **Answered** — colors now re-pointed to the dark-scheme tokens; typeface intentionally left as Segoe UI. See §8.
 4. What's the intended customer-facing distributable format (zip, installer, folder) — this determines exactly what "packaged together" in §7 needs to look like?
-5. Is `1.0` the version you want to ship, or should this be bumped as part of the Sparks submission?
+5. ~~Is `1.0` the version you want to ship?~~ **Answered** — bumped to `0.2`, applied everywhere (constant, doc-comment, README, CHANGELOG, SBOM).
 6. License §2(d) forbids the licensee from "obtain[ing] possession of any source code" — but this Tool ships *as* source (a `.ps1`/`.vbs` pair). Is that clause meant to apply here, or is it boilerplate carried over from Liquidware's compiled commercial products that doesn't quite fit a source-distributed Sparks tool? Not something I can resolve by editing code — flagging for you/legal.
 
 ---

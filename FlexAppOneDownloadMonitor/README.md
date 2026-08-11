@@ -1,6 +1,6 @@
 # FlexApp Download Monitor - Install Guide
 
-**Version 1.0**
+**Version 0.2**
 
 > **IMPORTANT: READ BEFORE DOWNLOADING OR USING.** This is a Liquidware **Sparks Tool** - a community/field-contributed utility, **not a Liquidware commercial product**. It is provided outside Liquidware's standard product development lifecycle, **"AS IS" with no warranty, support, or maintenance**, and used at your own risk. See `Spark_License.pdf` for the full license and disclaimer.
 
