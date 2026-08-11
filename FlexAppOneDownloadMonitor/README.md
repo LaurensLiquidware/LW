@@ -12,8 +12,6 @@ A system-tray tool that watches for FlexApp One downloads and shows live progres
 |---|---|---|
 | ![Active download](Screenshots/active-download.png) | ![Diagnostics](Screenshots/diagnostics.png) | ![History](Screenshots/history.png) |
 
-*(Images go in the `Screenshots/` folder — see its README for filenames and a note on redacting the Diagnostics dialog before uploading.)*
-
 ## Files
 
 | File | Purpose |
