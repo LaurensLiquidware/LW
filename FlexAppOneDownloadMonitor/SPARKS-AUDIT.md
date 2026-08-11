@@ -1,0 +1,218 @@
+# Sparks Tool Project Review — Audit Report
+
+**Project:** FlexAppOneDownloadMonitor
+**Reviewed against:** Sparks Tool Project Review Checklist v1
+**Audit date:** 2026-08-11
+**Files reviewed:** `FlexAppDownloadMonitor.ps1`, `Start-FlexAppDownloadMonitor.vbs`, `README.md`, `archive/FlexAppDownloadMonitor_v1.ps1`
+**Phase:** 1 — Audit only. **No project files were modified, created, or deleted during this pass** other than this report and the SBOM described in §4/§7 below, per the checklist's "audit first, then confirm" rule and the explicit hard rule in this request.
+
+---
+
+## Summary table
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 1 | Double-byte / Unicode handling | **Fail — needs fix** | Latent risk, not an active bug today (see below) |
+| 2 | Regional date, time, number formats | **Pass** | No hardcoded US formats found |
+| 3 | External URL / CDN references | **Pass** | Zero external references found — fully local/offline |
+| 4 | Open source identified + CycloneDX 1.6 JSON SBOM | **Pass** | Zero third-party components; SBOM generated (empty) |
+| 5 | Zero Critical / High CVEs (Grype scan of SBOM) | **NEEDS-INFO — blocked** | Could not reach Grype's vulnerability DB (see below); stopping per instructions rather than substituting a scanner |
+| 6 | Version number visible to end user | **Fail** | Version exists only in a source comment, never shown to the user |
+| 7 | License PDF + SBOM packaged and visible | **Fail — blocking** | Neither the Sparks License PDF nor an SBOM currently ship with the tool at all |
+| 8 | UI consistency (style guide / PrimeNG) | **N/A** | This is a native WinForms desktop app, not an Angular/web UI — the Liquidware web style guide and PrimeNG do not apply. See below. |
+
+---
+
+## 1. Character encoding — double-byte and non-Latin input
+
+**Status: Fail — needs fix** (latent, not currently triggered)
+
+**What I checked:** Source file encoding, all file read/write calls, string length/truncation logic, filename handling, regex, and console/log output.
+
+**Findings:**
+
+- `FlexAppDownloadMonitor.ps1` and `Start-FlexAppDownloadMonitor.vbs` are both plain ASCII with no byte-order mark (confirmed via `file`). That's fine *today* because every literal string in the file is ASCII, but it's a latent trap: Windows PowerShell 5.1 (the version this script targets — see the STA relaunch guard) reads a BOM-less `.ps1` using the **system's active code page**, not UTF-8. The moment anyone edits this file in an editor that saves BOM-less UTF-8 and adds a non-ASCII literal (e.g., a translated string, an em-dash, a non-English display name in a comment), the file will silently misinterpret those characters on a differently-configured machine. — `FlexAppDownloadMonitor.ps1:1`
+  - **Fix:** Save the `.ps1` with a UTF-8 BOM (PowerShell 5.1's own default for `Out-File`/ISE "Save as UTF-8"), or add an explicit `#Requires` header note and a project convention to always save as UTF-8-with-BOM. Low blast radius — encoding-only, no logic change, but re-test that PowerShell 5.1 still parses it after re-saving.
+
+- `Load-Config` reads the JSON config file with no explicit encoding: `Get-Content -LiteralPath $script:ConfigPath -Raw | ConvertFrom-Json` — `FlexAppDownloadMonitor.ps1:134`. If a user or automation tool ever writes the config file with UTF-8 (no BOM) from a non-Windows-PowerShell tool, and this app is later run under a non-Latin-1 code page, this default-encoding read could mis-decode the `CacheDir` path if it ever contains non-ASCII characters (e.g., a username with Cyrillic/CJK characters in the profile path, which does happen in enterprise environments).
+  - **Fix:** `Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json`. Mechanical, low blast radius.
+
+- Tray tooltip truncation: `$tip.Substring(0, 60) + '...'` — `FlexAppDownloadMonitor.ps1:867`. `.Substring` on a .NET string counts UTF-16 code units, not characters. A display name containing a character outside the Basic Multilingual Plane (e.g., some emoji, some rare CJK extension characters) is represented as a surrogate pair; truncating mid-pair corrupts the string (renders as `�` or throws depending on context) and could also split a combining-mark sequence (e.g., some Cyrillic/diacritic combinations) so the base character displays without its accent.
+  - **Fix:** Truncate on a text element boundary, e.g. iterate with `System.Globalization.StringInfo` or check `char.IsSurrogatePair`/`IsLowSurrogate` at the cut point before substringing. This is the one item here I'd flag as needing a short round of re-testing (double-byte test strings through the tray tooltip specifically) since it touches display logic, not just an encoding flag.
+
+- `Add-Content -Encoding UTF8` (log, `FlexAppDownloadMonitor.ps1:121`) and `Set-Content -Encoding UTF8` (config, `FlexAppDownloadMonitor.ps1:148`) are correctly explicit. Worth noting for the record: PowerShell 5.1's `-Encoding UTF8` writes **UTF-8 with a BOM**, which is fine for a private log/config file but would matter if either file is ever consumed downstream by a tool that chokes on a BOM (e.g., some log shippers). Not a fix, just a thing to be aware of if the log format's contract ever changes.
+
+- `Get-Item`/`Get-ChildItem` calls throughout consistently use `-LiteralPath`, which is the correct choice and avoids the common failure mode of wildcard characters in filenames (`[`, `]`, `*`) breaking path handling — this also happens to help with some non-Latin filenames that get misinterpreted as glob patterns in naive implementations. No fix needed here; noting it as a thing that's already done right.
+
+- Format-DisplayName's regex operations (`-replace '\.(exe|msi|msix|appx|zip)$'`, `-replace '-', ' '`) anchor only on ASCII literals and don't truncate by byte count, so non-Latin app names pass through intact. No fix needed.
+
+**Not tested (no Windows environment available in this session):** an actual round-trip of Japanese/Cyrillic/CJK strings through the running app (tray tooltip, flyout labels, log file, config file) as the checklist's evidence section asks for. This needs to happen on a real Windows box before sign-off; I can't produce that screenshot from here.
+
+---
+
+## 2. Regional formats — dates, times, numbers
+
+**Status: Pass**
+
+**What I checked:** Every `Get-Date`, `.ToString(...)`, and format-string call in the script; the config JSON; the log format.
+
+**Findings:**
+
+- No date is ever *parsed* from user or external input anywhere in this codebase — there is no date-parsing code path at all, so the classic `MM/DD/YYYY` ambiguity bug class doesn't apply here.
+- All display timestamps use explicit, locale-invariant format strings: `'yyyy-MM-dd HH:mm:ss.fff'` (log, `:120`), `'HH:mm:ss.fff'` (in-memory diagnostics, `:350`, `:389`), `'HH:mm:ss'` (flyout history rows, `:685`/`:687`). These are all 24-hour, ISO-flavored, and don't depend on culture. Good.
+- `Format-Bytes`/`Format-MB` use the `N`/`N2`/`N0` numeric format specifiers (`:303-311`), which *are* culture-sensitive (comma vs. period for decimal/grouping) — but this is exactly the checklist's "display to the user may use OS/user locale" case, since these values are only ever shown in the UI, never stored, parsed, or compared. This is correct behavior, not a bug.
+- No currency, no AM/PM 12-hour clock anywhere, no day-of-week/month-name strings hardcoded to English.
+- Config file (`FlexAppDownloadMonitor.config.json`) stores a single string path — no date/number fields to worry about.
+
+**One minor note, not blocking:** the log timestamp format (`yyyy-MM-dd HH:mm:ss.fff`) has no timezone/offset. That's fine for a single-machine desktop tool reasoning about its own elapsed time, but if these logs are ever centrally aggregated across machines in different time zones, correlating them will be ambiguous. Low priority; flagging per the checklist's "log correlation across time zones" callout.
+
+---
+
+## 3. External references — URLs, CDNs, and remote code
+
+**Status: Pass — list is "none"**
+
+**What I checked:** Every file in the project (`.ps1`, `.vbs`, `.md`) for `http`, `https`, `www.`, CDN patterns, API endpoints, and any fetch/download/invoke-webrequest style calls.
+
+**Findings:** Zero external references of any kind.
+
+- No `Invoke-WebRequest`, `Invoke-RestMethod`, `.NET WebClient`, or any networking call anywhere in the script.
+- No CDN-loaded fonts, scripts, styles, or icons — the tray icon is drawn programmatically with `System.Drawing` (GDI+), not loaded from anywhere.
+- No telemetry, analytics, or "phone home" behavior.
+- No hardcoded internal Liquidware hosts, staging URLs, or placeholder/scratch URLs (no pastebin, no ngrok, no localhost assumptions).
+- No credentials, API keys, tokens, or connection strings in source, config, or comments.
+- This tool only touches the local filesystem (`C:\ProgramData\Liquidware\ProfileUnity\Cache\FlexAppOne\`) and local Performance Counters — it will work unmodified in a fully air-gapped environment.
+
+This item needs no remediation. **External endpoints retained: none.**
+
+---
+
+## 4. Open source components and SBOM
+
+**Status: Pass**
+
+**What I checked:** Whether the project declares or vendors any third-party dependency (package manifests, vendored source, copy-pasted snippets, bundled binaries), then ran Syft against the project directory to cross-check by static analysis rather than relying on my own read-through alone.
+
+**Findings:**
+
+- There is no package manifest of any kind in this project (no `package.json`, `.csproj`/`.sln`, `requirements.txt`, `go.mod`, etc.) — it's two plain script files.
+- Everything the script calls (`System.Windows.Forms`, `System.Drawing`, `System.Diagnostics.PerformanceCounter`, `WScript.Shell` in the VBS launcher) is part of the .NET Framework / Windows OS itself, not a third-party redistributable component that needs its own license/SBOM entry.
+- Ran `syft scan dir:./FlexAppOneDownloadMonitor -o cyclonedx-json` (Syft v1.21.0) as an independent check — it also found **zero** components, confirming the manual read.
+- No vendored/copied third-party source was found in either the current or archived version of the script.
+
+**SBOM:** Since the project genuinely has zero third-party components, I generated a valid, schema-checked CycloneDX 1.6 JSON SBOM with an empty `components` array, per the checklist's explicit instruction to do this rather than omit the SBOM. It's attached as `FlexAppOneDownloadMonitor/bom.cdx.json` (see "Attached files" below) — **not yet referenced from the README or packaged per §7, since that's a §7 finding pending your approval.**
+
+- Validated against the official CycloneDX 1.6 JSON schema (fetched from the CycloneDX specification repo) using `jsonschema` — **valid**.
+- `metadata.component` = `FlexAppOneDownloadMonitor`, version `1.0` (matches the version string currently in the script's comment header — see §6 for why that's itself a finding).
+- `metadata.timestamp` = generation time of this audit.
+
+**License summary:** No third-party SPDX IDs to report — "no open source" is the accurate finding, backed by the empty, schema-valid SBOM above.
+
+---
+
+## 5. Vulnerabilities — no Critical or High
+
+**Status: NEEDS-INFO — blocked, stopping rather than substituting**
+
+I installed Grype v0.90.0 (the required scanner) directly from its GitHub release, since that's the only scanner this checklist allows. However, **Grype's vulnerability database cannot be downloaded in this environment**: `grype db update` fails because the outbound network policy for this session explicitly blocks `grype.anchore.io` (confirmed via the proxy status endpoint — `connect_rejected`, "gateway answered 403 to CONNECT (policy denial)"). This is an organizational egress policy denial, not a transient failure, so per both this environment's proxy guidance and your instruction ("if Grype is unavailable, say so and stop rather than guessing or substituting a different scanner"), I am stopping here rather than working around it with a different tool or a stale/absent database.
+
+**What this means in practice:** given §4's finding that this project has zero third-party components, the *ceiling* on this item's severity is low — there's nothing in the SBOM for a CVE to attach to. But I want to be precise: that's a reasonable inference, not a substitute for actually running the required scan, so I'm reporting this as blocked rather than marking it Pass.
+
+**What I need from you:** either (a) run `grype sbom:FlexAppOneDownloadMonitor/bom.cdx.json` yourself in an environment with access to `grype.anchore.io`, or point me at how this session's egress policy can be adjusted for that host, and I'll complete this item and fold the result back into this report.
+
+---
+
+## 6. Version number visible to the end user
+
+**Status: Fail**
+
+**What I checked:** Tray icon tooltip, flyout panel title/UI, right-click menu, log output, and the `.vbs` launcher for any version display; the script's own metadata.
+
+**Findings:**
+
+- A version does exist — `Version: 1.0` in the comment-block header at the top of the script (`FlexAppDownloadMonitor.ps1:20`) — but it is a **source comment only**. It is never surfaced anywhere the end user or their support desk would actually see it: not in the tray tooltip (`FlexAppDownloadMonitor.ps1:860-870`), not in the flyout panel title ("FlexApp One Downloads", `:521`), not in the right-click menu, not in the Diagnostics dialog (`:785-814`, which reports PID/counters/history count but no version), not in the log's startup banner (`:163`, which logs "started" and the watched path but no version), and there's no `-Version`/`-v` command-line switch at all.
+- There is no `CHANGELOG.md` in the project.
+- No file/assembly version metadata exists either (it's a script, not a compiled binary, so there's no natural place for that — all the more reason it needs to be in the visible places above).
+
+**Fix (not applied — pending your approval):**
+- Add a single `$script:AppVersion = '1.0'` constant near the top, and surface it in: the log startup line (`:163`), the Diagnostics dialog (`:788` area), and the flyout title bar or tray tooltip idle text (`:521` / `:862`).
+- Add a `CHANGELOG.md` at the project root.
+- Once a version is chosen for this Sparks submission, make sure it matches the SBOM's `metadata.component.version` (§4) — currently both say `1.0`, but that will need to move in lockstep going forward.
+- This is a small, mechanical, low-blast-radius change (adding read-only display of an existing constant) — safe to bundle if approved.
+
+---
+
+## 7. License PDF and SBOM packaged and visible to the end user
+
+**Status: Fail — blocking**
+
+**What I checked:** The project directory tree, the README, and whether either the Sparks license PDF or an SBOM ships anywhere in this project today.
+
+**Findings:**
+
+- Neither the Sparks Tool License PDF nor any SBOM currently exists anywhere in `FlexAppOneDownloadMonitor/` (prior to this audit — the `bom.cdx.json` I generated for §4 is new, from this audit pass, and is **not yet referenced or packaged** per this section's requirements).
+- The README (`README.md`) makes no mention of a license, a disclaimer, or an SBOM anywhere. It also doesn't currently identify itself as a Sparks/community tool rather than a supported Liquidware product — worth checking against the license PDF's required disclaimer language (License §§1, 5, 6) once the PDF is added.
+- There is no `legal/` or `licenses/` subfolder, no `THIRD-PARTY-NOTICES.txt` — though per §4 there's currently nothing to put in one, since there are no third-party components.
+- Distribution note: this project ships via the `.vbs` launcher + `.ps1` pair copied to `C:\FlexAppDownloadMonitor\` per the README's own install instructions — there's no zip/installer artifact yet, so "the distributable" and "the repo" are currently the same thing. Worth deciding what the actual customer-facing distributable will be (a zip? a folder copy?) since that changes what "packaged together" means concretely.
+
+**Fix (not applied — pending your approval):**
+- Add the current Sparks Tool License PDF at `FlexAppOneDownloadMonitor/Spark_License.pdf` (filename with no spaces/parentheses per the checklist's own guidance) alongside `bom.cdx.json` at the same top level.
+- Add a short section near the top of `README.md`: the license's "IMPORTANT: READ BEFORE DOWNLOADING OR USING" headline, a one-line explanation of what `bom.cdx.json` is and why it's there, and the core disclaimer (community/field tool, not a supported Liquidware product, AS IS, no warranty).
+- Surface both in-app: the Diagnostics dialog or an "About" menu item would be a natural place, alongside the version from §6.
+- **This is a blocking item per the checklist** — it can't pass until the actual license PDF is sourced (I don't have it as a file to place — only the checklist text describing its required content) and placed, and the README/UI references are added.
+
+---
+
+## 8. UI consistency (style guide / PrimeNG)
+
+**Status: N/A**
+
+This item as scoped in your prompt is about Angular/web UI consistency against the attached Liquidware Style Guide (`colors_and_type.css`, PrimeNG-based component kit, Inter/Material-icon fonts) and, specifically, whether a PrimeNG commercial license key is safely kept out of shipped/committed artifacts.
+
+- `FlexAppOneDownloadMonitor` is a native Windows Forms desktop application (System.Windows.Forms/System.Drawing), not an Angular application. It has no dependency on PrimeNG, Angular, or any web framework at all — confirmed by grep across the project for `PrimeNG`/`Angular` (no matches) and by the full file read in §4 (zero declared dependencies of any kind).
+- Because there's no PrimeNG usage in this project, **the PrimeNG license key you attached for reference does not appear anywhere in this project, this report, the generated SBOM, or any committed file** — I did not write it into anything, and I'm not going to. Flagging this explicitly per your instruction to report a key exposure as top-severity rather than remediate silently: there is currently nothing to remediate here, but if a future version of this tool (or another Sparks submission) adds an Angular/PrimeNG front end, the same check needs to be re-run against that code, not assumed clear from this report.
+- On the softer "does it look like a Liquidware tool" question: the tray icon uses a Windows-system blue (`RGB(0,120,215)`, Windows' own accent blue) rather than any color pulled from the style guide's palette (`colors_and_type.css`), and the flyout panel uses a dark neutral gray (`RGB(32,34,38)`) with the system default "Segoe UI" font rather than the style guide's Inter typeface. Since this is a native desktop tray utility rather than a branded product UI, I don't think matching the web design system word-for-word is a real requirement — but flagging it as a "Questions for me" item below since I can't tell if there's an expectation here.
+
+No fix needed or proposed for this item as scoped.
+
+---
+
+## Blockers (must resolve before this goes to a customer)
+
+1. **§7 — License PDF and SBOM not packaged.** Nothing ships to the customer today that discloses the Sparks license terms or an SBOM. Needs the actual license PDF sourced and placed, plus README/in-app pointers.
+2. **§5 — CVE scan not completed.** Blocked by network policy in this session, not by anything in the code. Needs to be run wherever `grype.anchore.io` is reachable before sign-off, even though §4 suggests the practical risk ceiling is low (zero third-party components).
+3. **§6 — No visible version number.** Not "Critical/High-CVE" severity in the checklist's own blocking list, but I'm calling it out here too because it blocks the version-consistency chain the checklist requires between the SBOM, the UI, and the changelog (§4→§6→§7 must agree).
+
+No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed external endpoints were found — those specific blocking categories are clear.
+
+## Should-fix (non-blocking)
+
+- §1 — Source file should be saved with an explicit UTF-8 (with BOM) encoding as a convention, to avoid a future edit silently corrupting under PowerShell 5.1's code-page-based fallback.
+- §1 — `Get-Content` on the config file should specify `-Encoding UTF8` explicitly (currently relies on the host default).
+- §1 — Tray tooltip truncation (`Substring(0, 60)`) should cut on a text-element boundary, not a raw UTF-16 code-unit count, to avoid corrupting a display name that contains a surrogate pair or combining character. This is the one §1 item that touches actual runtime behavior and would need a quick re-test with double-byte test strings afterward.
+- §2 — Log timestamps have no timezone/offset; low priority given this is a single-machine tool, but worth a one-line format change if these logs are ever aggregated centrally.
+- §7 — Decide what the actual customer-facing distributable artifact is (zip vs. folder copy) so "packaged together" has a concrete target.
+
+## Files that would be touched if the above is approved
+
+- **Modified:** `FlexAppDownloadMonitor.ps1` (encoding-related fixes in §1, version constant + display in §6), `README.md` (license/SBOM pointers in §7).
+- **Added:** `Spark_License.pdf` (§7, pending you supplying the actual PDF), `CHANGELOG.md` (§6).
+- **Already added by this audit, pending your sign-off to keep/reference:** `bom.cdx.json` (§4) — currently just sitting in the project folder, not yet wired into the README/UI per §7.
+- No dependency upgrades — there are no dependencies to upgrade.
+- **Blast radius:** the §1 tooltip-truncation fix and the §6 version-display additions are the only two with any runtime behavior change; everything else in this list is additive (new files, new README section) or a pure encoding/flag change with no behavioral difference in the ASCII-only content that exists today.
+
+## Questions for me
+
+1. Do you have the current Sparks Tool License PDF (v1.0, dated 8-4-26 per the checklist) as a file I should place, or should I treat that as out of scope for this session?
+2. Is there a way to allow this session's egress policy to reach `grype.anchore.io` (or an internal mirror of the Grype DB), so §5 can actually complete instead of staying blocked?
+3. Should the tray icon/flyout colors and font be brought in line with the Liquidware style guide palette (`colors_and_type.css`) even though this is a native desktop app, not a web UI? I don't have a strong signal either way from the checklist.
+4. What's the intended customer-facing distributable format (zip, installer, folder) — this determines exactly what "packaged together" in §7 needs to look like?
+5. Is `1.0` the version you want to ship, or should this be bumped as part of the Sparks submission?
+
+---
+
+## Attached files
+
+- `FlexAppOneDownloadMonitor/bom.cdx.json` — CycloneDX 1.6 JSON SBOM, schema-validated, empty component list (§4). Not yet referenced from the README or packaged per §7 pending your approval.
+
+No existing project file was modified during this audit.
