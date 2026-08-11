@@ -106,8 +106,11 @@ function Get-MonitoredServiceSpeedBps {
 # ---------------------------------------------------------------------------
 # Settings persist in a small JSON file next to this script, so the source
 # share can be changed (via the tray menu) without editing the script itself.
-$script:ConfigPath = Join-Path $PSScriptRoot 'FlexAppDownloadMonitor.config.json'
-$script:LogPath    = Join-Path $PSScriptRoot 'FlexAppDownloadMonitor.log'
+$script:ConfigPath   = Join-Path $PSScriptRoot 'FlexAppDownloadMonitor.config.json'
+$script:LogPath      = Join-Path $PSScriptRoot 'FlexAppDownloadMonitor.log'
+$script:AppVersion   = '1.0'
+$script:LicensePath  = Join-Path $PSScriptRoot 'Spark_License.pdf'
+$script:SbomPath     = Join-Path $PSScriptRoot 'bom.cdx.json'
 
 function Write-Log {
     param([string]$Message)
@@ -160,7 +163,7 @@ Load-Config
 
 $script:PollIntervalMs = 1000
 
-Write-Log "=== FlexApp Download Monitor started (PID $PID) - watching $($script:CacheDir) ==="
+Write-Log "=== FlexApp Download Monitor v$($script:AppVersion) started (PID $PID) - watching $($script:CacheDir) ==="
 
 # ---------------------------------------------------------------------------
 # State
@@ -518,7 +521,7 @@ $topBar.Size = New-Object System.Drawing.Size($script:Flyout.Width, $script:TopB
 $script:Flyout.Controls.Add($topBar)
 
 $titleLabel = New-Object System.Windows.Forms.Label
-$titleLabel.Text = 'FlexApp One Downloads'
+$titleLabel.Text = "FlexApp One Downloads  v$($script:AppVersion)"
 $titleLabel.ForeColor = [System.Drawing.Color]::White
 $titleLabel.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
 $titleLabel.AutoSize = $true
@@ -786,6 +789,10 @@ $itemDiagnostics.Add_Click({
     Update-Downloads   # force a fresh sample before reporting
 
     $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add("FlexApp Download Monitor v$($script:AppVersion)")
+    $lines.Add("License: $($script:LicensePath)")
+    $lines.Add("SBOM (CycloneDX): $($script:SbomPath)")
+    $lines.Add("")
     $lines.Add("Log file: $($script:LogPath)")
     $lines.Add("Monitored PID: $($script:MonitoredPid)")
     $lines.Add("Write counter attached: $([bool]$script:WriteCounter)")
@@ -859,7 +866,7 @@ $script:Timer.Add_Tick({
 
     $count = $script:Downloads.Count
     if ($count -eq 0) {
-        $script:TrayIcon.Text = 'FlexApp Download Monitor - idle'
+        $script:TrayIcon.Text = "FlexApp Download Monitor v$($script:AppVersion) - idle"
     } elseif ($count -eq 1) {
         $only = $script:Downloads.Values | Select-Object -First 1
         $sizeStr = if ($only.TotalSize) { " ($(Format-MB $only.TotalSize))" } else { '' }

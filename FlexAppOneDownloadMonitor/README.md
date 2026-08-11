@@ -1,5 +1,9 @@
 # FlexApp Download Monitor - Install Guide
 
+**Version 1.0**
+
+> **IMPORTANT: READ BEFORE DOWNLOADING OR USING.** This is a Liquidware **Sparks Tool** - a community/field-contributed utility, **not a Liquidware commercial product**. It is provided outside Liquidware's standard product development lifecycle, **"AS IS" with no warranty, support, or maintenance**, and used at your own risk. See `Spark_License.pdf` for the full license and disclaimer.
+
 A system-tray tool that watches for FlexApp One downloads and shows live progress, speed, ETA, and history.
 
 ## Files
@@ -8,6 +12,9 @@ A system-tray tool that watches for FlexApp One downloads and shows live progres
 |---|---|
 | `FlexAppDownloadMonitor.ps1` | The application itself |
 | `Start-FlexAppDownloadMonitor.vbs` | Silent launcher (no console window) |
+| `Spark_License.pdf` | Liquidware Sparks Tool License and Disclaimer - read this before use |
+| `bom.cdx.json` | Software Bill of Materials (CycloneDX 1.6, JSON) - an inventory of third-party components, provided so your security team can review it against your own policy. This tool currently has none. |
+| `CHANGELOG.md` | Version history |
 
 ## 1. Install
 
@@ -61,5 +68,5 @@ It holds one setting - `CacheDir`, the folder being watched (defaults to `C:\Pro
 ## 6. Troubleshooting
 
 - **Log file**: `C:\FlexAppDownloadMonitor\FlexAppDownloadMonitor.log` (also reachable via the tray menu). Records every download tracked, every raw file-system event seen in the cache folder, and why any event was skipped. Auto-rotates at 5MB.
-- **Diagnostics**: shows whether the write-speed process was found, whether the watcher is active, and the last raw file event seen.
+- **Diagnostics**: shows the running version, the license/SBOM file paths, whether the write-speed process was found, whether the watcher is active, and the last raw file event seen.
 - **To stop it**: right-click the tray icon → Exit, or log off/reboot.
