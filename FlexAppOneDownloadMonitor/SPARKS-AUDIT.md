@@ -144,22 +144,23 @@ I installed Grype v0.90.0 (the required scanner) directly from its GitHub releas
 
 ## 7. License PDF and SBOM packaged and visible to the end user
 
-**Status: Fail — blocking**
+**Status: Fail — blocking (content now available, placement not yet done)**
 
-**What I checked:** The project directory tree, the README, and whether either the Sparks license PDF or an SBOM ships anywhere in this project today.
+**What I checked:** The project directory tree, the README, whether either the Sparks license PDF or an SBOM ships anywhere in this project today, and — now that you've supplied it — the actual text of `Spark_License8426.pdf` (Liquidware Sparks Tool License and Disclaimer, v1.0).
 
 **Findings:**
 
 - Neither the Sparks Tool License PDF nor any SBOM currently exists anywhere in `FlexAppOneDownloadMonitor/` (prior to this audit — the `bom.cdx.json` I generated for §4 is new, from this audit pass, and is **not yet referenced or packaged** per this section's requirements).
-- The README (`README.md`) makes no mention of a license, a disclaimer, or an SBOM anywhere. It also doesn't currently identify itself as a Sparks/community tool rather than a supported Liquidware product — worth checking against the license PDF's required disclaimer language (License §§1, 5, 6) once the PDF is added.
+- The README (`README.md`) makes no mention of a license, a disclaimer, or an SBOM anywhere. It also doesn't currently identify itself as a Sparks/community tool rather than a supported Liquidware product. Checked against the actual license text now: §1 requires disclosing that the Tool is "a community and field-contributed utility," "not a Liquidware commercial product," provided "outside Liquidware's standard product development lifecycle," with no security-review or support guarantees; §5 requires disclosing it's provided without support/maintenance/updates/patches; §6 requires the "AS IS"/no-warranty language. None of that appears in the README today.
 - There is no `legal/` or `licenses/` subfolder, no `THIRD-PARTY-NOTICES.txt` — though per §4 there's currently nothing to put in one, since there are no third-party components.
 - Distribution note: this project ships via the `.vbs` launcher + `.ps1` pair copied to `C:\FlexAppDownloadMonitor\` per the README's own install instructions — there's no zip/installer artifact yet, so "the distributable" and "the repo" are currently the same thing. Worth deciding what the actual customer-facing distributable will be (a zip? a folder copy?) since that changes what "packaged together" means concretely.
+- One license term worth flagging even though it's not a checklist item: License §2(d) says the licensee ("you") may not "obtain possession of any source code or other technical material relating to the Tool." This is a script — the source *is* the artifact; there's no separate compiled form to distribute instead. That clause is presumably meant for Liquidware's compiled commercial products and reads oddly applied to a PowerShell tool distributed as source, but it's the license text as given — flagging as a question for you below rather than a finding I can "fix."
 
-**Fix (not applied — pending your approval):**
-- Add the current Sparks Tool License PDF at `FlexAppOneDownloadMonitor/Spark_License.pdf` (filename with no spaces/parentheses per the checklist's own guidance) alongside `bom.cdx.json` at the same top level.
-- Add a short section near the top of `README.md`: the license's "IMPORTANT: READ BEFORE DOWNLOADING OR USING" headline, a one-line explanation of what `bom.cdx.json` is and why it's there, and the core disclaimer (community/field tool, not a supported Liquidware product, AS IS, no warranty).
+**Fix (not applied — still pending your explicit go-ahead on this specific item, per the checklist's "item by item" approval rule):**
+- Save the supplied PDF into the project as `FlexAppOneDownloadMonitor/Spark_License.pdf` (filename with no spaces/parentheses per the checklist's own guidance — the supplied filename `Spark_License8426.pdf` should be renamed on the way in) alongside `bom.cdx.json` at the same top level.
+- Add a short section near the top of `README.md`: the license's "IMPORTANT: READ BEFORE DOWNLOADING OR USING" headline, a one-line explanation of what `bom.cdx.json` is and why it's there, and the §1/§5/§6 disclaimers above.
 - Surface both in-app: the Diagnostics dialog or an "About" menu item would be a natural place, alongside the version from §6.
-- **This is a blocking item per the checklist** — it can't pass until the actual license PDF is sourced (I don't have it as a file to place — only the checklist text describing its required content) and placed, and the README/UI references are added.
+- **This is a blocking item per the checklist.** The content blocker (not having the PDF) is now resolved — but I have not placed the file or edited the README yet, since that's still an edit pending your approval, not just a missing input.
 
 ---
 
@@ -179,7 +180,7 @@ No fix needed or proposed for this item as scoped.
 
 ## Blockers (must resolve before this goes to a customer)
 
-1. **§7 — License PDF and SBOM not packaged.** Nothing ships to the customer today that discloses the Sparks license terms or an SBOM. Needs the actual license PDF sourced and placed, plus README/in-app pointers.
+1. **§7 — License PDF and SBOM not packaged.** Nothing ships to the customer today that discloses the Sparks license terms or an SBOM. The license PDF has now been supplied (`Spark_License8426.pdf`, v1.0) and its text reviewed — the content blocker is resolved — but it still needs to be placed in the project and the README/in-app disclaimers added, pending your go-ahead.
 2. **§5 — CVE scan not completed.** Blocked by network policy in this session, not by anything in the code. Needs to be run wherever `grype.anchore.io` is reachable before sign-off, even though §4 suggests the practical risk ceiling is low (zero third-party components).
 3. **§6 — No visible version number.** Not "Critical/High-CVE" severity in the checklist's own blocking list, but I'm calling it out here too because it blocks the version-consistency chain the checklist requires between the SBOM, the UI, and the changelog (§4→§6→§7 must agree).
 
@@ -196,18 +197,19 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 ## Files that would be touched if the above is approved
 
 - **Modified:** `FlexAppDownloadMonitor.ps1` (encoding-related fixes in §1, version constant + display in §6), `README.md` (license/SBOM pointers in §7).
-- **Added:** `Spark_License.pdf` (§7, pending you supplying the actual PDF), `CHANGELOG.md` (§6).
+- **Added:** `Spark_License.pdf` (§7 — you've now supplied the source PDF; placing it is pending approval), `CHANGELOG.md` (§6).
 - **Already added by this audit, pending your sign-off to keep/reference:** `bom.cdx.json` (§4) — currently just sitting in the project folder, not yet wired into the README/UI per §7.
 - No dependency upgrades — there are no dependencies to upgrade.
 - **Blast radius:** the §1 tooltip-truncation fix and the §6 version-display additions are the only two with any runtime behavior change; everything else in this list is additive (new files, new README section) or a pure encoding/flag change with no behavioral difference in the ASCII-only content that exists today.
 
 ## Questions for me
 
-1. Do you have the current Sparks Tool License PDF (v1.0, dated 8-4-26 per the checklist) as a file I should place, or should I treat that as out of scope for this session?
+1. ~~Do you have the current Sparks Tool License PDF?~~ **Answered** — `Spark_License8426.pdf` (v1.0) supplied and reviewed; content folded into §7 above.
 2. Is there a way to allow this session's egress policy to reach `grype.anchore.io` (or an internal mirror of the Grype DB), so §5 can actually complete instead of staying blocked?
 3. Should the tray icon/flyout colors and font be brought in line with the Liquidware style guide palette (`colors_and_type.css`) even though this is a native desktop app, not a web UI? I don't have a strong signal either way from the checklist.
 4. What's the intended customer-facing distributable format (zip, installer, folder) — this determines exactly what "packaged together" in §7 needs to look like?
 5. Is `1.0` the version you want to ship, or should this be bumped as part of the Sparks submission?
+6. License §2(d) forbids the licensee from "obtain[ing] possession of any source code" — but this Tool ships *as* source (a `.ps1`/`.vbs` pair). Is that clause meant to apply here, or is it boilerplate carried over from Liquidware's compiled commercial products that doesn't quite fit a source-distributed Sparks tool? Not something I can resolve by editing code — flagging for you/legal.
 
 ---
 
