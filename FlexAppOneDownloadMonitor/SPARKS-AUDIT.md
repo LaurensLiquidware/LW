@@ -4,7 +4,7 @@
 **Reviewed against:** Sparks Tool Project Review Checklist v1
 **Audit date:** 2026-08-11
 **Files reviewed:** `FlexAppDownloadMonitor.ps1`, `Start-FlexAppDownloadMonitor.vbs`, `README.md`, `archive/FlexAppDownloadMonitor_v1.ps1`
-**Phase:** 3 — Approved items applied, across four rounds. Round 1: §6 and §7. Round 2: §1. Round 3: §8 color-matching sub-item. Round 4: version bumped from `1.0` to `0.2` (§6, retroactively applied everywhere the version string appears). §5 remains blocked, not approved (blocked on network policy, not a code fix). Everything in Phases 1–2 below is unchanged from the original audit; a "Phase 3 — applied" note has been added to each fixed section describing exactly what was changed.
+**Phase:** 3 — Approved items applied, across five rounds. Round 1: §6 and §7. Round 2: §1. Round 3: §8 color-matching sub-item. Round 4: version bumped from `1.0` to `0.2`. Round 5: distributable format decided (zip) and built. §5 remains blocked, not approved (blocked on network policy, not a code fix). Everything in Phases 1–2 below is unchanged from the original audit; a "Phase 3 — applied" note has been added to each fixed section describing exactly what was changed.
 
 ---
 
@@ -161,6 +161,8 @@ I installed Grype v0.90.0 (the required scanner) directly from its GitHub releas
 
 **Phase 3 — what was actually changed:** Saved the supplied PDF as `FlexAppOneDownloadMonitor/Spark_License.pdf` (renamed from `Spark_License8426.pdf`), sitting at the project root next to `bom.cdx.json`, matching the checklist's example layout. Added a section to the top of `README.md` with the license's "IMPORTANT: READ BEFORE DOWNLOADING OR USING" headline and the §1/§5/§6 core disclaimers (community/field tool, not a Liquidware commercial product, AS IS, no support), plus a `Files` table entry explicitly naming and describing the SBOM. Added `$script:LicensePath`/`$script:SbomPath` constants (`FlexAppDownloadMonitor.ps1:111-112`) and surfaced both file paths in the Diagnostics dialog (`:793-794`) alongside the version from §6. Did not add an installer/first-run flow, since this tool doesn't have one (copy-paste-install per the README) — the README and Diagnostics dialog are the two "in-app" surfaces that exist.
 
+**Phase 3, round 5 — distributable format decided: zip.** You chose a zip as the distributable for now. Built `FlexAppOneDownloadMonitor-0.2.zip` containing exactly six files at a flat top level — `FlexAppDownloadMonitor.ps1`, `Start-FlexAppDownloadMonitor.vbs`, `Spark_License.pdf`, `bom.cdx.json`, `README.md`, `CHANGELOG.md` — so the license and SBOM sit immediately next to the tool inside the zip, satisfying the "packaged together" requirement concretely rather than abstractly. **Deliberately excluded** from the zip: `SPARKS-AUDIT.md` (this report — an internal review record, not something the customer needs) and `archive/FlexAppDownloadMonitor_v1.ps1` (superseded source history, not part of what runs). The zip is a build output, not checked into the repository — it's a scratch artifact for this delivery; if you want zip-building automated as part of the repo (a build script, a release workflow), that's a new, separate ask.
+
 **Original finding (Phase 1), for reference:**
 
 **What I checked:** The project directory tree, the README, whether either the Sparks license PDF or an SBOM ships anywhere in this project today, and — now that you've supplied it — the actual text of `Spark_License8426.pdf` (Liquidware Sparks Tool License and Disclaimer, v1.0).
@@ -234,7 +236,7 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 
 - §1 — ~~Encoding/truncation fixes~~ **Fixed**, see below. Only the real-Windows double-byte round-trip *test* (the checklist's evidence requirement) is still outstanding — that needs an actual Windows box, not more code changes.
 - §2 — Log timestamps have no timezone/offset; low priority given this is a single-machine tool, but worth a one-line format change if these logs are ever aggregated centrally.
-- §7 — Decide what the actual customer-facing distributable artifact is (zip vs. folder copy) so "packaged together" has a concrete target.
+- §7 — ~~Decide the distributable format~~ **Decided: zip.** `FlexAppOneDownloadMonitor-0.2.zip` built for this delivery (contents listed in §7 above). Not yet automated as part of a build/release process — that's a separate ask if wanted.
 
 ## Files actually changed in Phase 3 (§6, §7, §1, §8 color-matching, then the version bump — each approved separately)
 
@@ -254,7 +256,7 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 1. ~~Do you have the current Sparks Tool License PDF?~~ **Answered** — `Spark_License8426.pdf` (v1.0) supplied and reviewed; content folded into §7 above.
 2. Is there a way to allow this session's egress policy to reach `grype.anchore.io` (or an internal mirror of the Grype DB), so §5 can actually complete instead of staying blocked?
 3. ~~Should colors match the style guide?~~ **Answered** — colors now re-pointed to the dark-scheme tokens; typeface intentionally left as Segoe UI. See §8.
-4. What's the intended customer-facing distributable format (zip, installer, folder) — this determines exactly what "packaged together" in §7 needs to look like?
+4. ~~What's the distributable format?~~ **Answered** — zip, for now. `FlexAppOneDownloadMonitor-0.2.zip` built. See §7.
 5. ~~Is `1.0` the version you want to ship?~~ **Answered** — bumped to `0.2`, applied everywhere (constant, doc-comment, README, CHANGELOG, SBOM).
 6. ~~License §2(d) source-code clause~~ **Actioned** — not resolved (it's a legal question, not something an edit can fix), but formally flagged below under "Escalations / exceptions requested" so it's visible to whoever signs off on submission, per your instruction.
 
@@ -268,6 +270,7 @@ Per the checklist's own guidance ("anything that needs a decision rather than a 
 
 ## Attached files
 
-- `FlexAppOneDownloadMonitor/bom.cdx.json` — CycloneDX 1.6 JSON SBOM, schema-validated, empty component list (§4). Not yet referenced from the README or packaged per §7 pending your approval.
+- `FlexAppOneDownloadMonitor/bom.cdx.json` — CycloneDX 1.6 JSON SBOM, schema-validated, empty component list (§4/§7), now wired into the README and Diagnostics dialog.
+- `FlexAppOneDownloadMonitor-0.2.zip` — the customer-facing distributable (§7 round 5): `FlexAppDownloadMonitor.ps1`, `Start-FlexAppDownloadMonitor.vbs`, `Spark_License.pdf`, `bom.cdx.json`, `README.md`, `CHANGELOG.md` at a flat top level. Delivered to you directly rather than committed to the repo, since it's a build output, not source.
 
-No existing project file was modified during this audit.
+This report now reflects Phase 1 (original audit) through Phase 3, round 5 (all approved fixes applied). Remaining open item: §5 (CVE scan, blocked on network policy).
