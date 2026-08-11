@@ -256,9 +256,15 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 3. ~~Should colors match the style guide?~~ **Answered** — colors now re-pointed to the dark-scheme tokens; typeface intentionally left as Segoe UI. See §8.
 4. What's the intended customer-facing distributable format (zip, installer, folder) — this determines exactly what "packaged together" in §7 needs to look like?
 5. ~~Is `1.0` the version you want to ship?~~ **Answered** — bumped to `0.2`, applied everywhere (constant, doc-comment, README, CHANGELOG, SBOM).
-6. License §2(d) forbids the licensee from "obtain[ing] possession of any source code" — but this Tool ships *as* source (a `.ps1`/`.vbs` pair). Is that clause meant to apply here, or is it boilerplate carried over from Liquidware's compiled commercial products that doesn't quite fit a source-distributed Sparks tool? Not something I can resolve by editing code — flagging for you/legal.
+6. ~~License §2(d) source-code clause~~ **Actioned** — not resolved (it's a legal question, not something an edit can fix), but formally flagged below under "Escalations / exceptions requested" so it's visible to whoever signs off on submission, per your instruction.
 
 ---
+
+## Escalations / exceptions requested
+
+Per the checklist's own guidance ("anything that needs a decision rather than a fix... goes to your reviewer before submission, not in the submission" / the Submission Summary's "Open escalations / requested exceptions" field) — carrying this forward so it isn't lost between now and sign-off:
+
+- **License §2(d) vs. source-distributed Sparks tools.** The Liquidware Sparks Tool License §2(d) prohibits the licensee from "obtain[ing] possession of any source code or other technical material relating to the Tool." `FlexAppOneDownloadMonitor` ships *as* its source (`FlexAppDownloadMonitor.ps1` + `Start-FlexAppDownloadMonitor.vbs` — there is no separate compiled artifact). Read literally, §2(d) is unsatisfiable for this tool and, presumably, for any PowerShell/script-based Sparks submission. This reads like boilerplate written for Liquidware's compiled commercial products and not adapted for source-distributed community tools — but that's a legal/license-authoring judgment call, not something I can resolve by editing this project. **Requesting**: confirmation from whoever owns the Sparks Tool License template (or legal) on whether §2(d) is intended to apply to script/source-distributed tools, and if not, whether the template should be clarified for future submissions. Not treated as a blocker for this specific review since I have no basis to override the license text myself, but it should be visible before this submission is signed off.
 
 ## Attached files
 
