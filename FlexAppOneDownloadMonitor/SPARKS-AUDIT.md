@@ -4,7 +4,7 @@
 **Reviewed against:** Sparks Tool Project Review Checklist v1
 **Audit date:** 2026-08-11
 **Files reviewed:** `FlexAppDownloadMonitor.ps1`, `Start-FlexAppDownloadMonitor.vbs`, `README.md`, `archive/FlexAppDownloadMonitor_v1.ps1`
-**Phase:** 3 — Approved items applied. You approved §6 and §7 for remediation; §1 and §5 were left as reported, not fixed. Everything in Phases 1–2 below is unchanged from the original audit; a "Phase 3 — applied" note has been added to the §6 and §7 sections describing exactly what was changed.
+**Phase:** 3 — Approved items applied, across two rounds. Round 1: §6 and §7. Round 2: §1. §5 remains blocked, not approved (blocked on network policy, not a code fix). Everything in Phases 1–2 below is unchanged from the original audit; a "Phase 3 — applied" note has been added to each fixed section describing exactly what was changed.
 
 ---
 
@@ -12,7 +12,7 @@
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1 | Double-byte / Unicode handling | **Fail — needs fix (not applied, not approved)** | Latent risk, not an active bug today (see below) |
+| 1 | Double-byte / Unicode handling | **Fixed** | BOM added to `.ps1`; explicit `-Encoding UTF8` on config read; tooltip truncation now text-element-safe. Round-trip test with real Windows still outstanding — see below. |
 | 2 | Regional date, time, number formats | **Pass** | No hardcoded US formats found |
 | 3 | External URL / CDN references | **Pass** | Zero external references found — fully local/offline |
 | 4 | Open source identified + CycloneDX 1.6 JSON SBOM | **Pass** | Zero third-party components; SBOM generated (empty) |
@@ -25,9 +25,16 @@
 
 ## 1. Character encoding — double-byte and non-Latin input
 
-**Status: Fail — needs fix** (latent, not currently triggered)
+**Status: Fixed** (approved and applied)
 
-**What I checked:** Source file encoding, all file read/write calls, string length/truncation logic, filename handling, regex, and console/log output.
+**Phase 3 — what was actually changed:**
+- `FlexAppDownloadMonitor.ps1` is now saved with a UTF-8 BOM (was BOM-less ASCII).
+- `Load-Config`'s `Get-Content` call now specifies `-Encoding UTF8` explicitly (`FlexAppDownloadMonitor.ps1:137`).
+- Added a `Truncate-DisplaySafe` helper (`:304-318`) that walks .NET text elements via `System.Globalization.StringInfo` instead of a raw `Substring`, and switched the tray tooltip truncation to use it (`:891`) — a display name containing a surrogate pair or combining mark can no longer be cut in half.
+- Did not change `Start-FlexAppDownloadMonitor.vbs`'s encoding — it has no non-ASCII content and no read/write encoding decisions of its own to make.
+- **Not done, still open:** the actual round-trip test with Japanese/Cyrillic/CJK test strings through the running app, since no Windows environment is available in this session. That evidence still needs to be captured on a real Windows box before sign-off.
+
+**What I checked (Phase 1):** Source file encoding, all file read/write calls, string length/truncation logic, filename handling, regex, and console/log output.
 
 **Findings:**
 
@@ -194,23 +201,24 @@ No fix needed or proposed for this item as scoped.
 
 No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed external endpoints were found — those specific blocking categories are clear.
 
-**Remaining blocker: §5 (CVE scan).** §1, §7, and §6 are otherwise resolved for this round.
+**Remaining blocker: §5 (CVE scan).** Everything else is resolved.
 
-## Should-fix (non-blocking, not approved this round — still open)
+## Should-fix (remaining, non-blocking)
 
-- §1 — Source file should be saved with an explicit UTF-8 (with BOM) encoding as a convention, to avoid a future edit silently corrupting under PowerShell 5.1's code-page-based fallback.
-- §1 — `Get-Content` on the config file should specify `-Encoding UTF8` explicitly (currently relies on the host default).
-- §1 — Tray tooltip truncation (`Substring(0, 60)`) should cut on a text-element boundary, not a raw UTF-16 code-unit count, to avoid corrupting a display name that contains a surrogate pair or combining character. This is the one §1 item that touches actual runtime behavior and would need a quick re-test with double-byte test strings afterward.
+- §1 — ~~Encoding/truncation fixes~~ **Fixed**, see below. Only the real-Windows double-byte round-trip *test* (the checklist's evidence requirement) is still outstanding — that needs an actual Windows box, not more code changes.
 - §2 — Log timestamps have no timezone/offset; low priority given this is a single-machine tool, but worth a one-line format change if these logs are ever aggregated centrally.
 - §7 — Decide what the actual customer-facing distributable artifact is (zip vs. folder copy) so "packaged together" has a concrete target.
 
-## Files actually changed in Phase 3 (§6 + §7 only, as approved)
+## Files actually changed in Phase 3 (§6, §7, then §1 — each approved separately)
 
-- **Modified:** `FlexAppDownloadMonitor.ps1` (added `AppVersion`/`LicensePath`/`SbomPath` constants; surfaced version in the log line, flyout title, tray idle tooltip, and Diagnostics dialog; surfaced license/SBOM paths in the Diagnostics dialog), `README.md` (added the license/disclaimer callout up top and a `Files` table entry for the license PDF, SBOM, and changelog).
+- **Modified:** `FlexAppDownloadMonitor.ps1` —
+  - §6/§7 round: added `AppVersion`/`LicensePath`/`SbomPath` constants; surfaced version in the log line, flyout title, tray idle tooltip, and Diagnostics dialog; surfaced license/SBOM paths in the Diagnostics dialog.
+  - §1 round: re-saved with a UTF-8 BOM; added `-Encoding UTF8` to the config `Get-Content` call; added a `Truncate-DisplaySafe` helper and switched the tray tooltip truncation to use it instead of a raw `Substring`.
+  - `README.md`: added the license/disclaimer callout up top and a `Files` table entry for the license PDF, SBOM, and changelog.
 - **Added:** `Spark_License.pdf` (renamed from the supplied `Spark_License8426.pdf`), `CHANGELOG.md`.
 - **Carried over from Phase 1, now referenced:** `bom.cdx.json` (generated during the audit for §4) is now wired into the README and Diagnostics dialog per §7.
-- **Not touched:** §1 (encoding) and §5 (CVE scan) — left exactly as reported, no code changes made for either.
-- **Blast radius:** all changes above are additive display/reference changes (new constants read-only, new UI text, new files, new README section) — no existing logic, control flow, or data handling was altered. No re-testing beyond confirming the tooltip character-count guard still holds (it does — see §6 above) is needed.
+- **Not touched:** §5 (CVE scan) — left exactly as reported, no code changes made, blocked on network policy rather than code.
+- **Blast radius:** the §6/§7 changes are purely additive (new constants read-only, new UI text, new files, new README section). The §1 changes touch one real runtime code path — the tooltip truncation logic — the rest is encoding-only with no behavioral difference against the current ASCII-only content. Re-testing recommendation: confirm the tray tooltip still renders correctly at both the un-truncated and truncated lengths (a quick manual check, no double-byte strings needed to catch a regression in the ASCII case) — the double-byte-specific verification still needs the real Windows environment noted in §1 above.
 
 ## Questions for me
 

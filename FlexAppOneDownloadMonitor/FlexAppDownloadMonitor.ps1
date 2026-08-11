@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     FlexAppDownloadMonitor - Windows system-tray application that monitors
     FlexApp One package downloads in the local Liquidware cache folder.
@@ -134,7 +134,7 @@ $script:DefaultConfig = @{
 function Load-Config {
     if (Test-Path -LiteralPath $script:ConfigPath) {
         try {
-            $raw = Get-Content -LiteralPath $script:ConfigPath -Raw | ConvertFrom-Json
+            $raw = Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
             $script:CacheDir = if ($raw.CacheDir) { $raw.CacheDir } else { $script:DefaultConfig.CacheDir }
             return
         } catch {
@@ -299,6 +299,23 @@ function Format-DisplayName {
     $name = $RawName -replace '\.(exe|msi|msix|appx|zip)$', ''
     $name = $name -replace '-', ' '
     return $name.Trim()
+}
+
+function Truncate-DisplaySafe {
+    param([string]$Text, [int]$MaxLength)
+    # Plain Substring() counts UTF-16 code units, which can split a surrogate
+    # pair (e.g. some emoji, some CJK extension characters) or separate a
+    # combining mark from its base character. Walking text elements instead
+    # keeps each grapheme-ish unit intact.
+    if ($Text.Length -le $MaxLength) { return $Text }
+    $enumerator = [System.Globalization.StringInfo]::GetTextElementEnumerator($Text)
+    $sb = New-Object System.Text.StringBuilder
+    while ($enumerator.MoveNext()) {
+        $element = [string]$enumerator.Current
+        if ($sb.Length + $element.Length -gt $MaxLength) { break }
+        [void]$sb.Append($element)
+    }
+    return $sb.ToString()
 }
 
 function Format-Bytes {
@@ -871,7 +888,7 @@ $script:Timer.Add_Tick({
         $only = $script:Downloads.Values | Select-Object -First 1
         $sizeStr = if ($only.TotalSize) { " ($(Format-MB $only.TotalSize))" } else { '' }
         $tip = "FlexApp Download Monitor - $($only.Name)$sizeStr"
-        $script:TrayIcon.Text = if ($tip.Length -gt 63) { $tip.Substring(0, 60) + '...' } else { $tip }
+        $script:TrayIcon.Text = if ($tip.Length -gt 63) { (Truncate-DisplaySafe -Text $tip -MaxLength 60) + '...' } else { $tip }
     } else {
         $script:TrayIcon.Text = "FlexApp Download Monitor - $count active"
     }
