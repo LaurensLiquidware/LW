@@ -1,11 +1,11 @@
-' Silent launcher for FlexAppDownloadMonitor.ps1
+' Silent launcher for FlexAppOneDownloadMonitor.ps1
 ' Runs PowerShell hidden (no console window) in STA mode, required for WinForms.
 '
 ' If you move the .ps1 file, update the path below to match.
 
 Set objShell = CreateObject("WScript.Shell")
 
-scriptPath = "C:\FlexAppDownloadMonitor\FlexAppDownloadMonitor.ps1"
+scriptPath = "C:\FlexAppOneDownloadMonitor\FlexAppOneDownloadMonitor.ps1"
 
 cmd = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -STA -File """ & scriptPath & """"
 

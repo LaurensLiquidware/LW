@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    FlexAppDownloadMonitor - Windows system-tray application that monitors
+    FlexAppOneDownloadMonitor - Windows system-tray application that monitors
     FlexApp One package downloads in the local Liquidware cache folder.
 
 .DESCRIPTION
@@ -23,7 +23,7 @@
     which defaults to MTA, this script relaunches itself with -STA.
 
     Run it with:
-        powershell.exe -NoProfile -STA -File .\FlexAppDownloadMonitor.ps1
+        powershell.exe -NoProfile -STA -File .\FlexAppOneDownloadMonitor.ps1
     or just double-click / "Run with PowerShell" - the STA relaunch guard
     below handles it either way.
 #>
@@ -106,8 +106,8 @@ function Get-MonitoredServiceSpeedBps {
 # ---------------------------------------------------------------------------
 # Settings persist in a small JSON file next to this script, so the source
 # share can be changed (via the tray menu) without editing the script itself.
-$script:ConfigPath = Join-Path $PSScriptRoot 'FlexAppDownloadMonitor.config.json'
-$script:LogPath    = Join-Path $PSScriptRoot 'FlexAppDownloadMonitor.log'
+$script:ConfigPath = Join-Path $PSScriptRoot 'FlexAppOneDownloadMonitor.config.json'
+$script:LogPath    = Join-Path $PSScriptRoot 'FlexAppOneDownloadMonitor.log'
 
 function Write-Log {
     param([string]$Message)

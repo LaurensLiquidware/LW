@@ -1,4 +1,4 @@
-# FlexApp Download Monitor - Install Guide
+# FlexApp One Download Monitor - Install Guide
 
 **Version 0.2**
 
@@ -10,37 +10,37 @@ A system-tray tool that watches for FlexApp One downloads and shows live progres
 
 | File | Purpose |
 |---|---|
-| `FlexAppDownloadMonitor.ps1` | The application itself |
-| `Start-FlexAppDownloadMonitor.vbs` | Silent launcher (no console window) |
+| `FlexAppOneDownloadMonitor.ps1` | The application itself |
+| `Start-FlexAppOneDownloadMonitor.vbs` | Silent launcher (no console window) |
 | `Spark_License.pdf` | Liquidware Sparks Tool License and Disclaimer - read this before use |
 | `bom.cdx.json` | Software Bill of Materials (CycloneDX 1.6, JSON) - an inventory of third-party components, provided so your security team can review it against your own policy. This tool currently has none. |
 | `CHANGELOG.md` | Version history |
 
 ## 1. Install
 
-1. Create a folder: `C:\FlexAppDownloadMonitor`
+1. Create a folder: `C:\FlexAppOneDownloadMonitor`
 2. Copy both files into it.
 3. Unblock the script (it came from outside the machine):
    ```powershell
-   Unblock-File C:\FlexAppDownloadMonitor\FlexAppDownloadMonitor.ps1
+   Unblock-File C:\FlexAppOneDownloadMonitor\FlexAppOneDownloadMonitor.ps1
    ```
 
 ## 2. Run it
 
 **Quick test (visible console, easiest to debug):**
 ```powershell
-powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File C:\FlexAppDownloadMonitor\FlexAppDownloadMonitor.ps1
+powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File C:\FlexAppOneDownloadMonitor\FlexAppOneDownloadMonitor.ps1
 ```
 A tray icon (blue circle with a down arrow) should appear within a second or two.
 
 **Normal use (silent, no window):**
-Double-click `Start-FlexAppDownloadMonitor.vbs`.
+Double-click `Start-FlexAppOneDownloadMonitor.vbs`.
 
 > If you move the files, edit the `scriptPath` line inside the `.vbs` to match.
 
 ## 3. Run automatically at logon
 
-Drop a shortcut to `Start-FlexAppDownloadMonitor.vbs` into the Startup folder:
+Drop a shortcut to `Start-FlexAppOneDownloadMonitor.vbs` into the Startup folder:
 - Press `Win+R`, type `shell:startup`, press Enter.
 - Place the shortcut there.
 
@@ -61,12 +61,12 @@ Drop a shortcut to `Start-FlexAppDownloadMonitor.vbs` into the Startup folder:
 
 A config file is created automatically on first run:
 ```
-C:\FlexAppDownloadMonitor\FlexAppDownloadMonitor.config.json
+C:\FlexAppOneDownloadMonitor\FlexAppOneDownloadMonitor.config.json
 ```
 It holds one setting - `CacheDir`, the folder being watched (defaults to `C:\ProgramData\Liquidware\ProfileUnity\Cache\FlexAppOne\`). Edit it directly if that path differs in your environment, then restart the app.
 
 ## 6. Troubleshooting
 
-- **Log file**: `C:\FlexAppDownloadMonitor\FlexAppDownloadMonitor.log` (also reachable via the tray menu). Records every download tracked, every raw file-system event seen in the cache folder, and why any event was skipped. Auto-rotates at 5MB.
+- **Log file**: `C:\FlexAppOneDownloadMonitor\FlexAppOneDownloadMonitor.log` (also reachable via the tray menu). Records every download tracked, every raw file-system event seen in the cache folder, and why any event was skipped. Auto-rotates at 5MB.
 - **Diagnostics**: shows the running version, the license/SBOM file paths, whether the write-speed process was found, whether the watcher is active, and the last raw file event seen.
 - **To stop it**: right-click the tray icon → Exit, or log off/reboot.
