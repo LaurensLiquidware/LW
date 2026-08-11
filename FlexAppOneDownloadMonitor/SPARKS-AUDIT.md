@@ -4,7 +4,7 @@
 **Reviewed against:** Sparks Tool Project Review Checklist v1
 **Audit date:** 2026-08-11
 **Files reviewed:** `FlexAppDownloadMonitor.ps1`, `Start-FlexAppDownloadMonitor.vbs`, `README.md`, `archive/FlexAppDownloadMonitor_v1.ps1`
-**Phase:** 3 — Approved items applied, across two rounds. Round 1: §6 and §7. Round 2: §1. §5 remains blocked, not approved (blocked on network policy, not a code fix). Everything in Phases 1–2 below is unchanged from the original audit; a "Phase 3 — applied" note has been added to each fixed section describing exactly what was changed.
+**Phase:** 3 — Approved items applied, across three rounds. Round 1: §6 and §7. Round 2: §1. Round 3: §8 color-matching sub-item. §5 remains blocked, not approved (blocked on network policy, not a code fix). Everything in Phases 1–2 below is unchanged from the original audit; a "Phase 3 — applied" note has been added to each fixed section describing exactly what was changed.
 
 ---
 
@@ -19,7 +19,7 @@
 | 5 | Zero Critical / High CVEs (Grype scan of SBOM) | **NEEDS-INFO — blocked (not approved)** | Could not reach Grype's vulnerability DB (see below); stopping per instructions rather than substituting a scanner |
 | 6 | Version number visible to end user | **Fixed** | `AppVersion` constant added and surfaced in the flyout title, tray tooltip, log, and Diagnostics dialog; `CHANGELOG.md` added |
 | 7 | License PDF + SBOM packaged and visible | **Fixed** | `Spark_License.pdf` and `bom.cdx.json` now ship at the project root; README and Diagnostics dialog point to both |
-| 8 | UI consistency (style guide / PrimeNG) | **N/A** | This is a native WinForms desktop app, not an Angular/web UI — the Liquidware web style guide and PrimeNG do not apply. See below. |
+| 8 | UI consistency (style guide / PrimeNG) | **N/A (PrimeNG) / Fixed (colors)** | No Angular/PrimeNG in this project. Colors now re-pointed to the style guide's dark-scheme tokens, per your approval. See below. |
 
 ---
 
@@ -181,13 +181,38 @@ I installed Grype v0.90.0 (the required scanner) directly from its GitHub releas
 
 ## 8. UI consistency (style guide / PrimeNG)
 
-**Status: N/A**
+**Status: N/A for PrimeNG/Angular; color-matching sub-item now Fixed (approved and applied)**
 
 This item as scoped in your prompt is about Angular/web UI consistency against the attached Liquidware Style Guide (`colors_and_type.css`, PrimeNG-based component kit, Inter/Material-icon fonts) and, specifically, whether a PrimeNG commercial license key is safely kept out of shipped/committed artifacts.
 
 - `FlexAppOneDownloadMonitor` is a native Windows Forms desktop application (System.Windows.Forms/System.Drawing), not an Angular application. It has no dependency on PrimeNG, Angular, or any web framework at all — confirmed by grep across the project for `PrimeNG`/`Angular` (no matches) and by the full file read in §4 (zero declared dependencies of any kind).
 - Because there's no PrimeNG usage in this project, **the PrimeNG license key you attached for reference does not appear anywhere in this project, this report, the generated SBOM, or any committed file** — I did not write it into anything, and I'm not going to. Flagging this explicitly per your instruction to report a key exposure as top-severity rather than remediate silently: there is currently nothing to remediate here, but if a future version of this tool (or another Sparks submission) adds an Angular/PrimeNG front end, the same check needs to be re-run against that code, not assumed clear from this report.
-- On the softer "does it look like a Liquidware tool" question: the tray icon uses a Windows-system blue (`RGB(0,120,215)`, Windows' own accent blue) rather than any color pulled from the style guide's palette (`colors_and_type.css`), and the flyout panel uses a dark neutral gray (`RGB(32,34,38)`) with the system default "Segoe UI" font rather than the style guide's Inter typeface. Since this is a native desktop tray utility rather than a branded product UI, I don't think matching the web design system word-for-word is a real requirement — but flagging it as a "Questions for me" item below since I can't tell if there's an expectation here.
+
+**Phase 3 — color-matching, what was actually changed (you approved restyling to match):**
+
+Re-pointed every hardcoded WinForms color in the flyout panel and tray icon to the nearest token in `colors_and_type.css`'s dark-scheme (`.dark`) palette, since the flyout is already a dark UI:
+
+| Element | Was | Now | Style guide token |
+|---|---|---|---|
+| Flyout canvas | `RGB(32,34,38)` | `RGB(9,9,11)` | `--p-surface-950` |
+| Top bar / header | *(unset — fell through to a light system gray, a pre-existing rendering gap)* | `RGB(0,63,103)` | `--p-primary-800` |
+| Title text | White | `RGB(244,244,245)` | `--p-surface-100` |
+| "Clear history" button text | LightGray | `RGB(161,161,170)` | `--p-surface-400` |
+| "Clear history" button background | matched flyout canvas | matched top bar | *(now consistent with its actual container)* |
+| Download-row card background | `RGB(44,46,51)` | `RGB(24,24,27)` | `--p-surface-900` |
+| Row name text | White | `RGB(244,244,245)` | `--p-surface-100` |
+| Row detail text (elapsed/size) | Gainsboro | `RGB(161,161,170)` | `--p-surface-400` |
+| Row highlighted line (speed/ETA) | `RGB(120,190,255)` (arbitrary) | `RGB(74,163,224)` | `--link-color-dark` |
+| Row size badge (top-right) | DimGray | `RGB(113,113,122)` | `--p-surface-500` |
+| Section headers (ACTIVE/HISTORY) | Gray | `RGB(161,161,170)` | `--p-surface-400` |
+| Empty-state text | Gainsboro | `RGB(161,161,170)` | `--p-surface-400` |
+| Tray icon accent circle | `RGB(0,120,215)` (Windows system blue) | `RGB(11,114,186)` | `--lwl-mark-circle` (literally documented as "the circular app-icon background") |
+
+Two things I deliberately did **not** change:
+- **Typeface** — kept Segoe UI rather than switching to Inter. The style guide's own `--font-sans` stack lists `'Inter var', Inter, ..., 'Segoe UI', ...` — Segoe UI is explicitly the designated fallback for a system where Inter isn't installed, which describes a bare Windows machine running this tool. Bundling the actual Inter `.woff2` files would add a new third-party font dependency needing its own SBOM/license entries (§4/§7) for a cosmetic gain on a small tray flyout — disproportionate blast radius for what was asked.
+- **Font weight nuance** (medium/semibold/bold distinctions from the type tokens) — GDI+/WinForms `Font.Style` only supports a binary Bold flag, not arbitrary numeric weights, so the existing Bold/Regular choices (titles bold, body regular) are the closest achievable match; no code change possible here without embedding a variable font.
+
+While in there, fixed one adjacent rendering gap that the recolor task surfaced: the top bar `Panel` never had an explicit `BackColor` set, so it was rendering as a default light-gray system panel behind the (correctly dark-styled) title label and button — explicitly setting it to the header token above fixes this as a natural part of applying the palette, not a separate scope expansion.
 
 No fix needed or proposed for this item as scoped.
 
@@ -209,11 +234,12 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 - §2 — Log timestamps have no timezone/offset; low priority given this is a single-machine tool, but worth a one-line format change if these logs are ever aggregated centrally.
 - §7 — Decide what the actual customer-facing distributable artifact is (zip vs. folder copy) so "packaged together" has a concrete target.
 
-## Files actually changed in Phase 3 (§6, §7, then §1 — each approved separately)
+## Files actually changed in Phase 3 (§6, §7, §1, then §8 color-matching — each approved separately)
 
 - **Modified:** `FlexAppDownloadMonitor.ps1` —
   - §6/§7 round: added `AppVersion`/`LicensePath`/`SbomPath` constants; surfaced version in the log line, flyout title, tray idle tooltip, and Diagnostics dialog; surfaced license/SBOM paths in the Diagnostics dialog.
   - §1 round: re-saved with a UTF-8 BOM; added `-Encoding UTF8` to the config `Get-Content` call; added a `Truncate-DisplaySafe` helper and switched the tray tooltip truncation to use it instead of a raw `Substring`.
+  - §8 round: re-pointed every hardcoded flyout/tray color to the nearest Liquidware style guide dark-scheme token (full mapping table in §8 above); fixed the top bar's missing `BackColor` as a natural side effect of that pass. Typeface (Segoe UI) and font-weight granularity intentionally left unchanged — see §8 for why.
   - `README.md`: added the license/disclaimer callout up top and a `Files` table entry for the license PDF, SBOM, and changelog.
 - **Added:** `Spark_License.pdf` (renamed from the supplied `Spark_License8426.pdf`), `CHANGELOG.md`.
 - **Carried over from Phase 1, now referenced:** `bom.cdx.json` (generated during the audit for §4) is now wired into the README and Diagnostics dialog per §7.
@@ -224,7 +250,7 @@ No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed exte
 
 1. ~~Do you have the current Sparks Tool License PDF?~~ **Answered** — `Spark_License8426.pdf` (v1.0) supplied and reviewed; content folded into §7 above.
 2. Is there a way to allow this session's egress policy to reach `grype.anchore.io` (or an internal mirror of the Grype DB), so §5 can actually complete instead of staying blocked?
-3. Should the tray icon/flyout colors and font be brought in line with the Liquidware style guide palette (`colors_and_type.css`) even though this is a native desktop app, not a web UI? I don't have a strong signal either way from the checklist.
+3. ~~Should colors match the style guide?~~ **Answered** — colors now re-pointed to the dark-scheme tokens; typeface intentionally left as Segoe UI. See §8.
 4. What's the intended customer-facing distributable format (zip, installer, folder) — this determines exactly what "packaged together" in §7 needs to look like?
 5. Is `1.0` the version you want to ship, or should this be bumped as part of the Sparks submission?
 6. License §2(d) forbids the licensee from "obtain[ing] possession of any source code" — but this Tool ships *as* source (a `.ps1`/`.vbs` pair). Is that clause meant to apply here, or is it boilerplate carried over from Liquidware's compiled commercial products that doesn't quite fit a source-distributed Sparks tool? Not something I can resolve by editing code — flagging for you/legal.

@@ -526,7 +526,7 @@ $script:Flyout.FormBorderStyle = 'None'
 $script:Flyout.StartPosition   = 'Manual'
 $script:Flyout.ShowInTaskbar   = $false
 $script:Flyout.TopMost         = $true
-$script:Flyout.BackColor       = [System.Drawing.Color]::FromArgb(32, 34, 38)
+$script:Flyout.BackColor       = [System.Drawing.Color]::FromArgb(9, 9, 11)      # Liquidware style guide --p-surface-950 (dark canvas)
 $script:Flyout.Width           = 380
 $script:Flyout.Height          = 380
 
@@ -535,11 +535,12 @@ $script:TopBarHeight = 32
 $topBar = New-Object System.Windows.Forms.Panel
 $topBar.Location = New-Object System.Drawing.Point(0, 0)
 $topBar.Size = New-Object System.Drawing.Size($script:Flyout.Width, $script:TopBarHeight)
+$topBar.BackColor = [System.Drawing.Color]::FromArgb(0, 63, 103)   # --p-primary-800 (header/chrome, darkened for the dark canvas)
 $script:Flyout.Controls.Add($topBar)
 
 $titleLabel = New-Object System.Windows.Forms.Label
 $titleLabel.Text = "FlexApp One Downloads  v$($script:AppVersion)"
-$titleLabel.ForeColor = [System.Drawing.Color]::White
+$titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(244, 244, 245)   # --p-surface-100 (dark-scheme text-color)
 $titleLabel.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
 $titleLabel.AutoSize = $true
 $titleLabel.Location = New-Object System.Drawing.Point(8, 7)
@@ -549,8 +550,8 @@ $clearHistoryButton = New-Object System.Windows.Forms.Button
 $clearHistoryButton.Text = 'Clear history'
 $clearHistoryButton.FlatStyle = 'Flat'
 $clearHistoryButton.FlatAppearance.BorderSize = 0
-$clearHistoryButton.ForeColor = [System.Drawing.Color]::LightGray
-$clearHistoryButton.BackColor = $script:Flyout.BackColor
+$clearHistoryButton.ForeColor = [System.Drawing.Color]::FromArgb(161, 161, 170)   # --p-surface-400 (dark-scheme muted text)
+$clearHistoryButton.BackColor = $topBar.BackColor
 $clearHistoryButton.Font = New-Object System.Drawing.Font('Segoe UI', 8)
 $clearHistoryButton.Size = New-Object System.Drawing.Size(90, 24)
 $clearHistoryButton.Location = New-Object System.Drawing.Point(($topBar.Width - 90 - 8), 4)
@@ -583,10 +584,10 @@ function New-DownloadRow {
     $panel.Width  = $listPanel.ClientSize.Width - 4
     $panel.Height = $height
     $panel.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 6)
-    $panel.BackColor = [System.Drawing.Color]::FromArgb(44, 46, 51)
+    $panel.BackColor = [System.Drawing.Color]::FromArgb(24, 24, 27)   # --p-surface-900 (card sits one step lighter than the canvas)
 
     $nameLabel = New-Object System.Windows.Forms.Label
-    $nameLabel.ForeColor = [System.Drawing.Color]::White
+    $nameLabel.ForeColor = [System.Drawing.Color]::FromArgb(244, 244, 245)   # --p-surface-100
     $nameLabel.Font = New-Object System.Drawing.Font('Segoe UI', 8.5, [System.Drawing.FontStyle]::Bold)
     $nameLabel.AutoEllipsis = $true
     $nameLabel.Text = $Name
@@ -607,7 +608,7 @@ function New-DownloadRow {
     }
 
     $detailLabel = New-Object System.Windows.Forms.Label
-    $detailLabel.ForeColor = [System.Drawing.Color]::Gainsboro
+    $detailLabel.ForeColor = [System.Drawing.Color]::FromArgb(161, 161, 170)   # --p-surface-400 (dark-scheme muted text)
     $detailLabel.Font = New-Object System.Drawing.Font('Segoe UI', 8)
     $detailLabel.Text = $DetailText
     $detailLabel.Location = New-Object System.Drawing.Point(8, $detailTop)
@@ -616,7 +617,7 @@ function New-DownloadRow {
 
     if ($Kind -eq 'active' -and $DetailText2) {
         $detailLabel2 = New-Object System.Windows.Forms.Label
-        $detailLabel2.ForeColor = [System.Drawing.Color]::FromArgb(120, 190, 255)
+        $detailLabel2.ForeColor = [System.Drawing.Color]::FromArgb(74, 163, 224)   # --link-color-dark
         $detailLabel2.Font = New-Object System.Drawing.Font('Segoe UI', 8)
         $detailLabel2.Text = $DetailText2
         $detailLabel2.Location = New-Object System.Drawing.Point(8, ($detailTop + 18))
@@ -626,7 +627,7 @@ function New-DownloadRow {
 
     if ($SizeText) {
         $sizeLabel = New-Object System.Windows.Forms.Label
-        $sizeLabel.ForeColor = [System.Drawing.Color]::DimGray
+        $sizeLabel.ForeColor = [System.Drawing.Color]::FromArgb(113, 113, 122)   # --p-surface-500
         $sizeLabel.Font = New-Object System.Drawing.Font('Segoe UI', 7.5)
         $sizeLabel.Text = $SizeText
         $sizeLabel.TextAlign = 'TopRight'
@@ -642,7 +643,7 @@ function New-SectionHeader {
     param([string]$Text)
     $lbl = New-Object System.Windows.Forms.Label
     $lbl.Text = $Text
-    $lbl.ForeColor = [System.Drawing.Color]::Gray
+    $lbl.ForeColor = [System.Drawing.Color]::FromArgb(161, 161, 170)   # --p-surface-400
     $lbl.Font = New-Object System.Drawing.Font('Segoe UI', 8, [System.Drawing.FontStyle]::Bold)
     $lbl.Width = $listPanel.ClientSize.Width - 4
     $lbl.Height = 18
@@ -716,7 +717,7 @@ function Update-FlyoutUI {
     if ($script:Downloads.Count -eq 0 -and $script:History.Count -eq 0) {
         $empty = New-Object System.Windows.Forms.Label
         $empty.Text = 'No downloads yet'
-        $empty.ForeColor = [System.Drawing.Color]::Gainsboro
+        $empty.ForeColor = [System.Drawing.Color]::FromArgb(161, 161, 170)   # --p-surface-400
         $empty.Font = New-Object System.Drawing.Font('Segoe UI', 9)
         $empty.AutoSize = $true
         $empty.Location = New-Object System.Drawing.Point(4, 4)
@@ -772,7 +773,7 @@ function New-TrayIcon {
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = 'AntiAlias'
     $g.Clear([System.Drawing.Color]::Transparent)
-    $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(0, 120, 215))
+    $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(11, 114, 186))   # Liquidware style guide --lwl-mark-circle (the circular app-icon background)
     $g.FillEllipse($brush, 1, 1, 30, 30)
     $pen = New-Object System.Drawing.Pen ([System.Drawing.Color]::White), 2.5
     $g.DrawLine($pen, 16, 8, 16, 21)
