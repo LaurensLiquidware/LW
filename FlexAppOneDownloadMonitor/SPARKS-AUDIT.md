@@ -4,7 +4,7 @@
 **Reviewed against:** Sparks Tool Project Review Checklist v1
 **Audit date:** 2026-08-11
 **Files reviewed:** `FlexAppOneDownloadMonitor.ps1`, `Start-FlexAppOneDownloadMonitor.vbs`, `README.md`, `archive/FlexAppOneDownloadMonitor_v1.ps1` (all renamed in Phase 3, round 6 — see below; these are the current names)
-**Phase:** 3 — Approved items applied, across six rounds. Round 1: §6 and §7. Round 2: §1. Round 3: §8 color-matching sub-item. Round 4: version bumped from `1.0` to `0.2`. Round 5: distributable format decided (zip) and built. Round 6: project renamed from `FlexAppDownloadMonitor` to `FlexAppOneDownloadMonitor` throughout (files, install folder, script contents, and this report). §5 remains blocked, not approved (blocked on network policy, not a code fix). Everything in Phases 1–2 below is unchanged from the original audit in substance; file/path names have been updated throughout to the current (post-rename) names so this report doesn't reference files that no longer exist.
+**Phase:** 3 — Approved items applied, across seven rounds. Round 1: §6 and §7. Round 2: §1. Round 3: §8 color-matching sub-item. Round 4: version bumped from `1.0` to `0.2`. Round 5: distributable format decided (zip) and built. Round 6: project renamed from `FlexAppDownloadMonitor` to `FlexAppOneDownloadMonitor` throughout (files, install folder, script contents, and this report). Round 7: §5 (CVE scan) completed — you ran Grype on a machine with real internet access; **0 vulnerabilities found**, closing the last open item from the original audit. Every checklist item is now Pass/Fixed/N/A — none remain blocked or outstanding.
 
 ---
 
@@ -16,7 +16,7 @@
 | 2 | Regional date, time, number formats | **Pass** | No hardcoded US formats found |
 | 3 | External URL / CDN references | **Pass** | Zero external references found — fully local/offline |
 | 4 | Open source identified + CycloneDX 1.6 JSON SBOM | **Pass** | Zero third-party components; SBOM generated (empty) |
-| 5 | Zero Critical / High CVEs (Grype scan of SBOM) | **NEEDS-INFO — blocked (not approved)** | Could not reach Grype's vulnerability DB (see below); stopping per instructions rather than substituting a scanner |
+| 5 | Zero Critical / High CVEs (Grype scan of SBOM) | **Pass** | Scanned on a machine with real internet access (Grype v0.117.0, DB schema v6.1.9, built 2026-08-11T06:26:49Z) — 0 vulnerability matches |
 | 6 | Version number visible to end user | **Fixed** | `AppVersion` constant added and surfaced in the flyout title, tray tooltip, log, and Diagnostics dialog; `CHANGELOG.md` added |
 | 7 | License PDF + SBOM packaged and visible | **Fixed** | `Spark_License.pdf` and `bom.cdx.json` now ship at the project root; README and Diagnostics dialog point to both |
 | 8 | UI consistency (style guide / PrimeNG) | **N/A (PrimeNG) / Fixed (colors)** | No Angular/PrimeNG in this project. Colors now re-pointed to the style guide's dark-scheme tokens, per your approval. See below. |
@@ -119,13 +119,19 @@ This item needs no remediation. **External endpoints retained: none.**
 
 ## 5. Vulnerabilities — no Critical or High
 
-**Status: NEEDS-INFO — blocked, stopping rather than substituting**
+**Status: Pass** (completed outside this session, per the plan below)
 
-I installed Grype v0.90.0 (the required scanner) directly from its GitHub release, since that's the only scanner this checklist allows. However, **Grype's vulnerability database cannot be downloaded in this environment**: `grype db update` fails because the outbound network policy for this session explicitly blocks `grype.anchore.io` (confirmed via the proxy status endpoint — `connect_rejected`, "gateway answered 403 to CONNECT (policy denial)"). This is an organizational egress policy denial, not a transient failure, so per both this environment's proxy guidance and your instruction ("if Grype is unavailable, say so and stop rather than guessing or substituting a different scanner"), I am stopping here rather than working around it with a different tool or a stale/absent database.
+**Phase 3 — completed:** This session's network policy blocks `grype.anchore.io` (see the original finding below), so per the checklist's own instruction I stopped rather than substituting a different scanner, and asked you to run it in an environment with real internet access. You did, on your Mac:
 
-**What this means in practice:** given §4's finding that this project has zero third-party components, the *ceiling* on this item's severity is low — there's nothing in the SBOM for a CVE to attach to. But I want to be precise: that's a reasonable inference, not a substitute for actually running the required scan, so I'm reporting this as blocked rather than marking it Pass.
+- Installed Grype v0.117.0.
+- `grype db update` → succeeded, DB updated to schema `v6.1.9`, built `2026-08-11T06:26:49Z`, pulled from `https://grype.anchore.io/databases/v6/...` (full record via `grype db status`, `Status: valid`).
+- `grype sbom:bom.cdx.json` → **0 vulnerability matches** (0 critical, 0 high, 0 medium, 0 low, 0 negligible).
 
-**What I need from you:** either (a) run `grype sbom:FlexAppOneDownloadMonitor/bom.cdx.json` yourself in an environment with access to `grype.anchore.io`, or point me at how this session's egress policy can be adjusted for that host, and I'll complete this item and fold the result back into this report.
+This matches the expectation from §4 (zero third-party components → nothing for a CVE to attach to), and now it's an actual scan result rather than an inference. **No Critical/High findings, no exceptions needed, no components to list as upgraded.** This closes the one remaining blocker from the original audit.
+
+**Original finding (Phase 1), for reference:**
+
+I installed Grype v0.90.0 (the required scanner) directly from its GitHub release, since that's the only scanner this checklist allows. However, **Grype's vulnerability database could not be downloaded in this session**: `grype db update` failed because the outbound network policy for this session explicitly blocks `grype.anchore.io` (confirmed via the proxy status endpoint — `connect_rejected`, "gateway answered 403 to CONNECT (policy denial)"). This was an organizational egress policy denial, not a transient failure, so per both this environment's proxy guidance and your instruction ("if Grype is unavailable, say so and stop rather than guessing or substituting a different scanner"), I stopped there rather than working around it with a different tool or a stale/absent database, and asked you to run it elsewhere instead.
 
 ---
 
@@ -225,12 +231,12 @@ No fix needed or proposed for this item as scoped.
 ## Blockers — status after Phase 3
 
 1. **§7 — License PDF and SBOM not packaged. → Fixed.** `Spark_License.pdf` and `bom.cdx.json` now ship at the project root; README and the Diagnostics dialog point to both.
-2. **§5 — CVE scan not completed.** Still blocked by network policy in this session, not by anything in the code — not approved for this round, unresolved. Needs to be run wherever `grype.anchore.io` is reachable before sign-off, even though §4 suggests the practical risk ceiling is low (zero third-party components).
+2. **§5 — CVE scan not completed. → Fixed.** Run on a machine with real internet access: Grype v0.117.0, DB schema v6.1.9 (built `2026-08-11T06:26:49Z`), **0 vulnerability matches**.
 3. **§6 — No visible version number. → Fixed.** Version is now shown in the flyout title, tray tooltip, log, and Diagnostics dialog.
 
 No copyleft/incompatible licenses, no hardcoded secrets, and no undisclosed external endpoints were found — those specific blocking categories are clear.
 
-**Remaining blocker: §5 (CVE scan).** Everything else is resolved.
+**No remaining blockers.** Every checklist item is Pass, Fixed, or N/A (with justification, per §8).
 
 ## Should-fix (remaining, non-blocking)
 
@@ -265,13 +271,13 @@ Per your instruction, renamed everything that still carried the old `FlexAppDown
 - **Renamed (`git mv`):** `Start-FlexAppOneDownloadMonitor.vbs` (was `Start-FlexAppDownloadMonitor.vbs`, contents updated to match — see "Round 6"), `archive/FlexAppOneDownloadMonitor_v1.ps1` (was `archive/FlexAppDownloadMonitor_v1.ps1`, contents updated to match).
 - **Added:** `Spark_License.pdf` (renamed from the supplied `Spark_License8426.pdf`), `CHANGELOG.md` (heading updated to `0.2`, with the encoding/color-matching work folded into the same entry since nothing shipped as `1.0`).
 - **Carried over from Phase 1, now referenced:** `bom.cdx.json` (generated during the audit for §4) is now wired into the README and Diagnostics dialog per §7; its `metadata.component.version` updated to `0.2` and its own `version`/`timestamp` bumped to reflect the edit. Its `name` field never needed a rename.
-- **Not touched:** §5 (CVE scan) — left exactly as reported, no code changes made, blocked on network policy rather than code.
+- **§5 round:** no file changes — you ran `grype db update` and `grype sbom:bom.cdx.json` yourself on a Mac with normal internet access; result (0 vulnerability matches) folded into this report. Nothing in the project needed to change for this round.
 - **Blast radius:** the §6/§7 changes are purely additive (new constants read-only, new UI text, new files, new README section). The §1 changes touch one real runtime code path — the tooltip truncation logic — the rest is encoding-only with no behavioral difference against the current ASCII-only content. The rename round is mechanical (names/paths only, no logic change) but touches every file in the project — re-test recommendation: confirm the app still finds/creates its config and log files under the new name, and that the `.vbs` launcher's updated hardcoded path is correct on the actual install target before relying on it. Re-testing recommendation from the §1 round still applies: confirm the tray tooltip still renders correctly at both the un-truncated and truncated lengths — the double-byte-specific verification still needs the real Windows environment noted in §1 above.
 
 ## Questions for me
 
 1. ~~Do you have the current Sparks Tool License PDF?~~ **Answered** — `Spark_License8426.pdf` (v1.0) supplied and reviewed; content folded into §7 above.
-2. Is there a way to allow this session's egress policy to reach `grype.anchore.io` (or an internal mirror of the Grype DB), so §5 can actually complete instead of staying blocked?
+2. ~~Can §5 be unblocked?~~ **Resolved** — ran outside this session, on a machine with normal internet access. No policy change needed after all; see §5.
 3. ~~Should colors match the style guide?~~ **Answered** — colors now re-pointed to the dark-scheme tokens; typeface intentionally left as Segoe UI. See §8.
 4. ~~What's the distributable format?~~ **Answered** — zip, for now. `FlexAppOneDownloadMonitor-0.2.zip` built. See §7.
 5. ~~Is `1.0` the version you want to ship?~~ **Answered** — bumped to `0.2`, applied everywhere (constant, doc-comment, README, CHANGELOG, SBOM).
@@ -290,4 +296,29 @@ Per the checklist's own guidance ("anything that needs a decision rather than a 
 - `FlexAppOneDownloadMonitor/bom.cdx.json` — CycloneDX 1.6 JSON SBOM, schema-validated, empty component list (§4/§7), now wired into the README and Diagnostics dialog.
 - `FlexAppOneDownloadMonitor-0.2.zip` — the customer-facing distributable (§7 round 5): `FlexAppOneDownloadMonitor.ps1`, `Start-FlexAppOneDownloadMonitor.vbs`, `Spark_License.pdf`, `bom.cdx.json`, `README.md`, `CHANGELOG.md` at a flat top level. Delivered to you directly rather than committed to the repo, since it's a build output, not source.
 
-This report now reflects Phase 1 (original audit) through Phase 3, round 5 (all approved fixes applied). Remaining open item: §5 (CVE scan, blocked on network policy).
+This report now reflects Phase 1 (original audit) through Phase 3, round 7 (all approved fixes applied, §5's CVE scan completed). **No open items remain.** Every checklist section is Pass, Fixed, or N/A with a stated justification (§8). The one non-blocking item still outstanding is the real-Windows double-byte round-trip *test* for §1 (evidence-gathering, not a fix) — the code changes for §1 are done, just not yet verified on physical Windows hardware.
+
+## Submission Summary
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Double-byte / Unicode handling | Fail — fixed (evidence capture on real Windows still pending) |
+| 2 | Regional date, time, number formats | Pass |
+| 3 | External URL / CDN references | Pass — none |
+| 4 | Open source identified + CycloneDX 1.6 JSON SBOM | Pass — zero third-party components |
+| 5 | Zero Critical / High CVEs (Grype scan of SBOM) | Pass — 0 vulnerability matches (Grype v0.117.0, DB schema v6.1.9, built 2026-08-11T06:26:49Z) |
+| 6 | Version number visible to end user | Fail — fixed |
+| 7 | License PDF + SBOM packaged and visible | Fail — fixed |
+| 8 | UI consistency (style guide / PrimeNG) | N/A (no PrimeNG/Angular) — colors fixed to match style guide |
+
+**Project:** FlexAppOneDownloadMonitor
+**Version submitted:** 0.2
+**Repository:** `LaurensLiquidware/LW`, branch `claude/flexapp-download-monitor-setup-0blcm9`
+**Third-party components:** none
+**Critical / High CVEs outstanding:** 0
+**Grype scan date / DB version:** 2026-08-11, DB schema v6.1.9 (built 2026-08-11T06:26:49Z)
+**External endpoints retained:** none
+**Open escalations / requested exceptions:** License §2(d) source-code clause — see "Escalations / exceptions requested" above
+**Changes approved by:** you, item-by-item across Phase 3 rounds 1–7 (this report)
+**Approved changes deferred, not made:** none — everything approved was applied
+**Packaged path of license PDF + SBOM:** `FlexAppOneDownloadMonitor/Spark_License.pdf` and `FlexAppOneDownloadMonitor/bom.cdx.json`, top level, and inside `FlexAppOneDownloadMonitor-0.2.zip`
