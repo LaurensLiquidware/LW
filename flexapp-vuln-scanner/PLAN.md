@@ -1,6 +1,7 @@
 # PLAN.md — FlexApp Package Composition & Vulnerability PoC
 
-Status: **DRAFT — awaiting confirmation before any code is written.**
+Status: **All six assumptions resolved as of 2026-08-12 — ready to start
+Stage 1, pending your explicit go-ahead to begin.**
 
 ## Goal (restated)
 
@@ -342,21 +343,40 @@ per method as a finding in its own right.
      `package` block (`scanStartedUtc`/`scanFinishedUtc` already covers
      this) so a slow run is visible in the coverage report rather than a
      silent surprise.
-5. **Execution environment for stage 1**: assuming this runs interactively
-   or via scheduled task directly on a machine with access to the package
-   store (UNC path or local), with permissions to mount VHDX images. Confirm
-   whether stage 1 needs to run inside ProfileUnity/FlexApp server context
-   specifically, or any Windows host is fine.
-6. **flexappone.exe availability for this PoC**: I don't have this binary in
-   this environment and can't test the extraction path against it directly.
-   Stage 1 will be written to the documented interface but the real
-   validation happens on your side with real binaries/packages — flagging
-   this now rather than after the fact.
+5. **Execution environment for stage 1 — RESOLVED for v1.** Any Windows
+   host with network access to the package store (UNC path) and permission
+   to mount VHDX images is sufficient — no dependency on running inside the
+   ProfileUnity/FlexApp server context itself.
+   - You floated a nicer version of this: logging into the ProfileUnity
+     console and querying it for package locations, rather than being
+     handed a path by hand. That's a real improvement (it would turn "here's
+     a path" into "point this at your ProfileUnity server and it enumerates
+     every package"), but it's explicitly out of scope for this PoC per the
+     brief's own non-goals list ("No ProfileUnity console integration, no
+     Stratusphere correlation"). I'm treating your "ideally" as a noted
+     future direction, not a v1 requirement — flagging the tension so it's
+     an explicit choice rather than something that slips in by drift. If you
+     want to fold ProfileUnity-console-driven path discovery into this PoC
+     after all, say so and I'll adjust the plan (it's a fairly small
+     addition — a `Get-FlexAppPackagePaths.ps1` that queries the console's
+     API/DB instead of the caller supplying a path — but it's still a scope
+     change from what was originally asked for, so it should be a deliberate
+     yes, not something I add unprompted).
+   - v1, as scoped: `Invoke-FlexAppInventory.ps1` takes an explicit
+     `.vhdx`/`.exe`/`.flexapp` path (or a folder to enumerate), supplied by
+     you or a simple wrapper script, not discovered via ProfileUnity.
+6. **flexappone.exe availability for this PoC**: resolved as part of point 3
+   above — there's no separate `flexappone.exe`; the package `.exe` itself
+   is the extraction tool. I still don't have one of these binaries or a
+   real package in this environment to test the extraction path against
+   directly. Stage 1 will be written to the documented `--extract --skipico`
+   interface, but the real validation happens on your side with real
+   packages — flagging this now rather than after the fact.
 
-None of these block writing the code — reasonable defaults are documented
-above and the code will be defensive either way (never crash on a single bad
-file, log and continue) — but getting real answers before Stage 1 is
-"finished" avoids rework.
+All six items above are now resolved with real answers rather than
+assumptions, except the two flagged as validated on your side once you have
+a real binary/package in hand (point 6) — the code itself will still be
+defensive regardless (never crash on a single bad file, log and continue).
 
 ## Build order (pause after each, per your instructions)
 
