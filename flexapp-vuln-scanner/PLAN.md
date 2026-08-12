@@ -77,11 +77,23 @@ strict JSON Schema draft 2020-12):
   "package": {
     "sourcePath": "D:\\FlexAppShare\\Chrome_120.vhdx",
     "packageType": "classic-vhdx | flexapp-one",
-    "flexAppXml": {                     // null if no metadata XML found
-      "name": "Google Chrome",
-      "version": "120.0.6099.129",
-      "captureDate": "2024-01-10T00:00:00Z",
-      "sourceInstaller": "GoogleChromeStandaloneEnterprise64.msi"
+    "flexAppXml": {                     // null if no sidecar .package.xml found; real schema confirmed 2026-08-12 from a live winscp_*.package.xml sample
+      "uuid": "37d9eb95-78ae-4ceb-a8fa-77be405c4fe8",
+      "displayName": "winscp",          // raw capture-folder name, NOT a clean product name — do not treat as normalized
+      "packageType": "Vhd",             // classic FlexApp; FlexApp One packages will need a sample to confirm this field's value
+      "sizeInGb": 10,
+      "actualSizeInBytes": 306184192,
+      "dateCreated": "2026-07-30T16:06:52.2678033+02:00",
+      "dateModified": "2026-07-30T16:09:34.3895346+02:00",
+      "historyRaw": [                   // free-text audit trail, NOT structured fields — see note below
+        "2026-07-30T16:09:34.3895346+02:00",
+        "   create package by admin.lvh",
+        "   Version 6.9.5.9678, 6.9.5.9678 Wed 07/01/2026+2c00aca1f87b2c3f690ec2e94a38fcd923ab779e"
+      ],
+      "versionMajorMinorBuildRevision": null,   // was 0.0.0.0 in the sample — present in the schema but not populated; do not rely on it
+      "shortcutTargets": [               // from <Links><Link><Target> — the actual installed executable path(s)
+        "C:\\Program Files (x86)\\WinSCP\\WinSCP.exe"
+      ]
     },
     "scanStartedUtc": "2026-08-12T18:00:00Z",
     "scanFinishedUtc": "2026-08-12T18:04:12Z",
@@ -158,22 +170,61 @@ per method as a finding in its own right.
    Server, no BitLocker/encryption on the VHDX itself. Confirm this holds for
    your real test packages, and tell me if any are encrypted or require a
    specific FlexApp/ProfileUnity component installed to mount.
-2. **FlexApp package XML metadata**: I'm assuming there's a sidecar or
-   embedded XML (e.g. `<packagename>.xml` next to the VHDX, or inside it)
-   with fields like package name/version/capture date/source installer. I
-   don't have a sample of this XML's actual schema — please supply one real
-   example (redacted if needed) so `Read-PackageMetadataXml.ps1` targets the
-   right element names instead of me guessing.
+2. **FlexApp package XML metadata — RESOLVED**, confirmed from a real
+   sample (`winscp_20260730160821.package.xml`) on 2026-08-12:
+   - It's a sidecar file named `<vhdx-basename>.package.xml`, sitting next to
+     the `.vhdx` in the same folder (`<FilePath>\\ld-lw01\apps\FlexApp\winscp_20260730160821`,
+     `<FileName>winscp_20260730160821.vhdx`) — a folder-per-package UNC share
+     layout. `Read-PackageMetadataXml.ps1` will look for `<vhdx-name>.package.xml`
+     next to the given `.vhdx` path.
+   - Real element names: `Uuid`, `DisplayName`, `PackageType` (`Vhd` for
+     classic FlexApp — still need a FlexApp One sample to confirm its value),
+     `FilePath`/`FileName`, `SizeInGb`/`ActualSizeInBytes`, `DateCreated`/
+     `DateModified`, `History` (array of loose strings), `Links` (array of
+     shortcut descriptors), `VersionMajor`/`Minor`/`Build`/`Revision`.
+   - **`DisplayName` is not a clean product name** — it's the raw capture
+     folder name (`winscp`, lowercase). Don't feed it to CPE/purl matching
+     without normalization; it's closer to a slug than `<ProductName>`.
+   - **`VersionMajor`/`Minor`/`Build`/`Revision` were all `0` in this
+     sample** — present in the schema but apparently not populated on this
+     capture. Treat this as unreliable/optional, not a dependable version
+     source, until a package with non-zero values turns up.
+   - **The only real version signal is buried in free text inside `History`**:
+     `"   Version 6.9.5.9678, 6.9.5.9678 Wed 07/01/2026+2c00aca1f87b2c3f690ec2e94a38fcd923ab779e"`.
+     This needs a small regex extractor (`Version ([\d.]+)`), and it's a
+     second-tier signal — corroborating evidence for the file-level identity
+     resolution in §"Version identity extraction," not something to trust
+     standalone (it's admin-entered free text, not derived from the binary).
+   - **`Links[].Target` is the most useful field here**: it gives the
+     absolute installed path of the shortcut'd executable(s)
+     (`C:\Program Files (x86)\WinSCP\WinSCP.exe`). Stage 1 will capture these
+     as `shortcutTargets` and Stage 2 can use them to identify the package's
+     "primary" component with higher confidence than treating every `.exe`
+     in the tree as equally significant.
+   - **`Icon` is a large embedded base64 PNG** — irrelevant to component
+     resolution. `Read-PackageMetadataXml.ps1` will explicitly skip/drop this
+     field rather than pass it through to the JSON inventory (no reason to
+     bloat the stage1→stage2 payload with an icon on every package).
+   - Still open: a FlexApp One sample's metadata (this one is `PackageType:
+     Vhd`, i.e. classic) — if FlexApp One packages carry the same
+     `.package.xml` sidecar format, great; if not, this parser needs a
+     second branch.
 3. **FlexApp One (.flexapp/.exe) format**: I'm assuming `flexappone.exe`
    ships with (or alongside) the packages and supports a documented
    `--extract` flag that unpacks to a normal directory tree. Please confirm
    the exact CLI syntax and where that binary normally lives in your
    environment — I don't want to guess flags against a binary I can't run
    from here.
-4. **Scale**: no assumption yet about typical package size (GB) or file
-   count — this affects whether the SHA-256 hashing pass needs
-   throttling/parallelism. Rough numbers for your first test packages would
-   help size that.
+4. **Scale**: one real data point now — the winscp sample declares
+   `SizeInGb: 10` (the max/provisioned size, `VirtualDiskType: Expandable` —
+   i.e. a sparse VHDX) but `ActualSizeInBytes: 306184192` (~292 MB), which is
+   the number that actually matters for how much stage 1 has to walk/hash.
+   Still need a rough sense of your larger, messier enterprise packages
+   (the brief mentions "large installer-bundled enterprise applications with
+   messy internals" as the first real test target) — is 292 MB representative
+   of the low end and multi-GB the norm for those? That determines whether
+   the SHA-256 pass needs throttling/parallelism from day one or can stay
+   simple for v1.
 5. **Execution environment for stage 1**: assuming this runs interactively
    or via scheduled task directly on a machine with access to the package
    store (UNC path or local), with permissions to mount VHDX images. Confirm
