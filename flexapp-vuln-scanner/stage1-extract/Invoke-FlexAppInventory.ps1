@@ -13,9 +13,13 @@
     enumerated non-recursively for *.vhdx/*.exe/*.flexapp (batch scanning of
     nested folders is out of scope for this pass - see PLAN.md).
 
-    Per PLAN.md's build order, this pass does NOT resolve version identity
-    and does NOT apply the exclusion ruleset - see Get-FileInventory.ps1's
-    notes. Nothing leaves the machine except the JSON file(s) this writes.
+    After the file walk, every non-excluded file goes through exclusion
+    filtering (ExclusionRules.psd1) and identity resolution
+    (Resolve-VersionIdentity.ps1) in that order - exclusion runs first so it
+    decides what's even worth a string-signature scan. Jar/asar containers
+    can yield extra synthetic entries (nested components); those are
+    appended to the files[] array before writing. Nothing leaves the machine
+    except the JSON file(s) this writes.
 
 .PARAMETER Path
     A single .vhdx/.exe/.flexapp file, or a directory containing them.
@@ -44,10 +48,14 @@ $ToolVersion = '0.1.0'
 . (Join-Path $PSScriptRoot 'Expand-FlexAppOne.ps1')
 . (Join-Path $PSScriptRoot 'Read-PackageMetadataXml.ps1')
 . (Join-Path $PSScriptRoot 'Get-FileInventory.ps1')
+. (Join-Path $PSScriptRoot 'Resolve-VersionIdentity.ps1')
 
 if (-not (Test-Path -LiteralPath $OutputDir)) {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 }
+
+$exclusionRules = Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'ExclusionRules.psd1')
+$stringSignatures = Import-StringSignatures -ConfigPath (Join-Path $PSScriptRoot 'config/string-signatures.psd1')
 
 # Tracks currently-mounted VHDX image paths so an interrupt (Ctrl-C or engine
 # exit) can still dismount them. Per-package try/finally below is the primary
@@ -127,6 +135,27 @@ function Invoke-SinglePackage {
             Write-Verbose "Walking '$($mountInfo.RootPath)'"
             $fileRecords = @(Get-FileInventoryRecord -RootPath $mountInfo.RootPath)
 
+            Write-Verbose "Resolving identity for $($fileRecords.Count) files"
+            $extraRecords = [System.Collections.Generic.List[object]]::new()
+            foreach ($record in $fileRecords) {
+                $exclusion = Test-FileExclusion -RelativePath $record.relativePath -Rules $exclusionRules
+                $record.excluded = $exclusion.Excluded
+                $record.exclusionReason = $exclusion.Reason
+
+                if ($exclusion.Excluded -or $record.readError) { continue }
+
+                $absolutePath = Join-Path $mountInfo.RootPath $record.relativePath
+                try {
+                    $resolved = Resolve-ComponentIdentity -AbsolutePath $absolutePath -RelativePath $record.relativePath -ComponentType $record.componentType -StringSignatures $stringSignatures
+                    $record.identity = $resolved.Identity
+                    foreach ($extra in $resolved.ExtraComponents) { $extraRecords.Add($extra) | Out-Null }
+                }
+                catch {
+                    $record.readError = "Identity resolution failed: $_"
+                }
+            }
+            $fileRecords = $fileRecords + $extraRecords.ToArray()
+
             $scanFinishedUtc = (Get-Date).ToUniversalTime().ToString('o')
 
             $inventory = [ordered]@{
@@ -147,7 +176,10 @@ function Invoke-SinglePackage {
             $json = $inventory | ConvertTo-Json -Depth 10
             [System.IO.File]::WriteAllText($outPath, $json, [System.Text.UTF8Encoding]::new($false))
 
-            Write-Host "Wrote $outPath ($($fileRecords.Count) files, $(( $fileRecords | Where-Object { $_.readError } ).Count) read errors)"
+            $excludedCount = @($fileRecords | Where-Object { $_.excluded }).Count
+            $resolvedCount = @($fileRecords | Where-Object { -not $_.excluded -and $_.identity }).Count
+            $errorCount = @($fileRecords | Where-Object { $_.readError }).Count
+            Write-Host "Wrote $outPath ($($fileRecords.Count) files: $excludedCount excluded, $resolvedCount resolved, $errorCount read errors)"
         }
         finally {
             if ($mountInfo) {

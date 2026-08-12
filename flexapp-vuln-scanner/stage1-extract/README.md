@@ -4,10 +4,12 @@ PowerShell 7 only. Produces one `<package-basename>.inventory.json` per
 package in `-OutputDir`. See `../schemas/inventory.schema.json` for the
 exact output contract and `../PLAN.md` for the design rationale.
 
-This pass does **not** resolve version identity or apply the exclusion
-ruleset yet — every file gets `identity: null`, `excluded: false`, and a
-best-effort `componentType` guessed from its extension/name. That's the next
-increment (see `PLAN.md`'s build order).
+Every non-excluded file gets identity resolution (PE/.NET, Java jar/war
+including nested fat-jar components, Node package.json including inside
+app.asar, Python dist-info/egg-info, and string-signature scanning as a
+last resort) and every file gets exclusion filtering
+(`ExclusionRules.psd1`). Jar/asar containers can contribute extra synthetic
+`files[]` entries for nested components (see "Nested components" below).
 
 ## Usage
 
@@ -39,15 +41,54 @@ Add `-Verbose` to see each mount/walk step as it happens.
    details, unrelated to the packaged app.
 4. Every file on the mounted volume is walked, hashed (streaming SHA-256,
    safe for very large files), and given a best-effort `componentType`.
-5. The whole thing is written out as one inventory JSON. Nothing else leaves
+5. Every walked file is checked against `ExclusionRules.psd1` (path/name
+   heuristics — OS system paths, resource-only assemblies, debug symbols,
+   fonts/icons/media, satellite culture resources). Excluded files are
+   still reported (`excluded: true`, `exclusionReason: "..."`) - never
+   silently dropped.
+6. Every non-excluded file goes through `Resolve-VersionIdentity.ps1`'s
+   dispatcher, in PLAN.md's priority order: a managed (.NET) assembly check
+   first (more precise than the Win32 resource compilers also embed),
+   falling back to the Win32 version resource for native PE; JAR/WAR via
+   `META-INF/maven/*/*/pom.properties` (highest confidence anywhere in this
+   pipeline) or `MANIFEST.MF`, recursing into nested jars; `package.json`
+   directly or inside `app.asar`; Python `dist-info`/`egg-info`; and
+   string-signature scanning (`config/string-signatures.psd1`) as a last
+   resort for anything still unresolved.
+7. The whole thing is written out as one inventory JSON. Nothing else leaves
    the machine.
+
+## Nested components
+
+A single physical file can contain more than one component: a Spring Boot
+fat jar bundles dependency jars in `BOOT-INF/lib/`, and an Electron
+`app.asar` can contain several `package.json`s. These show up as extra
+synthetic entries in `files[]`, using a `<real path>!/<inner path>`
+convention, e.g.:
+
+```
+Program Files\App\outer-app.jar
+Program Files\App\outer-app.jar!/BOOT-INF/lib/inner-lib-2.15.3.jar
+```
+
+Each carries its own `sizeBytes`/`sha256` (of the nested entry's bytes,
+where computable) and `identity`, exactly like a physical file would.
 
 ## Known limitations at this stage
 
 - Directory input is non-recursive (top-level packages only).
-- No exclusion filtering yet — every walked file is reported.
-- No identity resolution yet — that's PE/.NET/Java/Node/Python/string-scan
-  parsing, coming next.
+- Exclusion is a path/name heuristic only - the PLAN.md stretch goal of
+  hashing against a known-good clean-Windows-install set is not implemented.
 - `Mount-ClassicFlexApp.ps1` and `Expand-FlexAppOne.ps1` require Windows and
   a real package to validate — untested against the real FlexApp One
-  executable and VHDX mount path in this environment.
+  executable and VHDX mount path in this environment. Everything else
+  (XML parsing, file walk/hash, jar/asar/python/string-signature
+  resolution, exclusion rules) has been syntax-checked and functionally
+  smoke-tested on Linux PowerShell 7.6 against real `.package.xml` samples
+  and real jar/asar files built with `jar`/`asar`, with hashes cross-checked
+  against `sha256sum` and full output validated against
+  `../schemas/inventory.schema.json`.
+- Electron's bundled Chromium/Node versions are resolved via string-signature
+  scanning of the main executable (`method: electron-embedded`), not by
+  inspecting `app.asar` - the archive reader here only extracts
+  `package.json` metadata.

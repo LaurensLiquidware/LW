@@ -380,12 +380,16 @@ defensive regardless (never crash on a single bad file, log and continue).
 
 ## Build order (pause after each, per your instructions)
 
-1. Stage 1 extraction (mount/extract + file walk + hashing + XML metadata),
-   no identity resolution yet — just produces the inventory JSON with
-   `componentType` guesses and `identity: null` everywhere.
-2. Identity resolution methods, in the priority order from the brief (PE →
-   .NET → Java → Node/Electron → Python → string-scan), plus the exclusion
-   ruleset.
+1. **Done.** Stage 1 extraction (mount/extract + file walk + hashing + XML
+   metadata).
+2. **Done.** Identity resolution methods, in the priority order from the
+   brief (PE → .NET → Java → Node/Electron → Python → string-scan), plus the
+   exclusion ruleset. Syntax-checked and functionally smoke-tested on Linux
+   PowerShell 7.6 - real `.package.xml` samples, real jars built with `jar`,
+   a real `app.asar` built with the `asar` npm package, hashes cross-checked
+   against `sha256sum`, and the full pipeline's output validated against
+   `schemas/inventory.schema.json`. `Mount-ClassicFlexApp.ps1` and
+   `Expand-FlexAppOne.ps1` still need Windows + a real package to validate.
 3. OSV.dev matching (purl-based) + confidence tagging + on-disk cache.
 4. NVD 2.0 CPE matching + cpe-mappings.yaml + rate-limit handling + cache.
 5. Reporting: `sbom.cdx.json`, `coverage-report.md`, `findings.md`.
