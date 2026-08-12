@@ -286,11 +286,44 @@ per method as a finding in its own right.
      path, `C:\ProgramData\Liquidware\Flexapp\Shadows` — relevant to
      `Mount-ClassicFlexApp.ps1` if that default path ever has insufficient
      space on a scanning host, worth a config knob but not a v1 requirement).
-   - Still open: exit code / stderr behavior on a bad extract, so stage 1 can
-     detect a failed unwrap instead of silently trying to mount a
-     nonexistent VHDX — I'll have the wrapper check for the expected output
-     files after the call and treat their absence as the failure signal
-     unless you tell me the tool has a more specific exit code contract.
+   - **Exit codes are unconfirmed** — you don't have that documented either.
+     `Expand-FlexAppOne.ps1` will capture the process's stdout/stderr and
+     actual exit code for the log regardless, but the real failure signal is
+     checking whether `$TempDir` actually contains a `.vhdx` and `.xml`
+     after the call — presence/absence of the expected output files, not the
+     exit code, is what decides success in the wrapper. If a 0/non-zero
+     contract turns out to be reliable once we're testing against real
+     packages, I'll tighten this, but the file-presence check is the safe
+     default given an undocumented contract.
+   - **Safety constraint — this executable is far more than an extractor,
+     and the wrapper must never let it be anything else.** The full CLI
+     reference you pasted shows the *same* `<PackageName>.exe` also
+     installs/uninstalls the FlexApp service and driver (`--install`,
+     `--uninstall`, requires elevation), mounts and launches the packaged
+     app (`--index`), deletes the package from disk (`--remove`), replaces a
+     running package with a new version (`--replace`), and several other
+     state-changing operations. `Expand-FlexAppOne.ps1` will invoke this
+     executable with **exactly and only** `--extract <path> --skipico` —
+     the argument list is hardcoded in the wrapper, never built from
+     concatenation, never accepts pass-through arguments, and there is no
+     code path anywhere in this project that constructs any other flag
+     combination. This is a stage-1 hard rule, not a suggestion: the doc's
+     own "non-destructive" callout applies specifically to `--extract`, and
+     only to `--extract` — the same binary has an entire other mode that is
+     very much destructive (`--stop`, `--clean`, `--remove`), and mounting
+     read-only inventory tooling must never be able to drift into calling
+     any of it, even accidentally.
+   - Also present in the reference but irrelevant to this project and not
+     wired up anywhere: `--admin`, `--install`/`--upgrade`/`--uninstall`,
+     `--startup`, `--index`/`--ctl`/`--addtostart`, `--stop`/`--replace`/
+     `--clean`/`--remove`, `--sync`, `--reg`/`--system`, `--skipactivation`/
+     `--assoc`, `--persist`, `--sessionisolate`, `--outofband`, and the
+     runtime-tuning flags (`--blockcachesize`, `--authtimeout`,
+     `--linktimeout`, `--priorityboost`). `--printshortcuts` (with
+     `--skipactivation`) and `--debug`/`--console`/`--logpath` could be
+     useful for *our own* troubleshooting while developing the wrapper, but
+     are not part of the shipped tool's behavior — noting them here so
+     they're not mistaken for something already planned.
 4. **Scale**: one real data point now — the winscp sample declares
    `SizeInGb: 10` (the max/provisioned size, `VirtualDiskType: Expandable` —
    i.e. a sparse VHDX) but `ActualSizeInBytes: 306184192` (~292 MB), which is
