@@ -93,7 +93,14 @@ strict JSON Schema draft 2020-12):
       "versionMajorMinorBuildRevision": null,   // was 0.0.0.0 in the sample — present in the schema but not populated; do not rely on it
       "shortcutTargets": [               // from <Links><Link><Target> — the actual installed executable path(s)
         "C:\\Program Files (x86)\\WinSCP\\WinSCP.exe"
+      ],
+      "installerIds": [                  // regex-extracted from <Installers>, e.g. winget "--id X" — omitted if none found
+        "OBSProject.OBSStudio"
       ]
+      // <Icon>, <license>, <CallToHome> are read but deliberately NEVER copied into this JSON —
+      // Icon is a large irrelevant image blob; <license> carries a named Liquidware contact's
+      // email/phone (PII unrelated to the packaged app) and a signature/serial. Both are dropped
+      // at the parse boundary, not filtered later, so they can never leak downstream.
     },
     "scanStartedUtc": "2026-08-12T18:00:00Z",
     "scanFinishedUtc": "2026-08-12T18:04:12Z",
@@ -185,36 +192,85 @@ per method as a finding in its own right.
    - **`DisplayName` is not a clean product name** — it's the raw capture
      folder name (`winscp`, lowercase). Don't feed it to CPE/purl matching
      without normalization; it's closer to a slug than `<ProductName>`.
-   - **`VersionMajor`/`Minor`/`Build`/`Revision` were all `0` in this
-     sample** — present in the schema but apparently not populated on this
-     capture. Treat this as unreliable/optional, not a dependable version
-     source, until a package with non-zero values turns up.
-   - **The only real version signal is buried in free text inside `History`**:
-     `"   Version 6.9.5.9678, 6.9.5.9678 Wed 07/01/2026+2c00aca1f87b2c3f690ec2e94a38fcd923ab779e"`.
-     This needs a small regex extractor (`Version ([\d.]+)`), and it's a
-     second-tier signal — corroborating evidence for the file-level identity
-     resolution in §"Version identity extraction," not something to trust
-     standalone (it's admin-entered free text, not derived from the binary).
-   - **`Links[].Target` is the most useful field here**: it gives the
-     absolute installed path of the shortcut'd executable(s)
-     (`C:\Program Files (x86)\WinSCP\WinSCP.exe`). Stage 1 will capture these
-     as `shortcutTargets` and Stage 2 can use them to identify the package's
-     "primary" component with higher confidence than treating every `.exe`
-     in the tree as equally significant.
+   - **`VersionMajor`/`Minor`/`Build`/`Revision` are populated inconsistently
+     across packages** — all `0` in the winscp sample, but a second sample
+     (`OBSStudio_20260625190629.package.xml`, also `PackageType: Vhd`) has
+     `32.1.2.0`, which correctly matches OBS Studio's real version. Revised
+     rule: use these fields when non-zero (treat as a package-level version
+     signal), fall back to regex-extracting `History` when they're all zero.
+     Neither is fully dependable alone — this is exactly the kind of
+     per-method hit-rate variance the brief wants tracked, so record which
+     path resolved it (`xml-version-fields` vs. `xml-history-regex`) in the
+     `raw` field like any other identity method.
+   - **`History`'s format is not consistent between packages either** — the
+     winscp sample has 3 loose strings including a `Version X.Y.Z.W` line;
+     the OBS sample has one string, `"Package created on:06/25/2026 19:07
+     by:DESKTOP-PPDVIVG\Install with:1.6.1.9217"`, which contains no app
+     version at all — `1.6.1.9217` there is the FlexApp packaging console's
+     own version, not OBS Studio's. The regex extractor needs to specifically
+     match a `Version ([\d.]+)` pattern and not just grab the first
+     version-shaped number in the string, or it will misattribute the
+     packaging tool's version to the packaged app.
+   - **`Installers` is a high-value field when present**: the OBS sample has
+     `cmd.exe /c winget install --id OBSProject.OBSStudio --silent ...`. A
+     `--id <PackageID>` extracted from a winget/choco/msiexec-style install
+     command is a clean, structured identifier — arguably better than
+     anything derivable from `DisplayName`. Plan: add an `xml-installer-id`
+     resolution signal that regex-extracts `--id ([\w.-]+)` (winget) or
+     equivalent patterns for other package managers, used the same way as
+     the `Links[].Target` signal — package-level corroboration for the
+     primary component's identity, not a per-file resolution method.
+   - **`Links[].Target` remains the most useful field for pinpointing the
+     primary component**: absolute installed executable path(s)
+     (`C:\Program Files\obs-studio\bin\64bit\obs64.exe` in the OBS sample).
+     Captured as `shortcutTargets`, as before.
    - **`Icon` is a large embedded base64 PNG** — irrelevant to component
      resolution. `Read-PackageMetadataXml.ps1` will explicitly skip/drop this
-     field rather than pass it through to the JSON inventory (no reason to
-     bloat the stage1→stage2 payload with an icon on every package).
-   - Still open: a FlexApp One sample's metadata (this one is `PackageType:
-     Vhd`, i.e. classic) — if FlexApp One packages carry the same
-     `.package.xml` sidecar format, great; if not, this parser needs a
-     second branch.
-3. **FlexApp One (.flexapp/.exe) format**: I'm assuming `flexappone.exe`
-   ships with (or alongside) the packages and supports a documented
-   `--extract` flag that unpacks to a normal directory tree. Please confirm
-   the exact CLI syntax and where that binary normally lives in your
-   environment — I don't want to guess flags against a binary I can't run
-   from here.
+     field rather than pass it through to the JSON inventory.
+   - **New finding, not in the original plan — `<license>` block contains
+     real PII and must never be emitted.** The OBS sample's `.package.xml`
+     includes a `<license>` element with Liquidware's own FlexApp One
+     product-license metadata: `contactName`, `contactEmail`,
+     `contactNumber` (a named individual's email and phone number), plus a
+     license `signature` blob and `serial`. This has nothing to do with the
+     packaged application (OBS Studio) — it's licensing metadata for the
+     FlexApp One packaging tool itself, sitting in the same sidecar file.
+     **`Read-PackageMetadataXml.ps1` must explicitly exclude `<license>` and
+     `<CallToHome>` from anything written to the inventory JSON** — same
+     treatment as `<Icon>`, but for a privacy reason rather than a size
+     reason. This needs to be called out plainly since the whole point of
+     stage 1 is "nothing leaves the machine except this JSON," and right now
+     the source XML would otherwise carry a person's contact details straight
+     into that JSON.
+   - Confirmed both samples are `PackageType: Vhd` (classic FlexApp) — still
+     no confirmation on whether FlexApp One packages use the same
+     `.package.xml` sidecar format; see point 3 below, which resolves the
+     FlexApp One extraction question a different way (self-extracting exe),
+     which may mean FlexApp One doesn't produce this sidecar at all.
+3. **FlexApp One (.flexapp/.exe) format — REVISED**, based on your test
+   (`OBS-Studio.exe --extract C:\FA1`) on 2026-08-12. This changes a core
+   assumption: there's no separate generic `flexappone.exe` tool — **each
+   FlexApp One package is itself a self-extracting executable named after
+   the package** (`<PackageName>.exe`), and that same executable accepts
+   `--extract <path>` to unpack to a normal directory tree. I could not
+   independently confirm the full CLI reference — the doc page you linked
+   (`support.liquidware.com/.../FlexApp-One-Command-Line-Reference`) is
+   blocked by this environment's network egress policy, so this is based on
+   your direct test, not the doc text. Plan changes:
+   - `Expand-FlexAppOne.ps1` now takes the package `.exe` path directly and
+     runs `& $PackagePath --extract $TempDir`, rather than shelling out to a
+     separately-located `flexappone.exe` with the package as an argument.
+   - Still need from you: the exit code / stderr behavior on extraction
+     failure (so stage 1 can detect a bad extract instead of silently
+     scanning an empty temp dir), whether `--extract` has other useful flags
+     (e.g. a silent/quiet flag, since this is meant to run unattended), and
+     whether FlexApp One packages carry their own `.package.xml`-equivalent
+     metadata sidecar or embed it inside the exe (both real samples so far
+     are classic `Vhd` packages, not FlexApp One, so this is still
+     unconfirmed either way).
+   - If you can paste the relevant section of that doc page directly into
+     the chat, I can fold in the full flag set rather than working from one
+     example command.
 4. **Scale**: one real data point now — the winscp sample declares
    `SizeInGb: 10` (the max/provisioned size, `VirtualDiskType: Expandable` —
    i.e. a sparse VHDX) but `ActualSizeInBytes: 306184192` (~292 MB), which is
