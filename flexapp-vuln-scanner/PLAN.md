@@ -324,16 +324,24 @@ per method as a finding in its own right.
      useful for *our own* troubleshooting while developing the wrapper, but
      are not part of the shipped tool's behavior — noting them here so
      they're not mistaken for something already planned.
-4. **Scale**: one real data point now — the winscp sample declares
-   `SizeInGb: 10` (the max/provisioned size, `VirtualDiskType: Expandable` —
-   i.e. a sparse VHDX) but `ActualSizeInBytes: 306184192` (~292 MB), which is
-   the number that actually matters for how much stage 1 has to walk/hash.
-   Still need a rough sense of your larger, messier enterprise packages
-   (the brief mentions "large installer-bundled enterprise applications with
-   messy internals" as the first real test target) — is 292 MB representative
-   of the low end and multi-GB the norm for those? That determines whether
-   the SHA-256 pass needs throttling/parallelism from day one or can stay
-   simple for v1.
+4. **Scale — RESOLVED.** Confirmed range: **100 MB to 15 GB** actual content
+   size across your real packages. That's a >100x spread, so stage 1 can't
+   assume the winscp sample's ~292 MB is typical — the 15 GB end needs
+   `Get-FileInventory.ps1`'s hashing pass to not choke:
+   - Hash files with a streaming `SHA256` computation (fixed-size buffer,
+     not `Get-FileHash` on a fully-buffered read) so memory use doesn't
+     scale with individual file size — some vendored binaries (embedded
+     Chromium, large native libraries) can be hundreds of MB on their own.
+   - Run the walk/hash/identity-resolution pass with bounded parallelism
+     (e.g. `ForEach-Object -Parallel` with a throttle limit, or a simple
+     runspace pool) rather than serially, given the top end of this range —
+     v1 will include this from the start rather than treating it as a later
+     optimization, since 15 GB serially over a UNC path could be slow enough
+     to be impractical for iterating on the tool itself.
+   - Log elapsed time and file/byte throughput in the inventory JSON's
+     `package` block (`scanStartedUtc`/`scanFinishedUtc` already covers
+     this) so a slow run is visible in the coverage report rather than a
+     silent surprise.
 5. **Execution environment for stage 1**: assuming this runs interactively
    or via scheduled task directly on a machine with access to the package
    store (UNC path or local), with permissions to mount VHDX images. Confirm
