@@ -13,11 +13,13 @@ produce a polished report.
 ## Module structure
 
 ```
-flexapp-vuln-poc/
+flexapp-vuln-scanner/
   stage1-extract/                      # PowerShell 7, runs on/near the package store
     Invoke-FlexAppInventory.ps1        # entry point: dispatches by extension
     Mount-ClassicFlexApp.ps1           # Mount-DiskImage -ReadOnly + guaranteed dismount
-    Expand-FlexAppOne.ps1              # flexappone.exe --extract wrapper
+    Expand-FlexAppOne.ps1              # runs <Package>.exe --extract --skipico into a temp dir,
+                                        # then hands the extracted .vhdx + .xml to the same
+                                        # classic-mount path — see resolved assumption 3 below
     Get-FileInventory.ps1              # filesystem walk -> per-file record
     Resolve-VersionIdentity.ps1        # dispatch table: PE / .NET / jar / node / python / string-scan
     Read-PackageMetadataXml.ps1        # FlexApp package XML parser
@@ -247,30 +249,48 @@ per method as a finding in its own right.
      `.package.xml` sidecar format; see point 3 below, which resolves the
      FlexApp One extraction question a different way (self-extracting exe),
      which may mean FlexApp One doesn't produce this sidecar at all.
-3. **FlexApp One (.flexapp/.exe) format — REVISED**, based on your test
-   (`OBS-Studio.exe --extract C:\FA1`) on 2026-08-12. This changes a core
-   assumption: there's no separate generic `flexappone.exe` tool — **each
-   FlexApp One package is itself a self-extracting executable named after
-   the package** (`<PackageName>.exe`), and that same executable accepts
-   `--extract <path>` to unpack to a normal directory tree. I could not
-   independently confirm the full CLI reference — the doc page you linked
-   (`support.liquidware.com/.../FlexApp-One-Command-Line-Reference`) is
-   blocked by this environment's network egress policy, so this is based on
-   your direct test, not the doc text. Plan changes:
-   - `Expand-FlexAppOne.ps1` now takes the package `.exe` path directly and
-     runs `& $PackagePath --extract $TempDir`, rather than shelling out to a
-     separately-located `flexappone.exe` with the package as an argument.
-   - Still need from you: the exit code / stderr behavior on extraction
-     failure (so stage 1 can detect a bad extract instead of silently
-     scanning an empty temp dir), whether `--extract` has other useful flags
-     (e.g. a silent/quiet flag, since this is meant to run unattended), and
-     whether FlexApp One packages carry their own `.package.xml`-equivalent
-     metadata sidecar or embed it inside the exe (both real samples so far
-     are classic `Vhd` packages, not FlexApp One, so this is still
-     unconfirmed either way).
-   - If you can paste the relevant section of that doc page directly into
-     the chat, I can fold in the full flag set rather than working from one
-     example command.
+3. **FlexApp One (.flexapp/.exe) format — RESOLVED**, from the doc text you
+   pasted (2026-08-12, "Package Extraction & Inspection" section) plus your
+   `OBS-Studio.exe --extract C:\FA1` test. This is a bigger simplification
+   than I expected:
+   - There's no separate `flexappone.exe` tool. **Each FlexApp One package
+     is itself a self-extracting executable** (`<PackageName>.exe`) built by
+     the FlexApp Packaging Console.
+   - `--extract <path>` pulls out exactly **VHDX, ICO, and XML** — i.e. a
+     FlexApp One package is a classic FlexApp capture (VHDX + `.package.xml`
+     sidecar) plus an icon, wrapped in a self-extracting shell. This answers
+     the open question from point 2 above: **it's very likely the same
+     `.package.xml` schema**, since the doc says the extracted XML can be
+     edited "in the Packaging Console" and re-imported to build a new
+     package — that's describing round-tripping the same authoring format
+     already parsed in point 2, not a distinct FlexApp One-only schema. I'll
+     confirm this the moment a real extracted sample is available, but it
+     changes the plan now rather than waiting: `Read-PackageMetadataXml.ps1`
+     does not need a second branch for FlexApp One — one parser, two entry
+     paths.
+   - **Pipeline simplification**: `Expand-FlexAppOne.ps1` runs
+     `& $PackagePath --extract $TempDir --skipico` (the target path must
+     already exist — the doc is explicit about this, so the wrapper creates
+     it first) to skip the icon we don't need, finds the resulting `.vhdx`
+     + `.xml` in `$TempDir`, and hands them to the *same*
+     `Mount-ClassicFlexApp.ps1` + `Read-PackageMetadataXml.ps1` path used for
+     a classic `.vhdx` input. FlexApp One stops being a separate extraction
+     strategy and becomes "one extra unwrap step before the classic path" —
+     `Invoke-FlexAppInventory.ps1`'s dispatch is now: `.exe`/`.flexapp` →
+     unwrap via `--extract --skipico` → fall into the same `.vhdx` handling
+     as a direct classic input.
+   - Noted but not used for v1: `--skipdisk` (XML/ICO only, no VHDX — not
+     useful here since the VHDX is exactly what we need to scan),
+     `--skipxml` (opposite of what we need), `--mapicons` (per-shortcut
+     icons — irrelevant), `--diskpath` (overrides the default VHDX *mount*
+     path, `C:\ProgramData\Liquidware\Flexapp\Shadows` — relevant to
+     `Mount-ClassicFlexApp.ps1` if that default path ever has insufficient
+     space on a scanning host, worth a config knob but not a v1 requirement).
+   - Still open: exit code / stderr behavior on a bad extract, so stage 1 can
+     detect a failed unwrap instead of silently trying to mount a
+     nonexistent VHDX — I'll have the wrapper check for the expected output
+     files after the call and treat their absence as the failure signal
+     unless you tell me the tool has a more specific exit code contract.
 4. **Scale**: one real data point now — the winscp sample declares
    `SizeInGb: 10` (the max/provisioned size, `VirtualDiskType: Expandable` —
    i.e. a sparse VHDX) but `ActualSizeInBytes: 306184192` (~292 MB), which is
