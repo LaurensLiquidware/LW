@@ -87,6 +87,116 @@ def test_result_page_shows_refresh_form(tmp_path):
     assert b"Refresh Vulnerabilities" in resp.data
 
 
+def test_result_page_omits_csv_link_when_no_vuln_matches(tmp_path):
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+
+    resp = client().post("/open", data={"dir_path": str(tmp_path)}, follow_redirects=True)
+
+    assert b"findings.csv" not in resp.data
+
+
+def test_result_page_shows_csv_link_when_vuln_matches_present(tmp_path):
+    import json as json_module
+
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+    vuln_matches = {
+        "generatedUtc": "2026-08-13T00:00:00Z", "package": {},
+        "components": [{
+            "relativePath": "a.jar", "identity": {"product": "a", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "GHSA-aaaa", "summary": "x", "severity": [], "severityLevel": "HIGH", "source": "osv"}],
+        }],
+    }
+    (tmp_path / "sample.vuln-matches.json").write_text(json_module.dumps(vuln_matches), encoding="utf-8")
+
+    resp = client().post("/open", data={"dir_path": str(tmp_path)}, follow_redirects=True)
+
+    assert b"findings.csv" in resp.data
+
+
+def test_download_open_findings_csv(tmp_path):
+    import json as json_module
+
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+    vuln_matches = {
+        "generatedUtc": "2026-08-13T00:00:00Z", "package": {},
+        "components": [{
+            "relativePath": "a.jar", "identity": {"product": "a", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "GHSA-aaaa", "summary": "x", "severity": [], "severityLevel": "HIGH", "source": "osv"}],
+        }],
+    }
+    (tmp_path / "sample.vuln-matches.json").write_text(json_module.dumps(vuln_matches), encoding="utf-8")
+    result = jobs.load_existing_result(tmp_path / "sample.inventory.json")
+    open_id = "abc123"
+    flask_app_module._OPENED[open_id] = result
+
+    resp = client().get(f"/download/open/{open_id}/findings_csv")
+
+    assert resp.status_code == 200
+    assert b"GHSA-aaaa" in resp.data
+
+
+def test_compare_form_get_renders_page():
+    resp = client().get("/compare")
+    assert resp.status_code == 200
+    assert b"Compare Two Scans" in resp.data
+
+
+def test_compare_missing_fields_returns_400():
+    resp = client().post("/compare", data={"old_dir": "", "new_dir": ""})
+    assert resp.status_code == 400
+    assert b"required" in resp.data
+
+
+def test_compare_bad_directory_returns_400(tmp_path):
+    resp = client().post("/compare", data={"old_dir": str(tmp_path / "nope"), "new_dir": str(tmp_path)})
+    assert resp.status_code == 400
+    assert b"not a directory" in resp.data
+
+
+def test_compare_success_shows_new_and_resolved_findings(tmp_path):
+    import json as json_module
+
+    old_dir = tmp_path / "old"
+    new_dir = tmp_path / "new"
+    old_dir.mkdir()
+    new_dir.mkdir()
+    shutil.copy(FIXTURE, old_dir / "sample.inventory.json")
+    shutil.copy(FIXTURE, new_dir / "sample.inventory.json")
+
+    def vuln_matches(vuln_id):
+        return {
+            "generatedUtc": "2026-08-13T00:00:00Z", "package": {},
+            "components": [{
+                "relativePath": "a.jar", "identity": {"product": "a", "version": "1.0"},
+                "confidence": "exact-purl",
+                "vulnerabilities": [{"id": vuln_id, "summary": "x", "severity": [], "severityLevel": "HIGH", "source": "osv"}],
+            }],
+        }
+
+    (old_dir / "sample.vuln-matches.json").write_text(json_module.dumps(vuln_matches("GHSA-old-only")), encoding="utf-8")
+    (new_dir / "sample.vuln-matches.json").write_text(json_module.dumps(vuln_matches("GHSA-new-only")), encoding="utf-8")
+
+    resp = client().post("/compare", data={"old_dir": str(old_dir), "new_dir": str(new_dir)})
+
+    assert resp.status_code == 200
+    assert b"GHSA-new-only" in resp.data
+    assert b"GHSA-old-only" in resp.data
+    assert b"New Findings (1)" in resp.data
+    assert b"Resolved Findings (1)" in resp.data
+
+
+def test_browse_old_dir_target_select_link_returns_to_compare(tmp_path):
+    resp = client().get("/browse", query_string={
+        "target": "old_dir", "return_to": "compare_form", "path": str(tmp_path),
+    })
+    html = resp.data.decode()
+
+    select_hrefs = [h for h in _hrefs(html) if h.startswith("/compare")]
+    assert select_hrefs, "expected a 'select this folder' link back to /compare"
+
+
 def test_scan_poll_unknown_job_404():
     resp = client().get("/scan/does-not-exist/poll")
     assert resp.status_code == 404

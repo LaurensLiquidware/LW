@@ -2,7 +2,14 @@ from pathlib import Path
 
 from flexapp_vuln.coverage import compute_coverage
 from flexapp_vuln.inventory import load_inventory
-from flexapp_vuln.reporting import build_finding_rows, render_coverage_report, render_findings, vulnerability_url
+from flexapp_vuln.reporting import (
+    build_finding_rows,
+    diff_finding_rows,
+    render_coverage_report,
+    render_findings,
+    render_findings_csv,
+    vulnerability_url,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample.inventory.json"
 
@@ -192,6 +199,70 @@ def test_render_findings_same_cve_different_versions_both_shown():
     assert report.count("[CVE-2020-13434]") == 2
     assert "3.15.2" in report
     assert "3.7.15" in report
+
+
+def test_render_findings_csv_has_header_and_one_row_per_finding():
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a.jar",
+            "identity": {"product": "a", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [
+                {"id": "CVE-2023-0001", "summary": "x", "severityLevel": "HIGH", "source": "nvd"}
+            ],
+        },
+    ]}
+    csv_text = render_findings_csv(vuln_matches)
+    lines = csv_text.strip().splitlines()
+
+    assert lines[0] == "Severity,ID,URL,Component,Version,Summary,Source,Confidence,Path"
+    assert len(lines) == 2
+    assert "CVE-2023-0001" in lines[1]
+    assert "https://nvd.nist.gov/vuln/detail/CVE-2023-0001" in lines[1]
+    assert "exact-purl" in lines[1]
+
+
+def test_render_findings_csv_empty_when_no_findings():
+    vuln_matches = {"components": [
+        {"relativePath": "a.jar", "identity": {"product": "a", "version": "1.0"},
+         "confidence": "exact-purl", "vulnerabilities": []}
+    ]}
+    csv_text = render_findings_csv(vuln_matches)
+    lines = csv_text.strip().splitlines()
+    assert len(lines) == 1  # header only
+
+
+def test_diff_finding_rows_detects_new_and_resolved():
+    old_rows = [
+        {"product": "a", "version": "1.0", "id": "CVE-2020-0001"},
+        {"product": "b", "version": "2.0", "id": "CVE-2020-0002"},
+    ]
+    new_rows = [
+        {"product": "b", "version": "2.0", "id": "CVE-2020-0002"},
+        {"product": "c", "version": "3.0", "id": "CVE-2020-0003"},
+    ]
+
+    diff = diff_finding_rows(old_rows, new_rows)
+
+    assert [r["id"] for r in diff["new_findings"]] == ["CVE-2020-0003"]
+    assert [r["id"] for r in diff["resolved_findings"]] == ["CVE-2020-0001"]
+    assert diff["unchanged_count"] == 1
+
+
+def test_diff_finding_rows_same_id_different_version_counts_as_both_changes():
+    old_rows = [{"product": "a", "version": "1.0", "id": "CVE-2020-0001"}]
+    new_rows = [{"product": "a", "version": "2.0", "id": "CVE-2020-0001"}]
+
+    diff = diff_finding_rows(old_rows, new_rows)
+
+    assert len(diff["new_findings"]) == 1
+    assert len(diff["resolved_findings"]) == 1
+    assert diff["unchanged_count"] == 0
+
+
+def test_diff_finding_rows_empty_inputs():
+    diff = diff_finding_rows([], [])
+    assert diff == {"new_findings": [], "resolved_findings": [], "unchanged_count": 0}
 
 
 def test_render_findings_sorts_by_severity_critical_first():

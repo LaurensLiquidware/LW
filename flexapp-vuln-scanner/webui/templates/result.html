@@ -10,6 +10,9 @@
     <a href="{{ url_for(download_route, id=download_id, kind='sbom') }}"><span class="material-icons">inventory_2</span>SBOM (CycloneDX)</a>
     <a href="{{ url_for(download_route, id=download_id, kind='coverage_report') }}"><span class="material-icons">summarize</span>coverage-report.md</a>
     <a href="{{ url_for(download_route, id=download_id, kind='findings') }}"><span class="material-icons">bug_report</span>findings.md</a>
+    {% if result.files.findings_csv %}
+    <a href="{{ url_for(download_route, id=download_id, kind='findings_csv') }}"><span class="material-icons">table_chart</span>findings.csv</a>
+    {% endif %}
   </div>
 
   <form method="post" action="{{ url_for('refresh_scan') }}" class="refresh-form">

@@ -1361,6 +1361,64 @@ a new pattern, not something to fix blind from this dev sandbox.
     stripe) and mid-Stage-2 (a real 42/103 determinate fill, ~41% width,
     correct label). All 113 `stage2-resolve` + 35 `webui` tests passing.
 
+14. **New, same day: the two feature ideas I'd floated (not requested at
+    the time) as answers to "any ideas what we could add?", later
+    explicitly asked for as a pair: CSV export of findings, and
+    scan-to-scan diffing.**
+
+    **CSV export**: `reporting.render_findings_csv()` reuses
+    `build_finding_rows()` (same dedup/sort as the Markdown and PDF
+    renderers, so all four output formats can never disagree) and emits
+    one flat table - confirmed and heuristic together, with a
+    `Confidence` column, since a spreadsheet is more useful filtered/
+    sorted by the reader than pre-split into two sheets. `write_reports()`
+    only writes `<package>.findings.csv` when there IS vuln-matches data
+    - a CSV can't spell out "no data supplied" in prose the way
+    `findings.md` does, so an absent file (and no link on the results
+    page) is what keeps that honest rather than looking like "zero
+    vulnerabilities found."
+
+    **Scan-to-scan diffing**: `reporting.diff_finding_rows(old_rows,
+    new_rows)` takes two already-flattened row lists (the same
+    `confirmed_rows + heuristic_rows` the results page already builds -
+    no new data shape needed) and matches by `(product, version, id)`
+    rather than `build_finding_rows`' internal purl/cpe dedup key,
+    because two scans of the same real-world component can resolve
+    through a different confidence path (e.g. a CPE mapping added
+    between runs) without that being a meaningful "this changed."
+    `jobs.load_diff(old_dir, new_dir)` requires each directory to hold
+    exactly one `*.inventory.json` (raises `DiffError` otherwise - not a
+    directory, none found, or more than one - pointing at "Open an
+    Existing Scan Output Folder" for the multi-package case instead),
+    reuses `load_existing_result()` for each side, then diffs their rows.
+
+    New `/compare` route (GET renders the picker form, POST runs the
+    diff) needed the `/browse` file-picker's field-carrying mechanism
+    generalized first - it was hardcoded to index.html's exact 3 fields
+    (`package_path`/`output_dir`/`dir_path`) and always sent a
+    selection back to `index`. Widened `_BROWSE_TARGETS` to include
+    `old_dir`/`new_dir`, replaced the fixed-arity `_prefill()` with a
+    dict comprehension over whatever fields exist, and added a
+    whitelisted `return_to` query param (`index` or `compare_form` -
+    not an arbitrary endpoint name from user input) so the same route
+    now serves both pages' pickers without a parallel copy.
+
+    Verified with 16 new tests (`reporting.py`: CSV header/rows, empty-
+    findings CSV is header-only, diff detects new/resolved/unchanged,
+    same id at a different version counts as both a resolution and a
+    new finding, empty-input diff; `jobs.py`: CSV written only when
+    vuln-matches exist, `load_diff` end-to-end plus its three `DiffError`
+    paths; `app.py`: CSV download, the compare form's GET/POST/error
+    paths, a real diff through the HTTP layer, the generalized browse
+    picker's select-link routing back to `/compare`) plus end-to-end
+    with a headless browser against a running dev server: the compare
+    form, a real diff between two fabricated old/new scan pairs (1 new
+    CRITICAL finding, 1 resolved MEDIUM finding, coverage 66.7% → 66.7%,
+    1 unchanged finding correctly excluded from both tables), and
+    downloading the real `findings.csv` this diff's "newer" scan
+    produced and checking its contents match. All 118 `stage2-resolve` +
+    49 `webui` tests passing.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

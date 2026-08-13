@@ -174,6 +174,39 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- `findings.csv`: a plain CSV export of every finding row (confirmed and
+  heuristic combined, with a `Confidence` column so a spreadsheet reader
+  can filter/sort by it) alongside the existing sbom/coverage/findings/
+  PDF outputs. New `reporting.render_findings_csv()`, wired into
+  `write_reports()` - only written (and only linked from the results
+  page) when there's actual vuln-matches data, since a CSV has no way to
+  spell out "no data supplied" in prose the way `findings.md` does, and
+  an absent file is how that stays honest.
+
+- Web UI: "Compare Two Scans" - diffs two single-package scan output
+  folders (e.g. the same package scanned a month apart), reporting which
+  findings are new, which were resolved, and how many are unchanged.
+  New `reporting.diff_finding_rows()` matches findings across the two
+  scans by (product, version, vulnerability id) - not the internal purl/
+  cpe dedup key `build_finding_rows` uses, since a CPE mapping added
+  between runs shouldn't make an otherwise-identical finding look like
+  a new one. New `jobs.load_diff()`/`DiffError` (a directory that isn't
+  a single-scan folder - not a directory, no inventory, or more than
+  one - fails with a plain message, not a traceback) and a `/compare`
+  GET+POST route. Generalized the `/browse` file-picker's field-carrying
+  mechanism (previously hardcoded to `index.html`'s 3 fields) to a
+  configurable field set plus a whitelisted `return_to` endpoint, so the
+  same browse route now also serves `compare.html`'s 2 directory pickers
+  without duplicating it.
+
+  16 new tests across `stage2-resolve` and `webui`; verified end-to-end
+  with a headless browser against a running dev server - the compare
+  form, a real diff between two fabricated old/new scan pairs (1 new
+  CRITICAL finding, 1 resolved MEDIUM finding, coverage comparison), the
+  browse picker's "select folder" link correctly routing back to
+  `/compare`, and downloading a real `findings.csv` and checking its
+  contents.
+
 - Web UI: a real progress bar on the scan/refresh progress page, instead
   of just a status badge and a raw log. Stage 1 (VHDX mount + inventory
   build) and the moment Stage 2 first loads the inventory show an

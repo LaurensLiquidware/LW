@@ -52,7 +52,15 @@ _BROWSE_TARGETS = {
     "package_path": "file",
     "output_dir": "dir",
     "dir_path": "dir",
+    "old_dir": "dir",
+    "new_dir": "dir",
 }
+
+# Every /browse link needs to know which page to send a final selection back
+# to - index.html's 3 fields and compare.html's 2 fields are different pages
+# sharing one browse route. Whitelisted rather than taking an arbitrary
+# endpoint name from a query param.
+_BROWSE_RETURN_ENDPOINTS = {"index", "compare_form"}
 
 # Ephemeral store for "open an existing output directory" results, keyed by a
 # random id so download links never carry a raw filesystem path from the
@@ -64,12 +72,13 @@ _DOWNLOAD_KINDS = {
     "sbom": "sbom.cdx.json",
     "coverage_report": "coverage-report.md",
     "findings": "findings.md",
+    "findings_csv": "findings.csv",
     "pdf": "report.pdf",
 }
 
 
-def _prefill(package_path: str = "", output_dir: str = "", dir_path: str = "") -> dict[str, str]:
-    return {"package_path": package_path, "output_dir": output_dir, "dir_path": dir_path}
+def _prefill(**kwargs: str) -> dict[str, str]:
+    return {field: kwargs.get(field, "") for field in _BROWSE_TARGETS}
 
 
 @app.route("/")
@@ -89,24 +98,24 @@ def browse_fs():
         abort(400)
     mode = _BROWSE_TARGETS[target]
 
-    # The other two path fields' current values, carried through every link
-    # on this page (drives/up/subfolder navigation) so browsing for one
-    # field never clobbers what you already picked for the others - only
-    # the final "select this folder"/file link overwrites `target`'s value.
-    carry = _prefill(
-        package_path=request.args.get("package_path", ""),
-        output_dir=request.args.get("output_dir", ""),
-        dir_path=request.args.get("dir_path", ""),
-    )
+    return_to = request.args.get("return_to", "index")
+    if return_to not in _BROWSE_RETURN_ENDPOINTS:
+        return_to = "index"
+
+    # Every other path field's current value, carried through every link on
+    # this page (drives/up/subfolder navigation) so browsing for one field
+    # never clobbers what you already picked for the others - only the
+    # final "select this folder"/file link overwrites `target`'s value.
+    carry = {field: request.args.get(field, "") for field in _BROWSE_TARGETS}
 
     def nav_url(path: str | None = None) -> str:
-        args = dict(carry, target=target)
+        args = dict(carry, target=target, return_to=return_to)
         if path is not None:
             args["path"] = path
         return url_for("browse_fs", **args)
 
     def select_url(chosen_path: str) -> str:
-        return url_for("index", **dict(carry, **{target: chosen_path}))
+        return url_for(return_to, **dict(carry, **{target: chosen_path}))
 
     raw_path = request.args.get("path", "").strip()
     if not raw_path and paths.REPO_ROOT.is_dir():
@@ -270,6 +279,33 @@ def download_open(id: str, kind: str):
     if not path.is_file():
         abort(404)
     return send_file(path, as_attachment=True)
+
+
+@app.route("/compare", methods=["GET", "POST"])
+def compare_form():
+    if request.method == "GET":
+        prefill = _prefill(
+            old_dir=request.args.get("old_dir", ""),
+            new_dir=request.args.get("new_dir", ""),
+        )
+        return render_template("compare.html", prefill=prefill)
+
+    old_dir_raw = request.form.get("old_dir", "").strip()
+    new_dir_raw = request.form.get("new_dir", "").strip()
+    prefill = _prefill(old_dir=old_dir_raw, new_dir=new_dir_raw)
+
+    if not old_dir_raw or not new_dir_raw:
+        return render_template(
+            "compare.html", prefill=prefill,
+            compare_error="Both an older and a newer scan output directory are required.",
+        ), 400
+
+    try:
+        diff = jobs.load_diff(Path(old_dir_raw), Path(new_dir_raw))
+    except jobs.DiffError as exc:
+        return render_template("compare.html", prefill=prefill, compare_error=str(exc)), 400
+
+    return render_template("compare_result.html", diff=diff)
 
 
 if __name__ == "__main__":

@@ -150,3 +150,113 @@ def test_load_existing_result_splits_confirmed_and_heuristic(tmp_path):
 
     pdf_path = Path(result["files"]["pdf"])
     assert pdf_path.read_bytes().startswith(b"%PDF-")
+
+
+def test_load_existing_result_writes_findings_csv_when_vuln_matches_present(tmp_path):
+    inventory_path = tmp_path / "sample.inventory.json"
+    shutil.copy(FIXTURE, inventory_path)
+    vuln_matches = {
+        "generatedUtc": "2026-08-13T00:00:00Z",
+        "package": {},
+        "components": [
+            {
+                "relativePath": "a.jar",
+                "identity": {"product": "a", "version": "1.0"},
+                "confidence": "exact-purl",
+                "vulnerabilities": [
+                    {"id": "GHSA-aaaa", "summary": "Bad", "severity": [], "severityLevel": "HIGH", "source": "osv"}
+                ],
+            },
+        ],
+    }
+    (tmp_path / "sample.vuln-matches.json").write_text(json.dumps(vuln_matches), encoding="utf-8")
+
+    result = jobs.load_existing_result(inventory_path)
+
+    csv_path = Path(result["files"]["findings_csv"])
+    assert csv_path.is_file()
+    assert "GHSA-aaaa" in csv_path.read_text(encoding="utf-8")
+
+
+def test_load_existing_result_no_findings_csv_when_no_vuln_matches(tmp_path):
+    inventory_path = tmp_path / "sample.inventory.json"
+    shutil.copy(FIXTURE, inventory_path)
+
+    result = jobs.load_existing_result(inventory_path)
+
+    assert "findings_csv" not in result["files"]
+
+
+def _write_vuln_matches(tmp_path, filename, vuln_ids):
+    vuln_matches = {
+        "generatedUtc": "2026-08-13T00:00:00Z",
+        "package": {},
+        "components": [
+            {
+                "relativePath": f"a-{i}.jar",
+                "identity": {"product": "a", "version": "1.0"},
+                "confidence": "exact-purl",
+                "vulnerabilities": [
+                    {"id": vuln_id, "summary": "x", "severity": [], "severityLevel": "HIGH", "source": "osv"}
+                ],
+            }
+            for i, vuln_id in enumerate(vuln_ids)
+        ],
+    }
+    (tmp_path / filename).write_text(json.dumps(vuln_matches), encoding="utf-8")
+
+
+def test_load_diff_reports_new_and_resolved_findings(tmp_path):
+    old_dir = tmp_path / "old"
+    new_dir = tmp_path / "new"
+    old_dir.mkdir()
+    new_dir.mkdir()
+    shutil.copy(FIXTURE, old_dir / "sample.inventory.json")
+    shutil.copy(FIXTURE, new_dir / "sample.inventory.json")
+    _write_vuln_matches(old_dir, "sample.vuln-matches.json", ["GHSA-old-only"])
+    _write_vuln_matches(new_dir, "sample.vuln-matches.json", ["GHSA-new-only"])
+
+    diff = jobs.load_diff(old_dir, new_dir)
+
+    assert [r["id"] for r in diff["new_findings"]] == ["GHSA-new-only"]
+    assert [r["id"] for r in diff["resolved_findings"]] == ["GHSA-old-only"]
+    assert diff["unchanged_count"] == 0
+    assert diff["old"]["package_name"] == diff["new"]["package_name"]
+
+
+def test_load_diff_raises_for_non_directory(tmp_path):
+    try:
+        jobs.load_diff(tmp_path / "nope", tmp_path)
+        assert False, "expected DiffError"
+    except jobs.DiffError as exc:
+        assert "not a directory" in str(exc)
+
+
+def test_load_diff_raises_for_no_inventory(tmp_path):
+    old_dir = tmp_path / "old"
+    new_dir = tmp_path / "new"
+    old_dir.mkdir()
+    new_dir.mkdir()
+    shutil.copy(FIXTURE, old_dir / "sample.inventory.json")
+
+    try:
+        jobs.load_diff(old_dir, new_dir)
+        assert False, "expected DiffError"
+    except jobs.DiffError as exc:
+        assert "No *.inventory.json" in str(exc)
+
+
+def test_load_diff_raises_for_multiple_inventories(tmp_path):
+    old_dir = tmp_path / "old"
+    new_dir = tmp_path / "new"
+    old_dir.mkdir()
+    new_dir.mkdir()
+    shutil.copy(FIXTURE, old_dir / "a.inventory.json")
+    shutil.copy(FIXTURE, old_dir / "b.inventory.json")
+    shutil.copy(FIXTURE, new_dir / "sample.inventory.json")
+
+    try:
+        jobs.load_diff(old_dir, new_dir)
+        assert False, "expected DiffError"
+    except jobs.DiffError as exc:
+        assert "more than one" in str(exc)

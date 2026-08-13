@@ -29,7 +29,13 @@ from flexapp_vuln.coverage import compute_coverage
 from flexapp_vuln.cpe_mappings import CpeMappings
 from flexapp_vuln.inventory import load_inventory
 from flexapp_vuln.pdf_report import render_pdf_report
-from flexapp_vuln.reporting import build_finding_rows, render_coverage_report, render_findings
+from flexapp_vuln.reporting import (
+    build_finding_rows,
+    diff_finding_rows,
+    render_coverage_report,
+    render_findings,
+    render_findings_csv,
+)
 from flexapp_vuln.sbom import build_sbom
 
 STAGE1_SCRIPT = paths.STAGE1_DIR / "Invoke-FlexAppInventory.ps1"
@@ -221,6 +227,15 @@ def write_reports(
     coverage_path.write_text(coverage_md, encoding="utf-8")
     findings_path.write_text(findings_md, encoding="utf-8")
 
+    # Only written when there IS vuln-matches data - unlike findings.md,
+    # a CSV has no way to spell out "no data supplied" in prose, so an
+    # absent file (rather than an empty-looking one) is what disambiguates
+    # that from "zero vulnerabilities found."
+    findings_csv_path = None
+    if vuln_matches is not None:
+        findings_csv_path = out_dir / f"{out_base}.findings.csv"
+        findings_csv_path.write_text(render_findings_csv(vuln_matches), encoding="utf-8")
+
     package = inventory.get("package", {})
     package_meta = {**package, **(package.get("flexAppXml") or {})}
     render_pdf_report(
@@ -229,7 +244,10 @@ def write_reports(
     )
 
     if job is not None:
-        for path in (sbom_path, coverage_path, findings_path, pdf_path):
+        written = (sbom_path, coverage_path, findings_path, pdf_path)
+        if findings_csv_path is not None:
+            written += (findings_csv_path,)
+        for path in written:
             job.append_log(f"Wrote {path}")
 
     all_rows = build_finding_rows(vuln_matches) if vuln_matches is not None else []
@@ -249,6 +267,7 @@ def write_reports(
             "coverage_report": str(coverage_path),
             "findings": str(findings_path),
             "pdf": str(pdf_path),
+            **({"findings_csv": str(findings_csv_path)} if findings_csv_path is not None else {}),
         },
     }
     if job is not None:
@@ -272,3 +291,51 @@ def load_existing_result(inventory_path: Path) -> dict[str, Any]:
         vuln_matches = json.loads(vuln_matches_path.read_text(encoding="utf-8"))
 
     return write_reports(None, inventory, inventory_path, vuln_matches, out_dir, out_base)
+
+
+class DiffError(Exception):
+    """A directory given to load_diff() can't be compared - not a
+    directory, no inventory in it, or more than one (ambiguous which
+    package to compare). Surfaced to the UI as a plain error message,
+    not a traceback.
+    """
+
+
+def _find_single_inventory(dir_path: Path) -> Path:
+    if not dir_path.is_dir():
+        raise DiffError(f"'{dir_path}' is not a directory.")
+
+    inventory_files = sorted(dir_path.glob("*.inventory.json"))
+    if not inventory_files:
+        raise DiffError(f"No *.inventory.json file found directly under '{dir_path}'.")
+    if len(inventory_files) > 1:
+        raise DiffError(
+            f"'{dir_path}' contains more than one *.inventory.json - comparison needs "
+            "a single-scan folder. Use \"Open an Existing Scan Output Folder\" instead "
+            "for a directory holding more than one package's scan."
+        )
+    return inventory_files[0]
+
+
+def load_diff(old_dir: Path, new_dir: Path) -> dict[str, Any]:
+    """Compares two single-package scan output directories: which findings
+    are new in `new_dir` that weren't in `old_dir`, which were resolved
+    (present in `old_dir`, gone in `new_dir`), and how many are unchanged.
+    Raises DiffError if either directory isn't a comparable single-scan
+    folder.
+    """
+    old_inventory_path = _find_single_inventory(old_dir)
+    new_inventory_path = _find_single_inventory(new_dir)
+
+    old_result = load_existing_result(old_inventory_path)
+    new_result = load_existing_result(new_inventory_path)
+
+    old_rows = old_result["confirmed_rows"] + old_result["heuristic_rows"]
+    new_rows = new_result["confirmed_rows"] + new_result["heuristic_rows"]
+    finding_diff = diff_finding_rows(old_rows, new_rows)
+
+    return {
+        "old": old_result,
+        "new": new_result,
+        **finding_diff,
+    }

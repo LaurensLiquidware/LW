@@ -10,6 +10,8 @@ vulnerabilities found."
 
 from __future__ import annotations
 
+import csv
+import io
 from typing import Any
 
 _SEVERITY_RANK = {
@@ -134,6 +136,57 @@ def build_finding_rows(vuln_matches: dict[str, Any]) -> list[dict[str, Any]]:
     rows = list(rows_by_key.values())
     rows.sort(key=lambda r: (_severity_rank(r["severityLevel"]), r["id"] or ""))
     return rows
+
+
+_CSV_FIELDS = ["severityLevel", "id", "url", "product", "version", "summary", "source", "confidence", "relativePath"]
+_CSV_HEADER = ["Severity", "ID", "URL", "Component", "Version", "Summary", "Source", "Confidence", "Path"]
+
+
+def render_findings_csv(vuln_matches: dict[str, Any]) -> str:
+    """CSV of every finding row - both confirmed and heuristic, in one
+    table with a Confidence column, since a spreadsheet is more useful
+    filtered/sorted by the reader than pre-split into two sheets. Only
+    called when there IS vuln-matches data (see write_reports) - unlike
+    render_findings, this has no way to write an explanatory sentence
+    for the "no data supplied" case, so callers must not confuse an
+    absent file with "zero vulnerabilities found."
+    """
+    rows = build_finding_rows(vuln_matches)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(_CSV_HEADER)
+    for r in rows:
+        writer.writerow([r.get(field) or "" for field in _CSV_FIELDS])
+    return buf.getvalue()
+
+
+def diff_finding_rows(
+    old_rows: list[dict[str, Any]], new_rows: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Compares two scans' already-flattened finding rows (build_finding_rows'
+    output, confirmed + heuristic combined) and reports what changed.
+    Matched by (product, version, vulnerability id) - not the internal
+    purl/cpe dedup key build_finding_rows uses internally, since two scans
+    of the "same" package can resolve a component via a different purl/cpe
+    confidence path (e.g. a CPE mapping added between runs) while still
+    being the same real-world component+CVE pairing a human would want
+    treated as unchanged.
+    """
+    def key(r: dict[str, Any]) -> tuple[Any, Any, Any]:
+        return (r["product"], r["version"], r["id"])
+
+    old_keys = {key(r) for r in old_rows}
+    new_keys = {key(r) for r in new_rows}
+
+    new_findings = [r for r in new_rows if key(r) not in old_keys]
+    resolved_findings = [r for r in old_rows if key(r) not in new_keys]
+    unchanged_count = sum(1 for r in new_rows if key(r) in old_keys)
+
+    return {
+        "new_findings": new_findings,
+        "resolved_findings": resolved_findings,
+        "unchanged_count": unchanged_count,
+    }
 
 
 def render_findings(vuln_matches: dict[str, Any] | None, package_name: str) -> str:

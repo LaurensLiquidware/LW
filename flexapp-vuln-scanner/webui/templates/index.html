@@ -67,6 +67,17 @@
 </section>
 
 <section class="panel">
+  <h2>Compare Two Scans</h2>
+  <p class="hint">
+    Diffs two single-package scan output folders (e.g. the same package
+    scanned a month apart) - which vulnerabilities are new, which were
+    resolved, and how many are unchanged. Each folder needs exactly one
+    <code>*.inventory.json</code> in it.
+  </p>
+  <a href="{{ url_for('compare_form') }}">Compare Two Scans →</a>
+</section>
+
+<section class="panel">
   <h2>Scans Run This Session</h2>
   {% if jobs %}
     <table>
