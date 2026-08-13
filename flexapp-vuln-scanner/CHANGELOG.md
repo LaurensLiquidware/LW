@@ -135,6 +135,12 @@ end-to-end run against a real package justifies cutting a version.
   JSON that none of the 126 newly-excluded files had ever had a resolved
   identity - moved that package's honest resolution coverage from 70.6%
   to **98.7%**.
+- `ExclusionRules.psd1`: added `dotnet-runtimeconfig` (`*.runtimeconfig.json`
+  - pure .NET runtime target-framework config, never a component). Moved
+  that package's coverage from 98.7% to 99.0% (312/315). Deliberately did
+  NOT exclude the sibling `*.deps.json` - see PLAN.md's new "candidate
+  follow-up" section: it's a real dependency lockfile worth parsing for
+  identity resolution, not noise to discard.
 - `cpe-mappings.yaml`: added a second `curl` mapping entry for
   `"The curl library"` - curl.dll's actual Win32 `ProductName` (confirmed
   live), distinct from the string-signature path's `"libcurl"` label.

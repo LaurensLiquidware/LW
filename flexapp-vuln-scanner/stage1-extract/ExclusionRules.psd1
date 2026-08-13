@@ -38,7 +38,14 @@
         # license/readme text (AvifFileType, DDSFileTypePlus, JpegXLFileType,
         # WebPFileType) plus the app's own root License.txt - documentation,
         # not components.
-        @{ Reason = 'readme-license-text'; Patterns = @('License.txt', 'Readme.txt', 'Third Party Notices.txt', 'VERIFICATION.txt') }
+        @{ Reason = 'readme-license-text'; Patterns = @('License.txt', 'Readme.txt', 'Third Party Notices.txt', 'VERIFICATION.txt') },
+        # Added 2026-08-13, same Paint.NET scan: pure .NET runtime
+        # target-framework config (rollForward policy, framework version) -
+        # never a component. Deliberately NOT excluding the sibling
+        # *.deps.json here - that one is a real dependency lockfile (exact
+        # NuGet package name + version pairs) worth parsing for identity
+        # resolution rather than discarding as noise; see PLAN.md.
+        @{ Reason = 'dotnet-runtimeconfig'; Patterns = @('*.runtimeconfig.json') }
     )
 
     ExtensionRules = @(

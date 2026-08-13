@@ -117,6 +117,12 @@ the VHDX too. Added `package-manager-path`, `dotnet-xmldoc-file`
 126 newly-excluded files had ever had a resolved identity. Moved that
 package's honest resolution coverage from 70.6% to 98.7%.
 
+Also added `dotnet-runtimeconfig` (`*.runtimeconfig.json`), moving that
+package to 99.0% (312/315). The sibling `*.deps.json` is deliberately
+still unresolved rather than excluded - it's a real NuGet dependency
+lockfile worth parsing for identity resolution, not noise (see
+`../PLAN.md`'s "candidate follow-up" section - not yet implemented).
+
 ## Known limitations at this stage
 
 - Directory input is non-recursive (top-level packages only).

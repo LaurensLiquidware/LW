@@ -631,6 +631,35 @@ At each pause I'll show what was built plus any real output from local
 tests (synthetic fixtures where I can't run against Windows/real packages
 directly from this environment), before moving to the next stage.
 
+6. **Candidate follow-up, not started: parse `*.deps.json` for exact
+   dependency identities.** Surfaced by the Paint.NET live test - after
+   the exclusion-rule additions above, `paintdotnet.deps.json` is one of
+   only 4 files left unresolved on that package, currently discarded as
+   noise (`dotnet-runtimeconfig`'s sibling). It shouldn't be: a .NET
+   Core/5+ `.deps.json` is a real dependency lockfile - it lists every
+   NuGet package name and exact resolved version the app was actually
+   built against, in a `.libraries` section keyed
+   `"<PackageName>/<Version>"`. That's the same shape of "highest
+   confidence available" signal `jar-pom-properties` already provides for
+   Java fat jars, and it would give exact identities for managed
+   dependencies that only show up today as a single top-level assembly's
+   `dotnet-manifest` result (or not at all, if the dependency is IL-linked/
+   trimmed away and its DLL never shipped, but its `.deps.json` entry
+   still names it).
+
+   Scoped design, not yet implemented: a new `Get-DepsJsonIdentities`
+   function (new `DepsJson.psm1` module, same shape as
+   `NodeAsar.psm1`/`PythonDist.psm1`) parsing `.libraries` into one
+   synthetic component per entry (skip the `type: "project"` entry for the
+   app itself), dispatched in `Resolve-VersionIdentity.ps1` alongside the
+   existing `package.json`/`METADATA` special-cased filenames. Would need
+   a purl mapping in `stage2-resolve/normalize.py` too (NuGet packages are
+   `pkg:nuget/<name>@<version>`, not currently an OSV-supported ecosystem
+   this pipeline maps to - would need checking OSV's NuGet ecosystem
+   support before assuming it resolves there). Not started - flagging the
+   design here rather than guessing at NuGet-ecosystem OSV support without
+   verifying it first.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or
