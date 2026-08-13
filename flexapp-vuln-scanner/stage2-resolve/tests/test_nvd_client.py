@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+import requests
 
 from flexapp_vuln.nvd_client import NVDClient
 
@@ -86,6 +87,50 @@ def test_query_cpe_404_is_cached(tmp_path, session, clock):
     client.query_cpe("cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
 
     assert session.get.call_count == 1
+
+
+def test_query_cpe_429_retries_and_succeeds(tmp_path, session, clock):
+    # A 429 is a recoverable rate-limit signal (e.g. from a prior process's
+    # requests still counted server-side) - must retry, not raise.
+    client = make_client(tmp_path, session, clock)
+    rate_limited = MagicMock()
+    rate_limited.status_code = 429
+    rate_limited.headers = {}
+    ok = _mock_response({"vulnerabilities": []})
+    session.get.side_effect = [rate_limited, ok]
+
+    result = client.query_cpe("cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*")
+
+    assert result == {"vulnerabilities": []}
+    assert session.get.call_count == 2
+    assert clock.t > 0.0  # backed off before retrying
+
+
+def test_query_cpe_429_honors_retry_after_header(tmp_path, session, clock):
+    client = make_client(tmp_path, session, clock)
+    rate_limited = MagicMock()
+    rate_limited.status_code = 429
+    rate_limited.headers = {"Retry-After": "5"}
+    ok = _mock_response({"vulnerabilities": []})
+    session.get.side_effect = [rate_limited, ok]
+
+    client.query_cpe("cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*")
+
+    assert clock.t == pytest.approx(5.0)
+
+
+def test_query_cpe_429_gives_up_after_max_retries(tmp_path, session, clock):
+    client = make_client(tmp_path, session, clock)
+    rate_limited = MagicMock()
+    rate_limited.status_code = 429
+    rate_limited.headers = {}
+    rate_limited.raise_for_status.side_effect = requests.HTTPError(
+        "429 Client Error: Too Many Requests", response=rate_limited
+    )
+    session.get.return_value = rate_limited
+
+    with pytest.raises(requests.HTTPError):
+        client.query_cpe("cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*")
 
 
 def test_no_api_key_sends_no_header(tmp_path, session, clock):

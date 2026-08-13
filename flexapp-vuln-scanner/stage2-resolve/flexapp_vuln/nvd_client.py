@@ -32,6 +32,7 @@ _DEFAULT_BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 _NO_KEY_LIMIT = 5
 _WITH_KEY_LIMIT = 50
 _WINDOW_SECONDS = 30.0
+_MAX_429_RETRIES = 5
 
 
 def _cache_key(text: str) -> str:
@@ -99,29 +100,45 @@ class NVDClient:
         if cached is not None:
             return cached
 
-        self._throttle()
-
         headers = {"apiKey": self.api_key} if self.api_key else {}
-        response = self.session.get(
-            self.base_url,
-            params={"cpeName": cpe23},
-            headers=headers,
-            timeout=self.timeout,
-        )
-        if response.status_code == 404:
-            # Documented NVD 2.0 API behavior: a cpeName with no matching
-            # entry in NVD's CPE dictionary returns 404, not an empty 200
-            # result. That's a real "no CVEs known for this CPE" answer, not
-            # a connectivity failure - must not be conflated with the
-            # RequestException handling in cli.py that reports unreachable
-            # hosts, or every non-matching CPE would wrongly abort the run.
-            data: dict[str, Any] = {"vulnerabilities": []}
+
+        for attempt in range(_MAX_429_RETRIES + 1):
+            self._throttle()
+            response = self.session.get(
+                self.base_url,
+                params={"cpeName": cpe23},
+                headers=headers,
+                timeout=self.timeout,
+            )
+            if response.status_code == 404:
+                # Documented NVD 2.0 API behavior: a cpeName with no matching
+                # entry in NVD's CPE dictionary returns 404, not an empty 200
+                # result. That's a real "no CVEs known for this CPE" answer,
+                # not a connectivity failure - must not be conflated with the
+                # RequestException handling in cli.py that reports
+                # unreachable hosts, or every non-matching CPE would wrongly
+                # abort the run.
+                data: dict[str, Any] = {"vulnerabilities": []}
+                self._write_cache(cpe23, data)
+                return data
+            if response.status_code == 429:
+                # The sliding-window throttle above only tracks requests made
+                # by this process - it has no memory of a previous CLI
+                # invocation's requests, so a fresh process can walk straight
+                # into a rate-limit window NVD is still enforcing server-side
+                # (hit live: re-running `resolve` shortly after a prior run).
+                # A 429 is a real, recoverable rate-limit signal, not a dead
+                # host - retry with backoff instead of aborting the batch.
+                if attempt == _MAX_429_RETRIES:
+                    response.raise_for_status()
+                retry_after = response.headers.get("Retry-After")
+                wait = float(retry_after) if retry_after else _WINDOW_SECONDS
+                self._sleep(wait)
+                continue
+            response.raise_for_status()
+            data = response.json()
             self._write_cache(cpe23, data)
             return data
-        response.raise_for_status()
-        data = response.json()
-        self._write_cache(cpe23, data)
-        return data
 
     @staticmethod
     def extract_cves(nvd_response: dict[str, Any]) -> list[dict[str, Any]]:

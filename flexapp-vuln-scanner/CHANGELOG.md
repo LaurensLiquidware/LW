@@ -77,6 +77,15 @@ end-to-end run against a real package justifies cutting a version.
   CVEs known for this CPE" (`{"vulnerabilities": []}`, cached like any
   other result), leaving genuine connectivity failures (timeouts, DNS
   errors, 5xx) still raised and reported as unreachable.
+- `nvd_client.py` (`NVDClient.query_cpe`): a 429 (Too Many Requests) also
+  aborted the whole `resolve` run as if the host were unreachable - hit
+  live by re-running `resolve` shortly after a prior invocation, since the
+  sliding-window rate limiter only tracks requests made within the current
+  process and has no memory of a previous run's requests still counted
+  against NVD's server-side window. A 429 is a real, recoverable
+  rate-limit signal, not a dead host. Fixed with retry-with-backoff (up to
+  5 attempts, honoring a `Retry-After` header when NVD sends one,
+  otherwise waiting the full 30s window) before giving up.
 
 ### Added
 
