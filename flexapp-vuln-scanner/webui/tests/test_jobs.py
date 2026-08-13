@@ -1,5 +1,6 @@
 import json
 import shutil
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,6 +18,50 @@ def test_run_stage1_missing_script_raises():
         except RuntimeError as exc:
             assert "not found" in str(exc)
     assert fake_job.status == "stage1"
+
+
+def test_run_refresh_job_skips_stage1_and_writes_reports(tmp_path):
+    inventory_path = tmp_path / "sample.inventory.json"
+    shutil.copy(FIXTURE, inventory_path)
+    fake_job = jobs.ScanJob(id="x", package_path="(refresh) unused", output_dir=str(tmp_path))
+
+    with patch.object(jobs, "resolve_vuln_matches", return_value={"generatedUtc": "2026-08-13T00:00:00Z", "package": {}, "components": []}) as mock_resolve:
+        jobs._run_refresh_job(fake_job, inventory_path, None)
+
+    mock_resolve.assert_called_once()
+    assert fake_job.status == "done"
+    assert fake_job.error is None
+    assert fake_job.result is not None
+    assert fake_job.result["has_vuln_matches"] is True
+    assert any("Stage 1 not re-run" in line for line in fake_job.log)
+
+
+def test_run_refresh_job_surfaces_errors(tmp_path):
+    inventory_path = tmp_path / "sample.inventory.json"
+    shutil.copy(FIXTURE, inventory_path)
+    fake_job = jobs.ScanJob(id="x", package_path="(refresh) unused", output_dir=str(tmp_path))
+
+    with patch.object(jobs, "resolve_vuln_matches", side_effect=RuntimeError("boom")):
+        jobs._run_refresh_job(fake_job, inventory_path, None)
+
+    assert fake_job.status == "error"
+    assert fake_job.error == "boom"
+
+
+def test_start_refresh_runs_in_background_and_completes(tmp_path):
+    inventory_path = tmp_path / "sample.inventory.json"
+    shutil.copy(FIXTURE, inventory_path)
+
+    with patch.object(jobs, "resolve_vuln_matches", return_value=None):
+        job = jobs.start_refresh(str(inventory_path), str(tmp_path))
+
+        # Poll briefly for the background thread to finish rather than assuming timing.
+        deadline = time.time() + 5
+        while job.status not in ("done", "error") and time.time() < deadline:
+            time.sleep(0.05)
+
+    assert job.status == "done"
+    assert job.result is not None
 
 
 def test_load_existing_result_no_vuln_matches(tmp_path):

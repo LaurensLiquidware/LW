@@ -95,6 +95,29 @@ def _run_job(job: ScanJob, nvd_api_key: str | None) -> None:
         job.append_log(f"ERROR: {exc}")
 
 
+def start_refresh(inventory_path: str, output_dir: str, *, nvd_api_key: str | None = None) -> ScanJob:
+    """Re-runs just the OSV/NVD matching + report step against an inventory
+    JSON a scan already produced - no Stage 1 VHDX re-mount needed. NVD/OSV
+    data changes daily, so this is the way to pick up newly-published CVEs
+    against a package without re-scanning it from scratch.
+    """
+    job = REGISTRY.create(f"(refresh) {inventory_path}", output_dir)
+    thread = threading.Thread(target=_run_refresh_job, args=(job, Path(inventory_path), nvd_api_key), daemon=True)
+    thread.start()
+    return job
+
+
+def _run_refresh_job(job: ScanJob, inventory_path: Path, nvd_api_key: str | None) -> None:
+    try:
+        job.append_log(f"Refreshing vulnerability matches for {inventory_path} (Stage 1 not re-run)")
+        _run_stage2(job, inventory_path, nvd_api_key)
+        job.status = "done"
+    except Exception as exc:  # noqa: BLE001 - surfaced to the UI, never swallowed
+        job.status = "error"
+        job.error = str(exc)
+        job.append_log(f"ERROR: {exc}")
+
+
 def _run_stage1(job: ScanJob) -> Path:
     job.status = "stage1"
     if not STAGE1_SCRIPT.exists():

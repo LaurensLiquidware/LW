@@ -59,6 +59,34 @@ def test_scan_status_unknown_job_404():
     assert resp.status_code == 404
 
 
+def test_refresh_missing_fields_returns_400():
+    resp = client().post("/refresh", data={"inventory_path": "", "output_dir": ""})
+    assert resp.status_code == 400
+
+
+def test_refresh_redirects_to_scan_status(tmp_path, monkeypatch):
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+    monkeypatch.setattr(jobs, "resolve_vuln_matches", lambda *a, **kw: None)
+
+    resp = client().post("/refresh", data={
+        "inventory_path": str(tmp_path / "sample.inventory.json"),
+        "output_dir": str(tmp_path),
+    })
+
+    assert resp.status_code == 302
+    assert "/scan/" in resp.headers["Location"]
+
+
+def test_result_page_shows_refresh_form(tmp_path):
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+
+    resp = client().post("/open", data={"dir_path": str(tmp_path)}, follow_redirects=True)
+
+    assert resp.status_code == 200
+    assert b'action="/refresh"' in resp.data
+    assert b"Refresh Vulnerabilities" in resp.data
+
+
 def test_scan_poll_unknown_job_404():
     resp = client().get("/scan/does-not-exist/poll")
     assert resp.status_code == 404

@@ -1284,6 +1284,40 @@ a new pattern, not something to fix blind from this dev sandbox.
     the PDF and confirming a link is actually clickable in it (not just
     styled to look like one).
 
+12. **New, same day: "Refresh Vulnerabilities" button.** Requested
+    directly, after I suggested it (alongside CSV/Excel export and
+    scan-to-scan diffing as alternatives not pursued) in answer to "any
+    ideas what we could add?". OSV.dev/NVD's own data changes daily even
+    when the scanned package hasn't changed, so a stale result page had
+    no way to pick up newly-published CVEs short of re-running the whole
+    scan (VHDX re-mount and all).
+
+    Added `jobs.start_refresh()`/`_run_refresh_job()`, which re-run only
+    `_run_stage2()` against an inventory JSON a scan already produced -
+    Stage 1 is skipped entirely, so no VHDX re-mount. Reuses
+    `_run_stage2()` and `write_reports()` unchanged, so a refreshed
+    result can never drift from what a fresh scan or `report
+    --vuln-matches` would produce. Runs as a background job exactly like
+    a fresh scan (OSV/NVD's rate limit means this can still take 20-30+
+    minutes without an API key), landing on the same progress page and
+    `result.html` template. New `/refresh` POST route in `app.py`;
+    result.html now shows a small form (hidden inventory/output-dir
+    fields, an optional NVD API key input, and a submit button) under
+    the existing downloads row - present on both a fresh scan's results
+    and an opened existing output folder's results, since both pass the
+    same `result` dict shape.
+
+    Verified with 5 new tests (`webui/tests/test_jobs.py`:
+    `_run_refresh_job` success/error paths and `start_refresh`'s
+    background thread actually completing; `webui/tests/test_app.py`:
+    missing-fields 400, a real redirect to the progress page, and the
+    form's presence on the rendered results page) plus end-to-end with a
+    headless browser against the real dev server: a screenshot of the
+    styled form, an actual click through to the progress page, and
+    confirmation the job log reads "Stage 1 not re-run" and surfaces a
+    clean error (rather than a crash) when OSV.dev is unreachable in
+    this sandbox. All 110 `stage2-resolve` + 32 `webui` tests passing.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

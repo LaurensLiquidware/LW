@@ -285,6 +285,16 @@ table.stats td:first-child { font-weight: 600; width: 60%; }
 }
 .downloads .material-icons { font-size: 1.1rem; }
 
+.refresh-form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.refresh-form .input-row input[type="text"] { max-width: 24rem; }
+.refresh-form button { display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+.refresh-form button .material-icons { font-size: 1.1rem; }
+.refresh-form .hint { margin-top: 0.5rem; margin-bottom: 0; }
+
 .status {
   display: inline-block;
   padding: 0.15rem 0.6rem;

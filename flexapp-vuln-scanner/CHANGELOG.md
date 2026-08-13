@@ -174,6 +174,21 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- Web UI: "Refresh Vulnerabilities" button on the results page (both a
+  fresh scan's results and an opened existing output folder). Re-runs
+  just Stage 2's OSV.dev/NVD matching against the same inventory JSON the
+  scan already produced - no VHDX re-mount needed - so you can pick up
+  newly-published CVEs against a package without re-scanning it from
+  scratch. New `jobs.start_refresh()`/`_run_refresh_job()` reuse the
+  existing `_run_stage2()` unchanged and run as a background job like a
+  fresh scan (OSV/NVD queries can take 20-30+ minutes without an API
+  key), landing on the same progress/results pages. New `/refresh` POST
+  route in `app.py`. 5 new tests (`webui/tests/test_jobs.py`,
+  `webui/tests/test_app.py`); verified end-to-end with a headless
+  browser - screenshot of the styled form, a real click through to the
+  progress page, and confirmation the job's log shows "Stage 1 not
+  re-run" and surfaces a clean error when OSV.dev is unreachable.
+
 - `reporting.py`'s new `vulnerability_url()`: every finding's ID (web UI,
   PDF, `findings.md`) now links to its real public record - CVE ids go
   to NVD, GHSA ids to GitHub's advisory database, everything else

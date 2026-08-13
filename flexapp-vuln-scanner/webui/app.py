@@ -160,6 +160,19 @@ def new_scan():
     return redirect(url_for("scan_status", job_id=job.id))
 
 
+@app.route("/refresh", methods=["POST"])
+def refresh_scan():
+    inventory_path = request.form.get("inventory_path", "").strip()
+    output_dir = request.form.get("output_dir", "").strip()
+    nvd_api_key = request.form.get("nvd_api_key", "").strip() or None
+
+    if not inventory_path or not output_dir:
+        abort(400)
+
+    job = jobs.start_refresh(inventory_path, output_dir, nvd_api_key=nvd_api_key)
+    return redirect(url_for("scan_status", job_id=job.id))
+
+
 @app.route("/scan/<job_id>")
 def scan_status(job_id: str):
     job = jobs.REGISTRY.get(job_id)

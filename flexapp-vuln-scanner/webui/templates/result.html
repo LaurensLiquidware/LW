@@ -11,6 +11,19 @@
     <a href="{{ url_for(download_route, id=download_id, kind='coverage_report') }}"><span class="material-icons">summarize</span>coverage-report.md</a>
     <a href="{{ url_for(download_route, id=download_id, kind='findings') }}"><span class="material-icons">bug_report</span>findings.md</a>
   </div>
+
+  <form method="post" action="{{ url_for('refresh_scan') }}" class="refresh-form">
+    <input type="hidden" name="inventory_path" value="{{ result.inventory_path }}">
+    <input type="hidden" name="output_dir" value="{{ result.output_dir }}">
+    <span class="input-row">
+      <input type="text" name="nvd_api_key" placeholder="NVD API key (optional) - leave blank to use NVD_API_KEY env var">
+      <button type="submit"><span class="material-icons">refresh</span>Refresh Vulnerabilities</button>
+    </span>
+    <p class="hint">
+      Re-queries OSV.dev/NVD against this same inventory - no VHDX
+      re-mount needed - to pick up any CVEs published since this scan ran.
+    </p>
+  </form>
 </section>
 
 <section class="panel">
