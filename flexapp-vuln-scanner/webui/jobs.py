@@ -31,6 +31,7 @@ from flexapp_vuln.inventory import load_inventory
 from flexapp_vuln.pdf_report import render_pdf_report
 from flexapp_vuln.reporting import (
     build_finding_rows,
+    count_by_severity,
     diff_finding_rows,
     render_coverage_report,
     render_findings,
@@ -259,6 +260,7 @@ def write_reports(
         "coverage": coverage,
         "confirmed_rows": confirmed_rows,
         "heuristic_rows": heuristic_rows,
+        "severity_counts": count_by_severity(all_rows),
         "has_vuln_matches": vuln_matches is not None,
         "inventory_path": str(inventory_path),
         "output_dir": str(out_dir),

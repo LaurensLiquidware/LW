@@ -147,9 +147,20 @@ def test_load_existing_result_splits_confirmed_and_heuristic(tmp_path):
     assert result["confirmed_rows"][0]["id"] == "GHSA-aaaa"
     assert len(result["heuristic_rows"]) == 1
     assert result["heuristic_rows"][0]["id"] == "CVE-2020-0001"
+    assert result["severity_counts"] == {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 0, "LOW": 1}
 
     pdf_path = Path(result["files"]["pdf"])
     assert pdf_path.read_bytes().startswith(b"%PDF-")
+
+
+def test_load_existing_result_severity_counts_all_zero_when_no_vuln_matches(tmp_path):
+    inventory_path = tmp_path / "sample.inventory.json"
+    shutil.copy(FIXTURE, inventory_path)
+
+    result = jobs.load_existing_result(inventory_path)
+
+    assert result["severity_counts"] == {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    assert result["has_vuln_matches"] is False
 
 
 def test_load_existing_result_writes_findings_csv_when_vuln_matches_present(tmp_path):

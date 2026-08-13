@@ -1419,6 +1419,31 @@ a new pattern, not something to fix blind from this dev sandbox.
     produced and checking its contents match. All 118 `stage2-resolve` +
     49 `webui` tests passing.
 
+15. **New, same day: severity-count column in "Scans Run This Session".**
+    Requested directly. Added `reporting.count_by_severity()` (folds
+    "Moderate" into "Medium" the same way `_SEVERITY_RANK` already does)
+    and a `severity_counts` field on every result dict
+    (`write_reports()`, so a fresh scan, a refresh, and an opened
+    existing folder all get it for free). The index page's scans table
+    gained a "Findings by Severity" column showing color-coded C/H/M/L
+    counts for a finished job - and, deliberately, not the same number
+    for every state: a still-running job (no `job.result` yet) shows a
+    plain dash, and a finished job with no vuln-matches data shows "no
+    vuln data" rather than four zeroes, so neither case can be misread
+    as "scanned and found nothing."
+
+    Verified with 8 new tests (`reporting.py`: bucket counts, Moderate
+    folding into Medium, unknown/missing severities not counted, empty
+    input; `jobs.py`: `severity_counts` correct on a real mixed-severity
+    fixture and all-zero when there's no vuln-matches data; `app.py`:
+    the index page renders a done job's counts, "no vuln data" for a
+    done-but-dataless job, and a dash for a still-running one) plus a
+    headless-browser screenshot against a running dev server with two
+    fabricated jobs - a finished one with 2 critical/1 high/1 medium/1
+    low findings (the column reads "C 2 H 1 M 1 L 1", exactly matching)
+    and a still-running one (a plain "—"). All 121 `stage2-resolve` + 53
+    `webui` tests passing.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

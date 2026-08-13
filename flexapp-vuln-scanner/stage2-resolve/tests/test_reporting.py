@@ -4,6 +4,7 @@ from flexapp_vuln.coverage import compute_coverage
 from flexapp_vuln.inventory import load_inventory
 from flexapp_vuln.reporting import (
     build_finding_rows,
+    count_by_severity,
     diff_finding_rows,
     render_coverage_report,
     render_findings,
@@ -230,6 +231,29 @@ def test_render_findings_csv_empty_when_no_findings():
     csv_text = render_findings_csv(vuln_matches)
     lines = csv_text.strip().splitlines()
     assert len(lines) == 1  # header only
+
+
+def test_count_by_severity_counts_each_bucket():
+    rows = [
+        {"severityLevel": "CRITICAL"},
+        {"severityLevel": "CRITICAL"},
+        {"severityLevel": "HIGH"},
+        {"severityLevel": "MEDIUM"},
+        {"severityLevel": "Moderate"},  # OSV/GHSA spelling, folds into MEDIUM
+        {"severityLevel": "LOW"},
+        {"severityLevel": "LOW"},
+        {"severityLevel": "LOW"},
+    ]
+    assert count_by_severity(rows) == {"CRITICAL": 2, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+
+
+def test_count_by_severity_ignores_unknown_and_missing():
+    rows = [{"severityLevel": None}, {"severityLevel": "NONE"}, {"severityLevel": "WEIRD"}]
+    assert count_by_severity(rows) == {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+
+
+def test_count_by_severity_empty_rows():
+    assert count_by_severity([]) == {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
 
 
 def test_diff_finding_rows_detects_new_and_resolved():

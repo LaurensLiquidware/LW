@@ -81,13 +81,27 @@
   <h2>Scans Run This Session</h2>
   {% if jobs %}
     <table>
-      <thead><tr><th>Started</th><th>Package</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Started</th><th>Package</th><th>Status</th><th>Findings by Severity</th><th></th></tr></thead>
       <tbody>
         {% for job in jobs %}
         <tr>
           <td>{{ job.created_at }}</td>
           <td>{{ job.package_path }}</td>
           <td><span class="status status-{{ job.status }}">{{ job.status }}</span></td>
+          <td>
+            {% if job.result and job.result.has_vuln_matches %}
+              <span class="sev-counts">
+                <span class="sev sev-critical">C {{ job.result.severity_counts.CRITICAL }}</span>
+                <span class="sev sev-high">H {{ job.result.severity_counts.HIGH }}</span>
+                <span class="sev sev-medium">M {{ job.result.severity_counts.MEDIUM }}</span>
+                <span class="sev sev-low">L {{ job.result.severity_counts.LOW }}</span>
+              </span>
+            {% elif job.result %}
+              <span class="hint">no vuln data</span>
+            {% else %}
+              <span class="hint">—</span>
+            {% endif %}
+          </td>
           <td>
             {% if job.status == "done" %}
               <a href="{{ url_for('scan_results', job_id=job.id) }}">View Results</a>

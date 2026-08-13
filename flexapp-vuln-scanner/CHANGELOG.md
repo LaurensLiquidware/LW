@@ -174,6 +174,20 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- Web UI: a "Findings by Severity" column in the "Scans Run This Session"
+  table, showing each finished scan's CVE count broken down as Critical/
+  High/Medium/Low (color-coded, reusing the existing severity classes).
+  A still-running scan shows a plain dash (no result yet to summarize); a
+  finished scan with no vuln-matches data shows "no vuln data" rather
+  than all-zero counts, so it can't be misread as "zero vulnerabilities
+  found." New `reporting.count_by_severity()` (folds OSV/GHSA's
+  "Moderate" spelling into "Medium", same as `render_findings`' existing
+  severity rank already treats them) feeds a new `severity_counts` field
+  on every scan/refresh/opened-folder result. 8 new tests; verified with
+  a headless-browser screenshot against a running dev server showing a
+  finished scan's exact counts (2 critical, 1 high, 1 medium, 1 low) next
+  to a still-running scan's dash.
+
 - `findings.csv`: a plain CSV export of every finding row (confirmed and
   heuristic combined, with a `Confidence` column so a spreadsheet reader
   can filter/sort by it) alongside the existing sbom/coverage/findings/

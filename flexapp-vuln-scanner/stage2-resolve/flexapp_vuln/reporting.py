@@ -138,6 +138,28 @@ def build_finding_rows(vuln_matches: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+_DISPLAY_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+
+
+def count_by_severity(rows: list[dict[str, Any]]) -> dict[str, int]:
+    """Counts build_finding_rows' output into the 4 severity buckets shown
+    in the UI's summary counts (e.g. the "Scans Run This Session" table).
+    "Moderate" (OSV/GHSA's spelling) folds into "Medium" (NVD's spelling) -
+    same rank as _SEVERITY_RANK already treats them. Anything else
+    (missing, "NONE", an unrecognized string) isn't one of these 4 and
+    isn't counted - the caller already knows the total row count
+    separately if it needs to reconcile the difference.
+    """
+    counts = {level: 0 for level in _DISPLAY_SEVERITIES}
+    for r in rows:
+        level = (r.get("severityLevel") or "").upper()
+        if level == "MODERATE":
+            level = "MEDIUM"
+        if level in counts:
+            counts[level] += 1
+    return counts
+
+
 _CSV_FIELDS = ["severityLevel", "id", "url", "product", "version", "summary", "source", "confidence", "relativePath"]
 _CSV_HEADER = ["Severity", "ID", "URL", "Component", "Version", "Summary", "Source", "Confidence", "Path"]
 

@@ -21,6 +21,56 @@ def test_index_loads():
     assert b"Run a New Scan" in resp.data
 
 
+def test_index_shows_severity_counts_for_a_done_job_with_findings(tmp_path):
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+    result = jobs.load_existing_result(tmp_path / "sample.inventory.json")
+    job = jobs.REGISTRY.create("severity-counts-job.vhdx", str(tmp_path))
+    job.result = result
+    job.status = "done"
+
+    resp = client().get("/")
+    html = resp.data.decode()
+
+    assert "severity-counts-job.vhdx" in html
+    assert "no vuln data" in html
+
+
+def test_index_shows_severity_counts_for_a_done_job_with_vuln_matches(tmp_path):
+    import json as json_module
+
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+    vuln_matches = {
+        "generatedUtc": "2026-08-13T00:00:00Z", "package": {},
+        "components": [{
+            "relativePath": "a.jar", "identity": {"product": "a", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2023-0001", "summary": "x", "severity": [], "severityLevel": "CRITICAL", "source": "nvd"}],
+        }],
+    }
+    (tmp_path / "sample.vuln-matches.json").write_text(json_module.dumps(vuln_matches), encoding="utf-8")
+    result = jobs.load_existing_result(tmp_path / "sample.inventory.json")
+    job = jobs.REGISTRY.create("severity-counts-job2.vhdx", str(tmp_path))
+    job.result = result
+    job.status = "done"
+
+    resp = client().get("/")
+    html = resp.data.decode()
+
+    assert "severity-counts-job2.vhdx" in html
+    assert "C 1" in html
+    assert "H 0" in html
+
+
+def test_index_shows_dash_for_a_job_still_running():
+    job = jobs.REGISTRY.create("still-running.vhdx", "/tmp/out")
+    job.status = "stage2"
+
+    resp = client().get("/")
+    html = resp.data.decode()
+
+    assert "still-running.vhdx" in html
+
+
 def test_footer_shows_version_on_every_page():
     # Sparks Tool Project Review Checklist §6: version must be visible
     # without reading source, on the tool's normal interface.
