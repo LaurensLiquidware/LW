@@ -1,10 +1,13 @@
-"""Converts a Stage 1 resolved identity into a Package URL (purl), where possible.
+"""Converts a Stage 1 resolved identity into a Package URL (purl) or CPE
+2.3 string, where possible.
 
 Only identity methods that map cleanly onto an OSV-supported ecosystem
 (Maven, npm, PyPI - NuGet is deliberately NOT attempted here, see below) get
-a purl. Everything else (native PE, string-signature, dotnet-manifest) is
-left for the NVD/CPE path (PLAN.md's next build step) - returning None here
-is the correct, honest answer for those, not a bug to paper over.
+a purl. Native/OS components (PE, string-signature, dotnet-manifest,
+electron-embedded) get a CPE candidate instead, via build_cpe_candidate -
+either a curated cpe-mappings.yaml override (confidence "mapped-cpe") or an
+automatic heuristic normalization (confidence "heuristic", per PLAN.md never
+to be presented as a confirmed finding).
 """
 
 from __future__ import annotations
@@ -13,6 +16,45 @@ import re
 from typing import Any
 
 from packageurl import PackageURL
+
+from .cpe_mappings import CpeMappings
+
+# Identity methods a CPE candidate is even worth attempting for - native/OS
+# components with no purl-expressible ecosystem. jar-manifest is excluded:
+# a jar with no groupId is still a Java library, not a native/OS component,
+# and guessing a CPE for it from MANIFEST.MF alone would be pure noise.
+_CPE_ELIGIBLE_METHODS = {
+    "pe-version-resource",
+    "dotnet-manifest",
+    "string-signature",
+    "electron-embedded",
+}
+
+# Corporate-suffix words stripped during heuristic vendor/product
+# normalization - matches the kind of noise CompanyName/ProductName Win32
+# resource fields commonly carry (e.g. "Google Inc.", "Acme Corporation").
+_CORP_SUFFIXES = re.compile(
+    r"\b(inc|incorporated|corp|corporation|llc|ltd|limited|gmbh|co)\b\.?",
+    re.IGNORECASE,
+)
+_NON_ALNUM_RUN = re.compile(r"[^a-z0-9]+")
+
+
+def _heuristic_normalize(text: str) -> str:
+    """Best-effort CPE-vendor/product-shaped string: lowercase, corporate
+    suffixes stripped, everything else collapsed to single underscores.
+    This is a guess, not a lookup - callers must tag it "heuristic".
+    """
+    stripped = _CORP_SUFFIXES.sub("", text)
+    return _NON_ALNUM_RUN.sub("_", stripped.lower()).strip("_")
+
+
+def _escape_cpe_component(text: str) -> str:
+    # CPE 2.3 formatted-string escaping for the handful of special
+    # characters realistically possible in a normalized vendor/product/
+    # version string here. Not a full CPE-spec-complete escaper - our
+    # inputs are already alnum/underscore/dot by construction upstream.
+    return text.replace("\\", "\\\\").replace(":", "\\:")
 
 # PyPI purl normalization per the purl spec: lowercase, runs of -._ collapsed to a single -.
 _PYPI_NAME_RUN = re.compile(r"[-_.]+")
@@ -64,6 +106,52 @@ def build_purl(identity: dict[str, Any] | None) -> str | None:
 
     # jar-manifest has no groupId, so no Maven purl can be built reliably.
     # dotnet-manifest, pe-version-resource, string-signature, electron-embedded
-    # are native/OS components - not purl-expressible, handled via CPE (next
-    # build step) instead.
+    # are native/OS components - not purl-expressible, handled via CPE
+    # (build_cpe_candidate, below) instead.
     return None
+
+
+def build_cpe_candidate(
+    identity: dict[str, Any] | None,
+    mappings: CpeMappings,
+) -> tuple[str | None, str | None]:
+    """Returns (cpe23_string, confidence) for a Stage 1 identity, or
+    (None, None) if this identity isn't CPE-eligible or lacks a version.
+
+    confidence is "mapped-cpe" when cpe-mappings.yaml has a curated override
+    for this vendor/product, or "heuristic" when falling back to automatic
+    normalization - callers must not treat these the same way (PLAN.md:
+    never present a heuristic match as a confirmed finding).
+    """
+    if not identity:
+        return None, None
+
+    method = identity.get("method")
+    if method not in _CPE_ELIGIBLE_METHODS:
+        return None, None
+
+    version = identity.get("version")
+    if not version:
+        return None, None
+
+    mapped = mappings.find(identity)
+    if mapped:
+        vendor, product = mapped
+        confidence = "mapped-cpe"
+    else:
+        vendor_raw = identity.get("vendor") or identity.get("product")
+        product_raw = identity.get("product")
+        if not product_raw:
+            return None, None
+        vendor = _heuristic_normalize(vendor_raw or product_raw)
+        product = _heuristic_normalize(product_raw)
+        if not vendor or not product:
+            return None, None
+        confidence = "heuristic"
+
+    cpe23 = "cpe:2.3:a:{}:{}:{}:*:*:*:*:*:*:*".format(
+        _escape_cpe_component(vendor),
+        _escape_cpe_component(product),
+        _escape_cpe_component(str(version)),
+    )
+    return cpe23, confidence

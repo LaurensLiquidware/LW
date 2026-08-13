@@ -12,7 +12,7 @@ this project makes about FlexApp internals.
 | Stage | Status |
 |---|---|
 | Stage 1 — extraction & inventory (PowerShell 7) | **Built.** Mount/extract, XML metadata, file walk/hash, exclusion filtering, identity resolution. See below for what's validated vs. still needing a real Windows host. |
-| Stage 2 — resolution & vulnerability matching (Python) | **OSV.dev matching built.** NVD/CPE matching and the polished `sbom.cdx.json`/`coverage-report.md`/`findings.md` reports are next per `PLAN.md`'s build order. |
+| Stage 2 — resolution & vulnerability matching (Python) | **OSV.dev and NVD/CPE matching built.** The polished `sbom.cdx.json`/`coverage-report.md`/`findings.md` reports are next per `PLAN.md`'s build order. |
 
 ## What it does
 
@@ -31,8 +31,8 @@ that Stage 2 will consume to answer the coverage question.
 - **Stage 1**: PowerShell 7 on Windows, with permission to mount VHDX images
   (`Mount-DiskImage`) and network access to the package store. No external
   PowerShell modules — Stage 1 is deliberately dependency-free.
-- **Stage 2**: Python 3.11+, `pip install -r requirements.txt`. Only the
-  OSV.dev matching step is built so far.
+- **Stage 2**: Python 3.11+, `pip install -r requirements.txt`. OSV.dev and
+  NVD/CPE matching are built; reporting is not yet.
 
 ## Running Stage 1
 
@@ -56,7 +56,7 @@ Each package produces one `<package-basename>.inventory.json` in
 ## Running Stage 2
 
 See [`stage2-resolve/README.md`](stage2-resolve/README.md) for full usage.
-Quick version — only the OSV.dev matching step exists so far:
+Quick version — OSV.dev and NVD/CPE matching exist; reporting doesn't yet:
 
 ```bash
 pip install -r requirements.txt
@@ -64,26 +64,29 @@ cd stage2-resolve
 python -m flexapp_vuln resolve path/to/package.inventory.json --out out/
 ```
 
-Writes `out/<package>.osv-matches.json` — every non-excluded file, whether a
-purl could be built for it (only `jar-pom-properties`/`node-package-json`/
-`python-dist-info` identities map onto OSV's ecosystems), and any OSV.dev
-matches found.
+Writes `out/<package>.vuln-matches.json` — every non-excluded file, whether
+a purl (Maven/npm/PyPI, matched against OSV.dev) or a CPE (native/OS
+components, matched against NVD — `mapped-cpe` confidence via
+`config/cpe-mappings.yaml`, or `heuristic` as a fallback) could be built for
+it, and any matches found from either source.
 
 ## Known limitations
 
-- **Stage 2 is partial** — OSV.dev matching exists; there is not yet a way
-  to go from a Stage 1 inventory JSON to a full coverage number, SBOM, or
-  vulnerability findings report. NVD/CPE matching (needed for native/OS
-  components) and the reporting step haven't been built.
-- **`api.osv.dev` is blocked by this development environment's network
-  policy** (confirmed via the proxy status endpoint — same category as the
-  `grype.anchore.io` block hit during an earlier, unrelated Sparks Tool
-  audit in this repo). The OSV client is written against OSV's documented
-  public API and validated with 22 passing mocked-HTTP unit tests, not a
-  live call. The CLI fails with a clear message instead of a raw traceback
-  when it can't reach the API — see `stage2-resolve/README.md`. **Live
-  end-to-end validation against the real OSV.dev API still needs to happen
-  in an environment where it's reachable.**
+- **Stage 2 is partial** — OSV.dev and NVD/CPE matching exist; there is not
+  yet a way to go from a Stage 1 inventory JSON to a full coverage number,
+  SBOM, or vulnerability findings report. The reporting step hasn't been
+  built.
+- **`api.osv.dev` and `services.nvd.nist.gov` are both blocked by this
+  development environment's network policy** (confirmed via the proxy
+  status endpoint — same category as the `grype.anchore.io` block hit
+  during an earlier, unrelated Sparks Tool audit in this repo). Both
+  clients are written against each service's documented public API and
+  validated with 45 passing mocked-HTTP unit tests, not a live call. The
+  CLI fails with a clear message naming which host is unreachable, instead
+  of a raw traceback — verified against the real blocked network for both
+  the OSV and NVD failure paths separately. See `stage2-resolve/README.md`.
+  **Live end-to-end validation against the real OSV.dev and NVD APIs still
+  needs to happen in an environment where they're reachable.**
 - **Directory input to Stage 1 is non-recursive** (top-level packages only).
 - **Exclusion is a path/name heuristic**, not a hash comparison against a
   known-good clean-Windows-install set (that's a stated stretch goal in
@@ -102,10 +105,9 @@ matches found.
   `Mount-DiskImage`/`Dismount-DiskImage` and invoke a real FlexApp One
   package executable have not been run for real — that needs a Windows host
   and an actual package, which this development environment doesn't have.
-- **No CVE data yet from NVD.** OSV.dev matching exists (purl-based, three
-  ecosystems); native/OS components (the majority of what PE/.NET/
-  string-signature resolution finds) aren't checked against anything until
-  NVD/CPE matching is built.
+- **No coverage number yet.** Both matching sources exist, but nothing
+  computes or reports the headline resolution-coverage percentage
+  `PLAN.md` defines — that's the reporting step, not yet built.
 - **flexappone.exe assumptions** — the FlexApp One CLI reference used here
   came from documentation pasted into this project's development
   conversation, not fetched independently (the doc site is blocked by this

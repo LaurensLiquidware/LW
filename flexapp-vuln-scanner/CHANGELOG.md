@@ -59,31 +59,46 @@ end-to-end run against a real package justifies cutting a version.
       convention.
   - `stage1-extract/README.md` — usage, what each step does, known
     limitations.
-- Stage 2 resolution (`stage2-resolve/`), OSV.dev matching only so far:
+- Stage 2 resolution (`stage2-resolve/`), OSV.dev and NVD/CPE matching:
   - `flexapp_vuln/inventory.py` — loads and validates a Stage 1 inventory
     JSON against `schemas/inventory.schema.json`.
-  - `flexapp_vuln/normalize.py` — builds a Package URL (purl) from a Stage 1
-    identity, for the three ecosystems that map cleanly (Maven via
-    `jar-pom-properties`, npm via `node-package-json` including scoped
-    packages, PyPI via `python-dist-info` with proper name normalization).
-    Everything else (native PE, `jar-manifest` with no groupId,
-    string-signature/electron-embedded) correctly returns no purl — deferred
-    to the NVD/CPE matching step, not silently dropped.
+  - `flexapp_vuln/normalize.py` — `build_purl` for the three OSV ecosystems
+    that map cleanly (Maven via `jar-pom-properties`, npm via
+    `node-package-json` including scoped packages, PyPI via
+    `python-dist-info` with proper name normalization); `build_cpe_candidate`
+    for native/OS methods (`pe-version-resource`, `dotnet-manifest`,
+    `string-signature`, `electron-embedded`), via a curated
+    `cpe-mappings.yaml` override (confidence `mapped-cpe`) or automatic
+    heuristic normalization (confidence `heuristic` — corporate suffixes
+    like "Inc."/"Corporation" stripped, never presented as a confirmed
+    finding). `jar-manifest` (no groupId) correctly gets neither a purl nor
+    a CPE.
+  - `flexapp_vuln/cpe_mappings.py` — loads and looks up
+    `config/cpe-mappings.yaml`.
+  - `config/cpe-mappings.yaml` — curated overrides for OpenSSL, zlib,
+    libcurl, SQLite (string-signature) and Electron's embedded
+    Chromium/Node.js (with a note on the Chromium-vs-Chrome approximation).
   - `flexapp_vuln/confidence.py` — match confidence levels
     (`exact-purl`/`mapped-cpe`/`heuristic`) per `PLAN.md`.
   - `flexapp_vuln/osv_client.py` — OSV.dev client: batch purl→vuln-ID lookup
     (`/v1/querybatch`) then per-ID detail fetch (`/v1/vulns/{id}`), with an
     on-disk cache that's never re-queried once populated.
+  - `flexapp_vuln/nvd_client.py` — NVD 2.0 client: CPE-based CVE lookup
+    (`GET /rest/json/cves/2.0`), on-disk cache, and a sliding-window rate
+    limiter (5 req/30s without `NVD_API_KEY`, 50 with).
   - `flexapp_vuln/cli.py` — `python -m flexapp_vuln resolve <inventory.json>
-    --out <dir>`, writing `<package>.osv-matches.json`. Fails with a clear
-    message (not a raw traceback) when `api.osv.dev` is unreachable.
-  - `tests/`: 22 tests, no network required — purl construction, inventory
-    schema validation, OSV client caching/batching (mocked `requests`), and
-    CLI component assembly.
+    --out <dir>`, writing `<package>.vuln-matches.json` combining both
+    sources. Fails with a clear message naming which host is unreachable
+    (`api.osv.dev` or `services.nvd.nist.gov`) instead of a raw traceback.
+  - `tests/`: 45 tests, no network required — purl/CPE construction,
+    mapping-table lookup, inventory schema validation, OSV/NVD client
+    caching+batching+rate-limiting (mocked `requests`, NVD's rate-limit
+    tests use an injectable fake clock), and combined CLI component
+    assembly.
   - `requirements.txt` (top-level, pinned): `requests`, `jsonschema`,
-    `packageurl-python`, `pytest`.
-  - `stage2-resolve/README.md` — usage, what "OSV matching" covers at this
-    step, and the `api.osv.dev` reachability caveat below.
+    `packageurl-python`, `PyYAML`, `pytest`.
+  - `stage2-resolve/README.md` — usage, what matching covers at this step,
+    and the network-reachability caveat below.
 - Top-level `README.md` and this `CHANGELOG.md`.
 
 ### Notes
@@ -98,12 +113,14 @@ end-to-end run against a real package justifies cutting a version.
   fixed this way: a `[string]`-typed parameter was silently coercing `$null`
   to `""` instead of preserving JSON `null` for a nested `.asar` entry's
   hash field.
-- Stage 2: `api.osv.dev` is blocked by this development environment's
-  network egress policy (confirmed via the proxy status endpoint — the same
-  category of block hit against `grype.anchore.io` during an earlier,
-  unrelated Sparks Tool audit in this repo). The OSV client is validated
-  against OSV's documented public API via mocked-HTTP tests instead of a
-  live call. Live end-to-end validation against the real API still needs an
-  environment where it's reachable.
-- NVD/CPE matching and the reporting step (`sbom.cdx.json`,
-  `coverage-report.md`, `findings.md`) have not been started.
+- Stage 2: `api.osv.dev` and `services.nvd.nist.gov` are both blocked by
+  this development environment's network egress policy (confirmed via the
+  proxy status endpoint — the same category of block hit against
+  `grype.anchore.io` during an earlier, unrelated Sparks Tool audit in this
+  repo). Both clients are validated against each service's documented
+  public API via mocked-HTTP tests instead of a live call, and the CLI's
+  graceful-failure path was confirmed against the real blocked network for
+  both hosts separately. Live end-to-end validation against the real APIs
+  still needs an environment where they're reachable.
+- The reporting step (`sbom.cdx.json`, `coverage-report.md`,
+  `findings.md`) has not been started.

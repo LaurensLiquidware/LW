@@ -1,0 +1,64 @@
+# Manual vendor/product -> CPE overrides, per PLAN.md: "Build a small,
+# editable cpe-mappings.yaml for manual vendor/product overrides rather than
+# trying to be clever." CPE resolution from PE metadata (and from
+# string-signature banner names) is lossy - this table exists so real,
+# known mappings can be curated by hand instead of guessed.
+#
+# Each entry's `match` is checked against a Stage 1 identity object:
+#   method  - required; one of pe-version-resource, dotnet-manifest,
+#             string-signature, electron-embedded
+#   vendor  - optional, case-insensitive exact match against identity.vendor
+#   product - optional, case-insensitive exact match against identity.product
+# `cpe` gives the NVD CPE 2.3 vendor/product to use instead of guessing.
+# First matching entry wins. Anything with no match here falls back to an
+# automatic heuristic normalization - tagged confidence "heuristic", never
+# "mapped-cpe", so a report never overstates how sure this mapping is.
+
+mappings:
+  - match:
+      method: string-signature
+      product: OpenSSL
+    cpe:
+      vendor: openssl
+      product: openssl
+
+  - match:
+      method: string-signature
+      product: zlib
+    cpe:
+      vendor: zlib
+      product: zlib
+
+  - match:
+      method: string-signature
+      product: libcurl
+    cpe:
+      vendor: haxx
+      product: curl
+
+  - match:
+      method: string-signature
+      product: SQLite
+    cpe:
+      vendor: sqlite
+      product: sqlite
+
+  # Chromium-in-Electron vs. standalone Google Chrome is an approximation:
+  # Electron bundles Chromium, not Chrome itself, but most Chromium engine
+  # CVEs apply to both. This is a curated override (so it's "mapped-cpe",
+  # not "heuristic"), but the approximation itself should be called out
+  # wherever this match is surfaced in a report - it is not the same
+  # confidence as, say, the OpenSSL banner match above.
+  - match:
+      method: electron-embedded
+      product: Electron Chromium
+    cpe:
+      vendor: google
+      product: chrome
+
+  - match:
+      method: electron-embedded
+      product: Electron Node.js
+    cpe:
+      vendor: nodejs
+      product: node.js

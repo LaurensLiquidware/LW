@@ -2,6 +2,7 @@
 requests==2.33.1
 jsonschema==4.26.0
 packageurl-python==0.17.6
+PyYAML==6.0.1
 
 # Test-only, but pinned here too rather than a separate file for this PoC's size.
 pytest==9.1.1

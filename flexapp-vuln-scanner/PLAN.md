@@ -401,7 +401,25 @@ defensive regardless (never crash on a single bad file, log and continue).
    and the CLI fails with a clear message rather than a raw traceback when
    it can't reach the API. Live end-to-end validation against the real
    OSV.dev API still needs an environment where it's reachable.
-4. NVD 2.0 CPE matching + cpe-mappings.yaml + rate-limit handling + cache.
+4. **Done.** NVD 2.0 CPE matching + `cpe-mappings.yaml` + rate-limit
+   handling + cache. CPE candidates built for `pe-version-resource`/
+   `dotnet-manifest`/`string-signature`/`electron-embedded` only —
+   `jar-manifest` (no groupId) correctly gets neither a purl nor a CPE,
+   an honest "unresolved with lower-confidence metadata" outcome, not a gap
+   to paper over. A hit in the curated `cpe-mappings.yaml` override table
+   is confidence `mapped-cpe`; falling back to automatic heuristic
+   normalization is confidence `heuristic` and is never presented as a
+   confirmed finding. Rate limiting (5 req/30s without `NVD_API_KEY`, 50
+   with) implemented as a sliding window, validated with an injectable fake
+   clock so tests run instantly instead of waiting real seconds.
+   `services.nvd.nist.gov` is blocked by this dev environment's network
+   policy too (same category as OSV/Grype) - validated with mocked-HTTP
+   unit tests, and confirmed the CLI's real (blocked-network) failure path
+   correctly names `services.nvd.nist.gov` specifically when only a
+   CPE-eligible component is present (bypassing OSV entirely). Live
+   end-to-end validation against the real NVD API still needs an
+   environment where it's reachable. 45 tests passing total across both
+   matching steps.
 5. Reporting: `sbom.cdx.json`, `coverage-report.md`, `findings.md`.
 
 At each pause I'll show what was built plus any real output from local
