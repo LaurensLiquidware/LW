@@ -21,12 +21,36 @@
         @{ Reason = 'localization-file'; Contains = @('\Lang\', '\Locale\', '\Locales\', '\i18n\', '\l10n\') },
         # Added 2026-08-13 from a real Paint.NET scan: that package was
         # installed via Chocolatey on the capture machine, and Chocolatey's
-        # own package-manager footprint (nuspec/nupkg, install-state
-        # sentinel files, cached HTTP API responses, logs, helper scripts)
-        # got swept into the VHDX alongside the actual app - none of it is
-        # part of Paint.NET itself. ~65 of that package's 130 unresolved
-        # files were this, in one path prefix.
-        @{ Reason = 'package-manager-path'; Contains = @('\chocolatey\', '\ChocolateyHttpCache\') },
+        # own package-manager footprint (install-state sentinel files,
+        # cached HTTP API responses, logs, helper scripts) got swept into
+        # the VHDX alongside the actual app - none of it is part of
+        # Paint.NET itself. ~65 of that package's 130 unresolved files
+        # were this, in one path prefix.
+        #
+        # NARROWED 2026-08-13 after a real Tor Browser scan: the original
+        # rule matched anything under "\chocolatey\", which wrongly
+        # excluded ALL 186 real application files (firefox.exe, nss3.dll,
+        # softokn3.dll, ...) for a "portable" Chocolatey package -
+        # Chocolatey's "lib\<pkg>\tools\" convention is sometimes its own
+        # management scaffolding (MSI installers, install scripts) and
+        # sometimes IS the actual installed application, depending on how
+        # that package is authored. Scoped down to only Chocolatey's own
+        # management subfolders, which are never app payload regardless of
+        # package layout; the package manifest/installer-script name
+        # patterns below (`*.nuspec`/`*.nupkg`/`chocolateyInstall.ps1`/
+        # `chocolateyUninstall.ps1`/`*.ignore`) catch Chocolatey's own
+        # files that can appear anywhere, including inside "tools\".
+        @{ Reason = 'package-manager-path'; Contains = @('\chocolatey\.chocolatey\', '\chocolatey\extensions\', '\chocolatey\logs\', '\ChocolateyHttpCache\') },
+        # Added 2026-08-13, same Tor Browser narrowing: a Chocolatey
+        # "extension" package (name ends in ".extension") duplicates its
+        # own payload into a nested "extensions\" folder inside its own
+        # lib\<pkg>\ directory, mirroring the top-level \chocolatey\
+        # extensions\ layout already excluded above - found live on a
+        # Notepad++ scan whose capture machine also had
+        # chocolatey-core.extension/chocolatey-compatibility.extension
+        # installed. Never app payload, regardless of which app is being
+        # scanned.
+        @{ Reason = 'package-manager-path'; Contains = @('.extension\extensions\') },
         # Added 2026-08-13 from a real Remix-H1-DROOG (Jonker ERP) scan:
         # 868 of 968 "unresolved" files (90%) lived entirely under this
         # one report-designs folder - JasperReports compiled report files
@@ -77,7 +101,23 @@
         # ".jasper" extension rule would miss - GetExtension() only
         # returns the file's last dot-segment, and for those it's the
         # date suffix, not ".jasper".
-        @{ Reason = 'report-design-file'; Patterns = @('*.jasper*') }
+        @{ Reason = 'report-design-file'; Patterns = @('*.jasper*') },
+        # Added 2026-08-13 from the same Tor Browser scan, alongside the
+        # package-manager-path narrowing above: Chocolatey's own package
+        # manifest/archive and installer-script files, which can sit
+        # directly inside a portable package's "tools\" folder next to the
+        # real application - a folder-wide exclude there would have caught
+        # the app payload too, so these are matched by filename instead.
+        # "*.ignore" is Chocolatey's own convention for telling its shim
+        # generator to skip a given exe (firefox.exe.ignore,
+        # updater.exe.ignore, ...) - never a component itself. Widened
+        # from two specific hook-script names to "chocolatey*.ps1" after a
+        # Notepad++ scan surfaced a third one (chocolateyBeforeModify.ps1)
+        # - Chocolatey has several conventionally-named hook scripts
+        # (Install/Uninstall/BeforeModify/...) and "chocolatey" as a
+        # script-name prefix is unambiguous, never a coincidental real
+        # app script name.
+        @{ Reason = 'package-manager-file'; Patterns = @('*.nuspec', '*.nupkg', 'chocolatey*.ps1', '*.ignore') }
     )
 
     ExtensionRules = @(

@@ -651,6 +651,38 @@ defensive regardless (never crash on a single bad file, log and continue).
    scaffolding rather than app content, but scoping a rule precisely
    (without also catching a real app-internal folder that happens to be
    named "Data") needs more evidence - held off adding a rule for it.
+
+   **Live test against a real Tor Browser package (2026-08-13)**:
+   surfaced a real, serious bug rather than a noise-tuning opportunity -
+   **0.0% coverage**, all 242 files excluded. Tor Browser was captured as
+   a "portable" Chocolatey package, where Chocolatey's `lib\<pkg>\tools\`
+   folder *is* the actual installed application
+   (`\chocolatey\lib\tor-browser\tools\tor-browser\Browser\firefox.exe`,
+   `nss3.dll`, `softokn3.dll`, ...) rather than separate management
+   scaffolding next to a real install elsewhere - the blanket
+   `package-manager-path` rule from the Paint.NET scan couldn't
+   distinguish that from Chocolatey's own housekeeping and excluded the
+   whole package. Narrowed the path rule to only Chocolatey's own known
+   management subfolders, and added a `package-manager-file` name-pattern
+   rule (`*.nuspec`/`*.nupkg`/`chocolatey*.ps1`/`*.ignore`) to still catch
+   Chocolatey's own manifest/installer-script files by name wherever they
+   sit, including inside `tools\`. Re-checked against the real Paint.NET
+   and Notepad++ inventories (both also Chocolatey-based captures) to
+   confirm no regression - Paint.NET's candidate count is unchanged (315,
+   still 99.0%), and re-checking Notepad++ surfaced one more real pattern
+   (a Chocolatey extension package's nested
+   `<pkg>.extension\extensions\` folder, and a third Chocolatey hook
+   script name, `chocolateyBeforeModify.ps1`, generalized to
+   `chocolatey*.ps1`).
+
+   Since Stage 1 ran against Tor Browser under the old (buggy) rules,
+   the 186 real payload files were skipped entirely rather than resolved
+   or unresolved - their true identity/coverage number needs an actual
+   Stage 1 re-run against the real VHDX with the fixed rules, not
+   something derivable from the existing inventory JSON alone. That
+   re-run is the next step, including checking whether `nss3.dll`/
+   `softokn3.dll` (bundled NSS crypto libraries) turn up any real CVEs
+   once resolved.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

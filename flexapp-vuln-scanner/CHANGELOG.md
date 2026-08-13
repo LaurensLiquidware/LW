@@ -37,6 +37,29 @@ end-to-end run against a real package justifies cutting a version.
   same identity-dedup rule already applied in `sbom.py`, verified against
   the real data both before and after.
 
+- `ExclusionRules.psd1` (`package-manager-path`): matched anything under
+  `\chocolatey\`, which wrongly excluded a package's entire real payload
+  when Chocolatey installs it as a "portable" package - found live on a
+  real Tor Browser scan (0.0% coverage, all 242 files excluded).
+  Chocolatey's `lib\<pkg>\tools\` folder is sometimes its own management
+  scaffolding (MSI installers, install scripts) and sometimes *is* the
+  actual installed application (`firefox.exe`, `nss3.dll`, `softokn3.dll`,
+  186 real files here), depending on how that package is authored - a
+  folder-wide exclude there can't tell the difference. Narrowed to only
+  Chocolatey's own management subfolders
+  (`\chocolatey\.chocolatey\`/`\chocolatey\extensions\`/`\chocolatey\logs\`/
+  `\ChocolateyHttpCache\`, plus nested `<pkg>.extension\extensions\`
+  folders found on re-checking a real Notepad++ scan), and added a
+  `package-manager-file` name-pattern rule
+  (`*.nuspec`/`*.nupkg`/`chocolatey*.ps1`/`*.ignore`) to still catch
+  Chocolatey's own manifest/installer-script files wherever they appear,
+  including inside `tools\`. Re-verified against the real Paint.NET and
+  Notepad++ inventories that this is not a regression - Paint.NET's
+  candidate count is unchanged (315, still 99.0%), Notepad++ gained
+  exactly one legitimate candidate (a Chocolatey PATH shim,
+  `\chocolatey\bin\notepad++.exe`, left unresolved rather than guessed
+  at).
+
 - `Mount-ClassicFlexApp.ps1`: was waiting on a retry loop for Windows to
   auto-assign a drive letter to the mounted VHDX volume - confirmed via a
   live test against a real package on a real Windows 11 host that Windows
