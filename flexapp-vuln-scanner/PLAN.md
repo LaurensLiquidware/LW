@@ -609,6 +609,33 @@ defensive regardless (never crash on a single bad file, log and continue).
    246 rows for what was actually 146 distinct findings. Fixed by
    deduplicating on `(purl-or-cpe-or-relativePath, vulnerability id)`
    before rendering, verified against the real data before and after.
+
+   **Live test against a real Jonker ERP package, Remix-H1-DROOG
+   (2026-08-13)**: a large, old, real-world Java business application (a
+   Dutch dry-mortar/concrete company's bespoke ERP suite) - the best
+   stress test yet of the Java identity path. Confirmed real, well-known
+   CVEs entirely via `jar-pom-properties` + `exact-purl`: Commons
+   Collections deserialization, iText command injection, Logback
+   deserialization, JasperReports RCE, HttpClient cert validation - zero
+   heuristic-confidence noise in the findings. Also correctly left 24 real
+   third-party jars (Apache Ant launcher, Batik JS, RXTX comm, JSch,
+   JPedal, JTidy, JUnit, SwingX, ...) honestly unresolved rather than
+   guessing - old-style jars with neither `pom.properties` nor usable
+   `MANIFEST.MF` identity attributes, a real metadata gap, not a bug.
+
+   Raw coverage looked very low (8.9%) until digging in: 868 of 968
+   "unresolved" files (90%) were JasperReports compiled report designs
+   (`.jasper`) and their locale-variant `.properties` sidecars
+   (`Aannemer.properties`/`_en.properties`/`_bam.properties`), all inside
+   one `TClickRapporten\` folder - this app's own report templates, not
+   components. Added `report-design-file` (`*.jasper*`, wildcarded to
+   also catch date-stamped backup copies like `Bon.jasper.2013-07-18`
+   that a plain extension rule would miss) and `report-design-folder`
+   (`\TClickRapporten\`, needed for the `.properties` sidecars, which
+   aren't identifiable by extension alone). Verified against the real
+   inventory JSON that none of the newly-excluded files had a resolved
+   identity - moved that package's honest resolution coverage from **8.9%
+   to 48.7%**.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

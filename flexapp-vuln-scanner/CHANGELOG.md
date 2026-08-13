@@ -132,6 +132,18 @@ end-to-end run against a real package justifies cutting a version.
   RPM/dpkg-style) - documented as non-authoritative, same spirit as this
   project's `heuristic` confidence tier. The live per-CPE `resolve` path
   is unchanged and remains the default; the mirror is opt-in.
+- `ExclusionRules.psd1`: added `report-design-file` (`*.jasper*`
+  wildcarded on both sides) and `report-design-folder` (`\TClickRapporten\`),
+  found live on a real Jonker ERP package (Remix-H1-DROOG): 868 of 968
+  "unresolved" files (90%) were JasperReports compiled report designs and
+  their locale-variant `.properties` sidecars, all under one folder - not
+  components. The wildcarded name pattern also catches date-stamped
+  backup copies found live (`Bon.jasper.2013-07-18`,
+  `Bon.jasper_20221129`) that a plain `.jasper` extension rule would miss,
+  since `GetExtension()` only returns the last dot-segment. Verified
+  against the real inventory JSON that none of the 868 newly-excluded
+  files had a resolved identity - moved that package's honest resolution
+  coverage from 8.9% to **48.7%**.
 - `ExclusionRules.psd1`: added `.ini`/`.pak`/`.effect` as noise categories
   (`config-file`/`resource-pack-file`/`shader-effect-file`), found by a live
   test against a real OBS Studio package - 90% of that package's

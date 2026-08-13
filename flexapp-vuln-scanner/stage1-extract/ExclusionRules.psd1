@@ -26,7 +26,16 @@
         # got swept into the VHDX alongside the actual app - none of it is
         # part of Paint.NET itself. ~65 of that package's 130 unresolved
         # files were this, in one path prefix.
-        @{ Reason = 'package-manager-path'; Contains = @('\chocolatey\', '\ChocolateyHttpCache\') }
+        @{ Reason = 'package-manager-path'; Contains = @('\chocolatey\', '\ChocolateyHttpCache\') },
+        # Added 2026-08-13 from a real Remix-H1-DROOG (Jonker ERP) scan:
+        # 868 of 968 "unresolved" files (90%) lived entirely under this
+        # one report-designs folder - JasperReports compiled report files
+        # (.jasper) and their locale-variant .properties sidecars
+        # (Aannemer.properties/_en.properties/_bam.properties). The
+        # *.jasper* name pattern below catches the report files themselves
+        # regardless of folder; this folder rule is needed for the sidecar
+        # .properties files, which aren't identifiable by extension alone.
+        @{ Reason = 'report-design-folder'; Contains = @('\TClickRapporten\') }
     )
 
     NamePatternRules = @(
@@ -45,7 +54,17 @@
         # *.deps.json here - that one is a real dependency lockfile (exact
         # NuGet package name + version pairs) worth parsing for identity
         # resolution rather than discarding as noise; see PLAN.md.
-        @{ Reason = 'dotnet-runtimeconfig'; Patterns = @('*.runtimeconfig.json') }
+        @{ Reason = 'dotnet-runtimeconfig'; Patterns = @('*.runtimeconfig.json') },
+        # Added 2026-08-13, same Remix-H1-DROOG scan: JasperReports
+        # compiled report-design files - never a component, regardless of
+        # which app embeds JasperReports or what folder it keeps its
+        # designs in. Wildcarded on both sides to also catch the
+        # date-stamped backup copies found live (Bon.jasper.2013-07-18,
+        # Bon.jasper_20221129, Bon.jasper-29-03-2015), which a plain
+        # ".jasper" extension rule would miss - GetExtension() only
+        # returns the file's last dot-segment, and for those it's the
+        # date suffix, not ".jasper".
+        @{ Reason = 'report-design-file'; Patterns = @('*.jasper*') }
     )
 
     ExtensionRules = @(
