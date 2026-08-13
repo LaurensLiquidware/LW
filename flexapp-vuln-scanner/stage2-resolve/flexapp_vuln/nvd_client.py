@@ -136,9 +136,12 @@ class NVDClient:
                         "baseSeverity": cvss_data.get("baseSeverity") or metric.get("baseSeverity"),
                     })
 
+            severity_level = next((s["baseSeverity"] for s in severities if s.get("baseSeverity")), None)
+
             out.append({
                 "id": cve.get("id"),
                 "summary": summary,
                 "severity": severities,
+                "severityLevel": severity_level.upper() if severity_level else None,
             })
         return out

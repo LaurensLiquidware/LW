@@ -1,0 +1,102 @@
+from pathlib import Path
+
+from flexapp_vuln.coverage import compute_coverage
+from flexapp_vuln.inventory import load_inventory
+from flexapp_vuln.reporting import render_coverage_report, render_findings
+
+FIXTURE = Path(__file__).parent / "fixtures" / "sample.inventory.json"
+
+
+def test_render_coverage_report_contains_required_sections():
+    inventory = load_inventory(FIXTURE)
+    coverage = compute_coverage(inventory)
+    report = render_coverage_report(coverage, "TestApp")
+
+    assert "TestApp" in report
+    assert "Resolution coverage: 66.7%" in report
+    assert "Total files scanned: 4" in report
+    assert "Files excluded (noise filtering): 1" in report
+    assert "Candidate components (excluded: false): 3" in report
+    assert "Components resolved: 2" in report
+    assert "Components unresolved: 1" in report
+    assert "os-system-path | 1" in report
+    assert "jar-pom-properties | 1" in report
+    assert "unresolved.bin" in report
+
+
+def test_render_coverage_report_zero_candidates_says_na():
+    coverage = {
+        "totalFilesScanned": 1,
+        "excludedCount": 1,
+        "excludedByReason": {"font-file": 1},
+        "candidateComponents": 0,
+        "resolvedComponents": 0,
+        "resolvedByMethod": {},
+        "unresolvedComponents": 0,
+        "unresolvedFiles": [],
+        "coveragePercent": None,
+    }
+    report = render_coverage_report(coverage, "TestApp")
+    assert "N/A" in report
+
+
+def test_render_findings_no_data_says_so_plainly():
+    report = render_findings(None, "TestApp")
+    assert "No vulnerability-matching data was supplied" in report
+    assert "not the same thing as" in report
+
+
+def test_render_findings_no_matches_found():
+    vuln_matches = {"components": [
+        {"relativePath": "a.jar", "identity": {"product": "a", "version": "1.0"},
+         "confidence": "exact-purl", "vulnerabilities": []}
+    ]}
+    report = render_findings(vuln_matches, "TestApp")
+    assert "No vulnerability matches found." in report
+
+
+def test_render_findings_separates_confirmed_from_heuristic():
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a.jar",
+            "identity": {"product": "a", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [
+                {"id": "GHSA-aaaa", "summary": "Bad thing", "severityLevel": "HIGH", "source": "osv"}
+            ],
+        },
+        {
+            "relativePath": "b.exe",
+            "identity": {"product": "b", "version": "2.0"},
+            "confidence": "heuristic",
+            "vulnerabilities": [
+                {"id": "CVE-2023-9999", "summary": "Maybe bad", "severityLevel": "LOW", "source": "nvd"}
+            ],
+        },
+    ]}
+    report = render_findings(vuln_matches, "TestApp")
+
+    confirmed_section = report.split("## Low-confidence")[0]
+    heuristic_section = report.split("## Low-confidence")[1]
+
+    assert "GHSA-aaaa" in confirmed_section
+    assert "CVE-2023-9999" not in confirmed_section
+    assert "CVE-2023-9999" in heuristic_section
+    assert "Verify manually" in heuristic_section
+
+
+def test_render_findings_sorts_by_severity_critical_first():
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a.jar", "identity": {"product": "a", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "LOW-1", "summary": "", "severityLevel": "LOW", "source": "osv"}],
+        },
+        {
+            "relativePath": "b.jar", "identity": {"product": "b", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CRIT-1", "summary": "", "severityLevel": "CRITICAL", "source": "osv"}],
+        },
+    ]}
+    report = render_findings(vuln_matches, "TestApp")
+    assert report.index("CRIT-1") < report.index("LOW-1")

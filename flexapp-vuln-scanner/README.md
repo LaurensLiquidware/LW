@@ -12,7 +12,7 @@ this project makes about FlexApp internals.
 | Stage | Status |
 |---|---|
 | Stage 1 — extraction & inventory (PowerShell 7) | **Built.** Mount/extract, XML metadata, file walk/hash, exclusion filtering, identity resolution. See below for what's validated vs. still needing a real Windows host. |
-| Stage 2 — resolution & vulnerability matching (Python) | **OSV.dev and NVD/CPE matching built.** The polished `sbom.cdx.json`/`coverage-report.md`/`findings.md` reports are next per `PLAN.md`'s build order. |
+| Stage 2 — resolution & vulnerability matching (Python) | **Built — the full pipeline exists.** OSV.dev + NVD/CPE matching, plus `sbom.cdx.json`/`coverage-report.md`/`findings.md` reporting. See below for what's validated vs. still needing live network access. |
 
 ## What it does
 
@@ -31,8 +31,7 @@ that Stage 2 will consume to answer the coverage question.
 - **Stage 1**: PowerShell 7 on Windows, with permission to mount VHDX images
   (`Mount-DiskImage`) and network access to the package store. No external
   PowerShell modules — Stage 1 is deliberately dependency-free.
-- **Stage 2**: Python 3.11+, `pip install -r requirements.txt`. OSV.dev and
-  NVD/CPE matching are built; reporting is not yet.
+- **Stage 2**: Python 3.11+, `pip install -r requirements.txt`.
 
 ## Running Stage 1
 
@@ -56,37 +55,43 @@ Each package produces one `<package-basename>.inventory.json` in
 ## Running Stage 2
 
 See [`stage2-resolve/README.md`](stage2-resolve/README.md) for full usage.
-Quick version — OSV.dev and NVD/CPE matching exist; reporting doesn't yet:
+Quick version:
 
 ```bash
 pip install -r requirements.txt
 cd stage2-resolve
+
+# 1. Query OSV.dev + NVD for matches (needs network access to both).
 python -m flexapp_vuln resolve path/to/package.inventory.json --out out/
+
+# 2. Generate the SBOM, coverage report, and findings report.
+python -m flexapp_vuln report path/to/package.inventory.json --out out/ \
+    --vuln-matches out/package.vuln-matches.json
 ```
 
-Writes `out/<package>.vuln-matches.json` — every non-excluded file, whether
-a purl (Maven/npm/PyPI, matched against OSV.dev) or a CPE (native/OS
-components, matched against NVD — `mapped-cpe` confidence via
-`config/cpe-mappings.yaml`, or `heuristic` as a fallback) could be built for
-it, and any matches found from either source.
+**`report` doesn't need step 1 or any network access** for
+`sbom.cdx.json`/`coverage-report.md` — the headline coverage percentage
+this whole PoC exists to measure is about identity resolution, not
+vulnerability matching. Only `findings.md` needs the `vuln-matches.json`
+from `resolve`; without it, it says so plainly.
 
 ## Known limitations
 
-- **Stage 2 is partial** — OSV.dev and NVD/CPE matching exist; there is not
-  yet a way to go from a Stage 1 inventory JSON to a full coverage number,
-  SBOM, or vulnerability findings report. The reporting step hasn't been
-  built.
 - **`api.osv.dev` and `services.nvd.nist.gov` are both blocked by this
   development environment's network policy** (confirmed via the proxy
   status endpoint — same category as the `grype.anchore.io` block hit
   during an earlier, unrelated Sparks Tool audit in this repo). Both
   clients are written against each service's documented public API and
-  validated with 45 passing mocked-HTTP unit tests, not a live call. The
-  CLI fails with a clear message naming which host is unreachable, instead
-  of a raw traceback — verified against the real blocked network for both
-  the OSV and NVD failure paths separately. See `stage2-resolve/README.md`.
-  **Live end-to-end validation against the real OSV.dev and NVD APIs still
-  needs to happen in an environment where they're reachable.**
+  validated with mocked-HTTP unit tests, not a live call. The `resolve`
+  command fails with a clear message naming which host is unreachable,
+  instead of a raw traceback — verified against the real blocked network
+  for both the OSV and NVD failure paths separately. The `report` command
+  needs neither host. See `stage2-resolve/README.md`. **Live end-to-end
+  validation against the real OSV.dev and NVD APIs still needs to happen in
+  an environment where they're reachable.**
+- **The SBOM was validated against the real, official CycloneDX 1.6 JSON
+  schema** (via the `cyclonedx-python-lib` package's bundled schema file and
+  `jsonschema.validate`), not just reasoned about.
 - **Directory input to Stage 1 is non-recursive** (top-level packages only).
 - **Exclusion is a path/name heuristic**, not a hash comparison against a
   known-good clean-Windows-install set (that's a stated stretch goal in
@@ -105,9 +110,6 @@ it, and any matches found from either source.
   `Mount-DiskImage`/`Dismount-DiskImage` and invoke a real FlexApp One
   package executable have not been run for real — that needs a Windows host
   and an actual package, which this development environment doesn't have.
-- **No coverage number yet.** Both matching sources exist, but nothing
-  computes or reports the headline resolution-coverage percentage
-  `PLAN.md` defines — that's the reporting step, not yet built.
 - **flexappone.exe assumptions** — the FlexApp One CLI reference used here
   came from documentation pasted into this project's development
   conversation, not fetched independently (the doc site is blocked by this

@@ -1,7 +1,14 @@
 # PLAN.md — FlexApp Package Composition & Vulnerability PoC
 
-Status: **All six assumptions resolved as of 2026-08-12 — ready to start
-Stage 1, pending your explicit go-ahead to begin.**
+Status: **All five build-order steps complete as of 2026-08-13** — Stage 1
+extraction/identity-resolution (PowerShell) and Stage 2 OSV/NVD
+matching + reporting (Python) are built and unit-tested (61 Python tests,
+plus Stage 1's PowerShell smoke tests against real artifacts). What
+remains is real-world validation this environment can't do: a Windows host
+to exercise `Mount-ClassicFlexApp.ps1`/`Expand-FlexAppOne.ps1` against real
+FlexApp packages, and network access to `api.osv.dev`/
+`services.nvd.nist.gov` (both blocked by this environment's egress
+policy) to confirm the live vulnerability-matching path end to end.
 
 ## Goal (restated)
 
@@ -420,7 +427,21 @@ defensive regardless (never crash on a single bad file, log and continue).
    end-to-end validation against the real NVD API still needs an
    environment where it's reachable. 45 tests passing total across both
    matching steps.
-5. Reporting: `sbom.cdx.json`, `coverage-report.md`, `findings.md`.
+5. **Done.** Reporting: `sbom.cdx.json`, `coverage-report.md`, `findings.md`.
+   Coverage computation and SBOM generation are deliberately independent of
+   OSV/NVD network access - they only need the Stage 1 inventory JSON, since
+   the headline coverage percentage is about identity resolution, not
+   vulnerability matching. This means the flagship number this whole PoC
+   exists to produce (see "Goal," top of this document) can always be
+   generated, even fully offline. `findings.md` is the one report that
+   genuinely needs a `vuln-matches.json` from the `resolve` step; without
+   one it says so plainly rather than rendering something that could be
+   mistaken for "no vulnerabilities found." The SBOM was validated against
+   the real, official CycloneDX 1.6 JSON schema (via the `cyclonedx-python-lib`
+   package's bundled schema file, `jsonschema.validate`) - not just reasoned
+   about. `findings.md` separates confirmed matches (`exact-purl`/
+   `mapped-cpe`) from `heuristic` ones under an explicit "verify manually"
+   warning, per the confidence-tagging rule. 61 tests passing total.
 
 At each pause I'll show what was built plus any real output from local
 tests (synthetic fixtures where I can't run against Windows/real packages

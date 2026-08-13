@@ -20,11 +20,14 @@ from typing import Any
 import requests
 
 from .confidence import Confidence
+from .coverage import compute_coverage
 from .cpe_mappings import CpeMappings
 from .inventory import iter_non_excluded_files, load_inventory
 from .normalize import build_cpe_candidate, build_purl
 from .nvd_client import NVDClient
 from .osv_client import OSVClient
+from .reporting import render_coverage_report, render_findings
+from .sbom import build_sbom
 
 logger = logging.getLogger(__name__)
 
@@ -101,13 +104,28 @@ def resolve_vuln_matches(
         if purl:
             confidence = Confidence.EXACT_PURL.value
             vulnerabilities = [
-                {"id": v.get("id"), "summary": v.get("summary"), "severity": v.get("severity", []), "source": "osv"}
+                {
+                    "id": v.get("id"),
+                    "summary": v.get("summary"),
+                    "severity": v.get("severity", []),
+                    # GHSA-sourced OSV entries commonly carry this; many
+                    # other ecosystems don't - None is an honest "unknown",
+                    # not something to guess at.
+                    "severityLevel": (v.get("database_specific") or {}).get("severity"),
+                    "source": "osv",
+                }
                 for v in osv_matches.get(purl, [])
             ]
         elif cpe:
             confidence = candidate["cpeConfidence"]
             vulnerabilities = [
-                {"id": v.get("id"), "summary": v.get("summary"), "severity": v.get("severity", []), "source": "nvd"}
+                {
+                    "id": v.get("id"),
+                    "summary": v.get("summary"),
+                    "severity": v.get("severity", []),
+                    "severityLevel": v.get("severityLevel"),
+                    "source": "nvd",
+                }
                 for v in nvd_matches.get(cpe, [])
             ]
         else:
@@ -174,6 +192,52 @@ def _cmd_resolve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _package_display_name(inventory: dict[str, Any]) -> str:
+    package = inventory.get("package", {})
+    flex_xml = package.get("flexAppXml") or {}
+    return flex_xml.get("displayName") or Path(package.get("sourcePath", "unknown-package")).stem
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    inventory_path = Path(args.inventory)
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    inventory = load_inventory(inventory_path, schema_path=args.schema)
+    cpe_mappings = CpeMappings.load(args.cpe_mappings)
+    package_name = _package_display_name(inventory)
+    out_base = inventory_path.stem.removesuffix(".inventory")
+
+    vuln_matches = None
+    if args.vuln_matches:
+        with Path(args.vuln_matches).open("r", encoding="utf-8") as f:
+            vuln_matches = json.load(f)
+
+    coverage = compute_coverage(inventory)
+    sbom = build_sbom(inventory, cpe_mappings=cpe_mappings)
+    coverage_report_md = render_coverage_report(coverage, package_name)
+    findings_md = render_findings(vuln_matches, package_name)
+
+    sbom_path = out_dir / f"{out_base}.sbom.cdx.json"
+    coverage_path = out_dir / f"{out_base}.coverage-report.md"
+    findings_path = out_dir / f"{out_base}.findings.md"
+
+    with sbom_path.open("w", encoding="utf-8") as f:
+        json.dump(sbom, f, indent=2)
+    coverage_path.write_text(coverage_report_md, encoding="utf-8")
+    findings_path.write_text(findings_md, encoding="utf-8")
+
+    print(f"Wrote {sbom_path} ({len(sbom['components'])} components)")
+    pct = coverage["coveragePercent"]
+    pct_str = f"{pct:.1f}%" if pct is not None else "N/A"
+    print(f"Wrote {coverage_path} (resolution coverage: {pct_str})")
+    if vuln_matches is None:
+        print(f"Wrote {findings_path} (no vuln-matches.json supplied - no findings data)")
+    else:
+        print(f"Wrote {findings_path}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="flexapp-vuln")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -194,6 +258,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="NVD API key (default: NVD_API_KEY env var, or unauthenticated 5 req/30s if unset)",
     )
     resolve_parser.set_defaults(func=_cmd_resolve)
+
+    report_parser = subparsers.add_parser(
+        "report", help="Generate sbom.cdx.json + coverage-report.md + findings.md"
+    )
+    report_parser.add_argument("inventory", help="Path to a Stage 1 <package>.inventory.json file")
+    report_parser.add_argument("--out", required=True, help="Output directory")
+    report_parser.add_argument("--schema", default=None, help="Override path to inventory.schema.json")
+    report_parser.add_argument(
+        "--cpe-mappings", default=None, help="Override path to cpe-mappings.yaml (default: config/cpe-mappings.yaml)"
+    )
+    report_parser.add_argument(
+        "--vuln-matches",
+        default=None,
+        help="Path to a <package>.vuln-matches.json from `resolve` (optional - "
+             "coverage-report.md and sbom.cdx.json don't need it; findings.md does)",
+    )
+    report_parser.set_defaults(func=_cmd_report)
 
     return parser
 

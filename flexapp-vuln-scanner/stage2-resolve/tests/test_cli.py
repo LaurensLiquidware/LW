@@ -21,12 +21,13 @@ def test_resolve_vuln_matches_builds_purls_and_matches(tmp_path):
     with patch("flexapp_vuln.cli.OSVClient") as mock_osv_cls, patch("flexapp_vuln.cli.NVDClient") as mock_nvd_cls:
         mock_osv_cls.return_value.resolve.return_value = {
             "pkg:maven/com.acme/outer-app@9.9.9": [
-                {"id": "GHSA-aaaa", "summary": "Something bad", "severity": []}
+                {"id": "GHSA-aaaa", "summary": "Something bad", "severity": [],
+                 "database_specific": {"severity": "HIGH"}}
             ]
         }
         mock_nvd_cls.return_value.query_cpe.return_value = {"fake": "response"}
         mock_nvd_cls.extract_cves.return_value = [
-            {"id": "CVE-2023-0001", "summary": "OpenSSL issue", "severity": []}
+            {"id": "CVE-2023-0001", "summary": "OpenSSL issue", "severity": [], "severityLevel": "CRITICAL"}
         ]
 
         result = resolve_vuln_matches(inventory, cache_dir=tmp_path, cpe_mappings=_TEST_MAPPINGS)
@@ -40,7 +41,7 @@ def test_resolve_vuln_matches_builds_purls_and_matches(tmp_path):
     assert jar["cpe"] is None
     assert jar["confidence"] == "exact-purl"
     assert jar["vulnerabilities"][0] == {
-        "id": "GHSA-aaaa", "summary": "Something bad", "severity": [], "source": "osv",
+        "id": "GHSA-aaaa", "summary": "Something bad", "severity": [], "severityLevel": "HIGH", "source": "osv",
     }
 
     # OpenSSL string-signature identity: no purl, but a mapped CPE via the
@@ -50,7 +51,7 @@ def test_resolve_vuln_matches_builds_purls_and_matches(tmp_path):
     assert native["cpe"] == "cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*"
     assert native["confidence"] == "mapped-cpe"
     assert native["vulnerabilities"][0] == {
-        "id": "CVE-2023-0001", "summary": "OpenSSL issue", "severity": [], "source": "nvd",
+        "id": "CVE-2023-0001", "summary": "OpenSSL issue", "severity": [], "severityLevel": "CRITICAL", "source": "nvd",
     }
 
     unresolved = by_path["Program Files\\App\\unresolved.bin"]

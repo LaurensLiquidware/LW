@@ -145,6 +145,7 @@ def test_extract_cves_flattens_response():
         "id": "CVE-2023-0001",
         "summary": "English summary",
         "severity": [{"source": "cvssMetricV31", "baseScore": 9.8, "baseSeverity": "CRITICAL"}],
+        "severityLevel": "CRITICAL",
     }]
 
 

@@ -86,20 +86,43 @@ end-to-end run against a real package justifies cutting a version.
   - `flexapp_vuln/nvd_client.py` — NVD 2.0 client: CPE-based CVE lookup
     (`GET /rest/json/cves/2.0`), on-disk cache, and a sliding-window rate
     limiter (5 req/30s without `NVD_API_KEY`, 50 with).
-  - `flexapp_vuln/cli.py` — `python -m flexapp_vuln resolve <inventory.json>
-    --out <dir>`, writing `<package>.vuln-matches.json` combining both
-    sources. Fails with a clear message naming which host is unreachable
-    (`api.osv.dev` or `services.nvd.nist.gov`) instead of a raw traceback.
-  - `tests/`: 45 tests, no network required — purl/CPE construction,
-    mapping-table lookup, inventory schema validation, OSV/NVD client
-    caching+batching+rate-limiting (mocked `requests`, NVD's rate-limit
-    tests use an injectable fake clock), and combined CLI component
-    assembly.
+  - `flexapp_vuln/cli.py` — `resolve` subcommand:
+    `python -m flexapp_vuln resolve <inventory.json> --out <dir>`, writing
+    `<package>.vuln-matches.json` combining both sources. Fails with a clear
+    message naming which host is unreachable (`api.osv.dev` or
+    `services.nvd.nist.gov`) instead of a raw traceback.
   - `requirements.txt` (top-level, pinned): `requests`, `jsonschema`,
     `packageurl-python`, `PyYAML`, `pytest`.
-  - `stage2-resolve/README.md` — usage, what matching covers at this step,
-    and the network-reachability caveat below.
-- Top-level `README.md` and this `CHANGELOG.md`.
+- Stage 2 reporting, completing the build order:
+  - `flexapp_vuln/coverage.py` — computes PLAN.md's exact resolution
+    coverage definition (denominator = non-excluded files, numerator = those
+    with a resolved identity) from an inventory JSON alone, independent of
+    OSV/NVD matching or network access, since the headline coverage number
+    is about identity resolution, not vulnerability matching.
+  - `flexapp_vuln/sbom.py` — builds a CycloneDX 1.6 JSON SBOM directly from
+    the inventory (recomputing purl/CPE via `normalize.py`, so it never
+    needs `resolve` to have run first). One deduplicated component per
+    distinct purl/CPE, with a SHA-256 hash where available and
+    `flexapp-vuln:resolutionMethod`/`flexapp-vuln:confidence` custom
+    properties for traceability. No `licenses` field - Stage 1 never
+    captures license data, and fabricating one would be worse than omitting
+    it. **Validated against the real, official CycloneDX 1.6 JSON schema**
+    (via `cyclonedx-python-lib`'s bundled schema file, `jsonschema.validate`).
+  - `flexapp_vuln/reporting.py` — renders `coverage-report.md` (total
+    files/exclusions-by-reason/resolved-by-method/unresolved table/headline
+    percentage) and `findings.md` (severity-sorted, split into "confirmed"
+    exact-purl/mapped-cpe vs. "low-confidence" heuristic sections under an
+    explicit verify-manually warning, per PLAN.md's rule to never present a
+    heuristic match as confirmed). `findings.md` says plainly when no
+    vuln-matches data was supplied, rather than looking like "no
+    vulnerabilities found."
+  - `flexapp_vuln/cli.py` — new `report` subcommand:
+    `python -m flexapp_vuln report <inventory.json> --out <dir>
+    [--vuln-matches <path>]`. Writes all three outputs; `--vuln-matches` is
+    optional (only `findings.md` needs it).
+  - `tests/`: 61 tests total (16 new this round), no network required.
+  - `stage2-resolve/README.md` and top-level `README.md`/`CHANGELOG.md`
+    updated for the full three-command pipeline.
 
 ### Notes
 
@@ -118,9 +141,13 @@ end-to-end run against a real package justifies cutting a version.
   proxy status endpoint — the same category of block hit against
   `grype.anchore.io` during an earlier, unrelated Sparks Tool audit in this
   repo). Both clients are validated against each service's documented
-  public API via mocked-HTTP tests instead of a live call, and the CLI's
-  graceful-failure path was confirmed against the real blocked network for
-  both hosts separately. Live end-to-end validation against the real APIs
-  still needs an environment where they're reachable.
-- The reporting step (`sbom.cdx.json`, `coverage-report.md`,
-  `findings.md`) has not been started.
+  public API via mocked-HTTP tests instead of a live call, and the
+  `resolve` command's graceful-failure path was confirmed against the real
+  blocked network for both hosts separately. The `report` command needs
+  neither host - confirmed with a real, fully-offline end-to-end run
+  producing all three outputs. Live end-to-end validation of `resolve`
+  against the real APIs still needs an environment where they're reachable.
+- **All five build-order steps from PLAN.md are now complete.** What
+  remains is real-world validation this environment can't do: a Windows
+  host for Stage 1's VHDX-mounting functions, and network access for live
+  OSV.dev/NVD queries.
