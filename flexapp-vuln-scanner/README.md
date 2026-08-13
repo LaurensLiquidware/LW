@@ -1,4 +1,4 @@
-# FlexApp Vulnerability Scanner (PoC)
+# FlexApp Vulnerability Scanner
 
 **Version 0.1.0**
 
