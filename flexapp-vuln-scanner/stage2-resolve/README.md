@@ -22,7 +22,7 @@ python -m flexapp_vuln resolve path/to/package.inventory.json --out out/
 
 # 2. Generate the SBOM, coverage report, and findings report.
 python -m flexapp_vuln report path/to/package.inventory.json --out out/ \
-    --vuln-matches out/package.vuln-matches.json
+    --vuln-matches out/package.vuln-matches.json --pdf
 ```
 
 **`report` does not require step 1 to have run.** `sbom.cdx.json` and
@@ -106,7 +106,8 @@ unaffected — the mirror is opt-in via `--nvd-mirror`.
 
 Writes `out/<package>.sbom.cdx.json`, `out/<package>.coverage-report.md`,
 and `out/<package>.findings.md`. Flags: `--schema`, `--cpe-mappings` (same
-meaning as above), and `--vuln-matches PATH` (optional, see above).
+meaning as above), `--vuln-matches PATH` (optional, see above), and `--pdf`
+(optional, see below).
 
 `coverage-report.md` states, per `PLAN.md`'s exact definitions: total files
 scanned, files excluded (by reason), candidate components (`excluded:
@@ -129,6 +130,13 @@ sections: **confirmed matches** (`exact-purl`/`mapped-cpe`) and
 **low-confidence matches** (`heuristic`, under an explicit "verify manually
 before treating this as a confirmed finding" warning) — per `PLAN.md`'s
 rule to never present a heuristic match as confirmed.
+
+Pass `--pdf` to also write `out/<package>.report.pdf` — a single polished
+document combining the coverage summary and the same confirmed/
+low-confidence findings split as `findings.md`, for handing to a human
+reader rather than another tool. It's a presentation layer over the same
+data, not an alternate source of truth — the Markdown/JSON outputs remain
+canonical. Requires `reportlab` (in `requirements.txt`).
 
 ## What "matching" means
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from flexapp_vuln.cli import resolve_vuln_matches
+from flexapp_vuln.cli import build_parser, resolve_vuln_matches
 from flexapp_vuln.cpe_mappings import CpeMappings
 from flexapp_vuln.inventory import load_inventory
 
@@ -123,3 +123,35 @@ def test_resolve_vuln_matches_heuristic_cpe_when_no_mapping(tmp_path):
     component = result["components"][0]
     assert component["cpe"] == "cpe:2.3:a:acme:acme_widget:1.2.3:*:*:*:*:*:*:*"
     assert component["confidence"] == "heuristic"
+
+
+def test_report_command_with_pdf_flag_writes_pdf_alongside_other_outputs(tmp_path):
+    parser = build_parser()
+    args = parser.parse_args([
+        "report", str(FIXTURE),
+        "--out", str(tmp_path),
+        "--pdf",
+    ])
+    exit_code = args.func(args)
+
+    assert exit_code == 0
+    out_base = FIXTURE.stem.removesuffix(".inventory")
+    assert (tmp_path / f"{out_base}.sbom.cdx.json").exists()
+    assert (tmp_path / f"{out_base}.coverage-report.md").exists()
+    assert (tmp_path / f"{out_base}.findings.md").exists()
+    pdf_path = tmp_path / f"{out_base}.report.pdf"
+    assert pdf_path.exists()
+    assert pdf_path.read_bytes().startswith(b"%PDF-")
+
+
+def test_report_command_without_pdf_flag_skips_pdf(tmp_path):
+    parser = build_parser()
+    args = parser.parse_args([
+        "report", str(FIXTURE),
+        "--out", str(tmp_path),
+    ])
+    exit_code = args.func(args)
+
+    assert exit_code == 0
+    out_base = FIXTURE.stem.removesuffix(".inventory")
+    assert not (tmp_path / f"{out_base}.report.pdf").exists()

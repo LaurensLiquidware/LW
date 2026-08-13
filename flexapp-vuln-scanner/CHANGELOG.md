@@ -174,6 +174,22 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- `pdf_report.py` (new module) + `report --pdf` flag: writes
+  `<package>.report.pdf` via `reportlab` - a single polished document
+  combining the coverage summary (resolution %, excluded/resolved
+  breakdowns, unresolved-file list) and the same confirmed/low-confidence
+  findings split as `findings.md`, for handing to a human reader rather
+  than another tool. Requested after several rounds of live testing kept
+  producing separate `.md`/`.json` files with no single presentable
+  deliverable. Refactored `reporting.py`'s finding-dedup/severity-sort
+  logic into a shared `build_finding_rows()` so the Markdown and PDF
+  renderers can't drift apart. Chose `reportlab` over `weasyprint`
+  specifically because it ships pure-Python/prebuilt wheels with no native
+  system libraries (cairo/pango) to install on the Windows machines this
+  project actually runs on. 6 new tests (structural PDF validity plus a
+  CLI-level `report --pdf` integration test); verified visually by
+  rendering the real Nextcloud Client scan data end-to-end.
+
 - `ExclusionRules.psd1`: added `flexapp-capture-scaffolding`
   (`\Data\appinstall.cap`/`\Data\printers.bak`/`\Data\DisableShortPaths`/
   `\Data\Suppress.ACL`) after these exact 4 filenames showed up in a

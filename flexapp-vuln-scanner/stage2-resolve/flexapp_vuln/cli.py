@@ -27,6 +27,7 @@ from .normalize import build_cpe_candidate, build_purl
 from .nvd_client import NVDClient
 from .nvd_mirror import NVDLocalMatcher, build_index, iter_all_cves, load_mirror, merge_index, save_mirror
 from .osv_client import OSVClient
+from .pdf_report import render_pdf_report
 from .reporting import render_coverage_report, render_findings
 from .sbom import build_sbom
 
@@ -288,6 +289,20 @@ def _cmd_report(args: argparse.Namespace) -> int:
         print(f"Wrote {findings_path} (no vuln-matches.json supplied - no findings data)")
     else:
         print(f"Wrote {findings_path}")
+
+    if args.pdf:
+        pdf_path = out_dir / f"{out_base}.report.pdf"
+        package = inventory.get("package", {})
+        package_meta = {**package, **(package.get("flexAppXml") or {})}
+        render_pdf_report(
+            pdf_path,
+            package_name=package_name,
+            package_meta=package_meta,
+            coverage=coverage,
+            vuln_matches=vuln_matches,
+        )
+        print(f"Wrote {pdf_path}")
+
     return 0
 
 
@@ -354,6 +369,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to a <package>.vuln-matches.json from `resolve` (optional - "
              "coverage-report.md and sbom.cdx.json don't need it; findings.md does)",
+    )
+    report_parser.add_argument(
+        "--pdf",
+        action="store_true",
+        help="Also write <package>.report.pdf - a single polished document combining "
+             "the coverage summary and vulnerability findings, for a human reader "
+             "rather than another tool",
     )
     report_parser.set_defaults(func=_cmd_report)
 

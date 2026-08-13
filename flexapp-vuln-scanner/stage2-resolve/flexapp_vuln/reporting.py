@@ -80,26 +80,19 @@ def render_coverage_report(coverage: dict[str, Any], package_name: str) -> str:
     return "\n".join(lines)
 
 
-def render_findings(vuln_matches: dict[str, Any] | None, package_name: str) -> str:
-    lines = [f"# Findings — {package_name}", ""]
+def build_finding_rows(vuln_matches: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flattens vuln-matches.json into one row per distinct (component,
+    vulnerability), severity-sorted. Shared by the Markdown and PDF
+    renderers so both dedupe and sort identically.
 
-    if vuln_matches is None:
-        lines += [
-            "No vulnerability-matching data was supplied for this report "
-            "(the `resolve` step wasn't run, or its output wasn't passed in). "
-            "This report has no findings to show - that is not the same "
-            "thing as \"no vulnerabilities found.\"",
-            "",
-        ]
-        return "\n".join(lines)
-
-    # Keyed by (purl-or-cpe, vulnerability id) - the same physical component
-    # (e.g. the same bundled sqlite3.dll copied to more than one path) can
-    # appear as more than one candidate row here, each carrying an identical
-    # vulnerability list. Without deduping by identity, every CVE for that
-    # component would be rendered once per file instead of once overall -
-    # this is the same "one entry per distinct component" rule sbom.py
-    # already applies when building the SBOM.
+    Keyed by (purl-or-cpe, vulnerability id) - the same physical component
+    (e.g. the same bundled sqlite3.dll copied to more than one path) can
+    appear as more than one candidate row here, each carrying an identical
+    vulnerability list. Without deduping by identity, every CVE for that
+    component would be rendered once per file instead of once overall -
+    this is the same "one entry per distinct component" rule sbom.py
+    already applies when building the SBOM.
+    """
     rows_by_key: dict[tuple[str, str], dict[str, Any]] = {}
     for component in vuln_matches.get("components", []):
         identity = component.get("identity") or {}
@@ -122,7 +115,23 @@ def render_findings(vuln_matches: dict[str, Any] | None, package_name: str) -> s
 
     rows = list(rows_by_key.values())
     rows.sort(key=lambda r: (_severity_rank(r["severityLevel"]), r["id"] or ""))
+    return rows
 
+
+def render_findings(vuln_matches: dict[str, Any] | None, package_name: str) -> str:
+    lines = [f"# Findings — {package_name}", ""]
+
+    if vuln_matches is None:
+        lines += [
+            "No vulnerability-matching data was supplied for this report "
+            "(the `resolve` step wasn't run, or its output wasn't passed in). "
+            "This report has no findings to show - that is not the same "
+            "thing as \"no vulnerabilities found.\"",
+            "",
+        ]
+        return "\n".join(lines)
+
+    rows = build_finding_rows(vuln_matches)
     confirmed = [r for r in rows if r["confidence"] in ("exact-purl", "mapped-cpe")]
     heuristic = [r for r in rows if r["confidence"] == "heuristic"]
 

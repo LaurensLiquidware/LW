@@ -993,6 +993,35 @@ already known. Left unresolved rather than guessed at - same principle as
 the NSS follow-up above, this needs a real binary to inspect before writing
 a new pattern, not something to fix blind from this dev sandbox.
 
+7. **New feature, implemented: a polished PDF report (`report --pdf`).**
+   Requested directly - after enough rounds of live testing produced a pile
+   of separate `.md`/`.json` outputs per package, with no single document to
+   hand someone. Added `pdf_report.py` (`render_pdf_report`), using
+   `reportlab` - chosen over `weasyprint` specifically because it ships
+   pure-Python/prebuilt wheels with no native system libraries (cairo/
+   pango) to install, since this project actually runs on Windows machines
+   without a build toolchain. The PDF combines the same data as
+   `coverage-report.md` (resolution %, excluded/resolved breakdowns,
+   unresolved-file list) and `findings.md` (confirmed vs. low-confidence
+   findings, severity-color-coded) into one document - a presentation layer
+   over the same source of truth, not a second copy of it.
+
+   Refactored `reporting.py`'s finding dedup-by-identity/severity-sort logic
+   (previously inline in `render_findings`) into a shared
+   `build_finding_rows()` so the Markdown and PDF renderers can't quietly
+   drift apart on what counts as "the same finding." Wired via a `--pdf`
+   flag on the existing `report` subcommand (no new subcommand - it's the
+   same data, just another output format) rather than a separate `--out`
+   path, so it always lands next to the other three files.
+
+   Verified with 6 new tests (structural PDF validity - `%PDF-`/`%%EOF`
+   markers, non-trivial size - across empty/no-data/zero-candidate edge
+   cases, plus a CLI-level `report --pdf` integration test confirming the
+   file actually lands in `--out` alongside the others) and, since PDF
+   rendering can't be meaningfully unit-tested for visual correctness,
+   rendered the real Nextcloud Client scan data end-to-end and inspected
+   the output directly.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or
