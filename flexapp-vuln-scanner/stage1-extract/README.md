@@ -94,6 +94,17 @@ were per-language translation `.txt` files under a `\Lang\` folder. Added
 `\Lang\`/`\Locale\`/`\Locales\`/`\i18n\`/`\l10n\` as a new
 `localization-file` path rule.
 
+A third live test against a real Paint.NET package (70.4% coverage) found
+a real bug in `Get-DotNetAssemblyIdentity` (`VersionResources.psm1`):
+every managed .NET assembly was silently falling back to
+`pe-version-resource` instead of resolving via `dotnet-manifest`, because
+`GetMetadataReader()` is an extension method on
+`System.Reflection.Metadata.PEReaderExtensions` and PowerShell's method
+binder doesn't resolve extension methods via instance dot-syntax - the
+call threw on every invocation and was swallowed by the catch-all. Fixed
+by invoking it as a static method instead; verified against a real
+assembly before and after.
+
 ## Known limitations at this stage
 
 - Directory input is non-recursive (top-level packages only).

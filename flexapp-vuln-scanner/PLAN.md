@@ -492,6 +492,39 @@ defensive regardless (never crash on a single bad file, log and continue).
    without live NVD access to verify the real dictionary entry, that would
    present a guess as `mapped-cpe` confidence, no more trustworthy than
    `heuristic` but labeled as if it were.
+
+   **Third live test, a real Paint.NET package (2026-08-13)**: 482 files,
+   40 excluded, 311/442 candidates resolved - **70.4% coverage**, well
+   into the range that makes the concept worth pursuing. But the
+   coverage report's "resolved, by method" breakdown showed *100%*
+   `pe-version-resource` and *zero* `dotnet-manifest`, which was wrong on
+   its face - several of the resolved names are well-known managed .NET
+   libraries (Json.NET, Mono.Cecil + its `.Mdb`/`.Pdb`/`.Rocks` variants,
+   ComputeSharp.Core), which should have resolved via the
+   higher-priority `dotnet-manifest` path. Reproduced directly against a
+   real assembly (`Newtonsoft.Json.dll`, borrowed from the local `pwsh`
+   install) and confirmed a real bug in `Get-DotNetAssemblyIdentity`:
+   `GetMetadataReader()` is an *extension* method on the static class
+   `System.Reflection.Metadata.PEReaderExtensions`, not an instance
+   method on `PEReader` - PowerShell's method binder doesn't resolve
+   extension methods via `$peReader.GetMetadataReader()` dot-syntax the
+   way the C# compiler does, so the call threw
+   `MethodException: ... does not contain a method named
+   'GetMetadataReader'` on *every single invocation*, silently swallowed
+   by the surrounding catch-all, falling through to the
+   `pe-version-resource` path every time. Fixed by calling it as a static
+   method instead: `[System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($peReader)`.
+   Verified against the same real assembly post-fix - now correctly
+   returns `method: dotnet-manifest`, `product: Newtonsoft.Json`,
+   `version: 13.0.0.0`, plus a real public key token and the Win32
+   file-version cross-check. This means every earlier live-test coverage
+   number for a managed/mixed package undercounted `dotnet-manifest`
+   precision in favor of the coarser `pe-version-resource` method (the
+   raw *coverage percentage* is unaffected - both methods count as
+   "resolved" - but confidence/precision of individual .NET component
+   identities was silently downgraded). Re-running Paint.NET (or any
+   .NET-heavy package) after this fix should now show real
+   `dotnet-manifest` entries in the method breakdown.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

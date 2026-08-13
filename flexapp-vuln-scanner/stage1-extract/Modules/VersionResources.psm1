@@ -33,7 +33,16 @@ function Get-DotNetAssemblyIdentity {
                     return $null
                 }
 
-                $metadataReader = $peReader.GetMetadataReader()
+                # GetMetadataReader() is an extension method on the static class
+                # System.Reflection.Metadata.PEReaderExtensions, not an instance
+                # method on PEReader itself - PowerShell's method binder does not
+                # resolve extension methods via instance dot-syntax the way the C#
+                # compiler does, so calling $peReader.GetMetadataReader() throws
+                # "does not contain a method named 'GetMetadataReader'" for every
+                # real assembly (confirmed on a live Paint.NET test: 311/311
+                # managed .NET files silently fell back to pe-version-resource).
+                # Must invoke it as a static call instead.
+                $metadataReader = [System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($peReader)
                 $assemblyDef = $metadataReader.GetAssemblyDefinition()
 
                 $name = $metadataReader.GetString($assemblyDef.Name)

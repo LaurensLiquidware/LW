@@ -50,6 +50,21 @@ end-to-end run against a real package justifies cutting a version.
   `method: string-signature`. Made `method` optional in a mapping entry's
   `match` block - a distinctive product name is unambiguous regardless of
   which method found it.
+- `VersionResources.psm1` (`Get-DotNetAssemblyIdentity`): every managed
+  .NET assembly was silently falling back to `pe-version-resource` instead
+  of resolving via `dotnet-manifest` - confirmed live on a real Paint.NET
+  package where well-known managed libraries (Json.NET, Mono.Cecil,
+  ComputeSharp.Core) all resolved with `raw` shaped like a Win32 version
+  resource, never an assembly manifest. Root cause: `GetMetadataReader()`
+  is an extension method on the static class
+  `System.Reflection.Metadata.PEReaderExtensions`, not an instance method
+  on `PEReader` - PowerShell's method binder doesn't resolve extension
+  methods via `$peReader.GetMetadataReader()` the way the C# compiler
+  does, so the call threw on every single invocation and was swallowed by
+  the catch-all. Fixed by calling it as a static method,
+  `[System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($peReader)`.
+  Reproduced and verified directly against a real assembly
+  (`Newtonsoft.Json.dll`) before and after the fix.
 
 ### Added
 
