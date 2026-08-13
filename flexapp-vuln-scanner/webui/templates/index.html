@@ -15,14 +15,14 @@
       <span class="input-row">
         <input type="text" name="package_path" value="{{ prefill.package_path }}"
                placeholder="C:\flexapp-vuln-scanner\VHDX\Example.vhdx" required>
-        <a class="browse-link" href="{{ url_for('browse_fs', target='package_path') }}">Browse…</a>
+        <a class="browse-link" href="{{ url_for('browse_fs', target='package_path', **prefill) }}">Browse…</a>
       </span>
     </label>
     <label>Output directory
       <span class="input-row">
         <input type="text" name="output_dir" value="{{ prefill.output_dir }}"
                placeholder="C:\flexapp-vuln-scanner\scan-out\example" required>
-        <a class="browse-link" href="{{ url_for('browse_fs', target='output_dir') }}">Browse…</a>
+        <a class="browse-link" href="{{ url_for('browse_fs', target='output_dir', **prefill) }}">Browse…</a>
       </span>
     </label>
     <label>NVD API key (optional)
@@ -45,7 +45,7 @@
       <span class="input-row">
         <input type="text" name="dir_path" value="{{ prefill.dir_path }}"
                placeholder="C:\flexapp-vuln-scanner\scan-out\nextcloud" required>
-        <a class="browse-link" href="{{ url_for('browse_fs', target='dir_path') }}">Browse…</a>
+        <a class="browse-link" href="{{ url_for('browse_fs', target='dir_path', **prefill) }}">Browse…</a>
       </span>
     </label>
     <button type="submit">Open</button>

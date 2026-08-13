@@ -60,34 +60,58 @@ def browse_fs():
     if target not in _BROWSE_TARGETS:
         abort(400)
     mode = _BROWSE_TARGETS[target]
+
+    # The other two path fields' current values, carried through every link
+    # on this page (drives/up/subfolder navigation) so browsing for one
+    # field never clobbers what you already picked for the others - only
+    # the final "select this folder"/file link overwrites `target`'s value.
+    carry = _prefill(
+        package_path=request.args.get("package_path", ""),
+        output_dir=request.args.get("output_dir", ""),
+        dir_path=request.args.get("dir_path", ""),
+    )
+
+    def nav_url(path: str | None = None) -> str:
+        args = dict(carry, target=target)
+        if path is not None:
+            args["path"] = path
+        return url_for("browse_fs", **args)
+
+    def select_url(chosen_path: str) -> str:
+        return url_for("index", **dict(carry, **{target: chosen_path}))
+
     raw_path = request.args.get("path", "").strip()
     if not raw_path and paths.REPO_ROOT.is_dir():
         raw_path = str(paths.REPO_ROOT)
 
     if not raw_path:
         return render_template(
-            "browse.html", target=target, mode=mode,
-            drives=browse.list_drives(), current_path=None, parent_path=None,
+            "browse.html", target=target, mode=mode, nav_url=nav_url,
+            drives=browse.list_drives(), current_path=None, parent_url=None,
             dirs=[], files=[],
         )
 
     current = Path(raw_path)
     if not current.is_dir():
         return render_template(
-            "browse.html", target=target, mode=mode,
-            drives=browse.list_drives(), current_path=None, parent_path=None,
+            "browse.html", target=target, mode=mode, nav_url=nav_url,
+            drives=browse.list_drives(), current_path=None, parent_url=None,
             dirs=[], files=[], browse_error=f"'{current}' is not a directory.",
         ), 400
 
     file_extensions = browse.PACKAGE_EXTENSIONS if mode == "file" else None
-    dirs, files = browse.list_directory(current, file_extensions=file_extensions)
+    raw_dirs, raw_files = browse.list_directory(current, file_extensions=file_extensions)
     parent = current.parent
-    parent_path = str(parent) if parent != current else None
+    parent_url = nav_url(str(parent)) if parent != current else None
+
+    dirs = [(d.name, nav_url(d.path)) for d in raw_dirs]
+    files = [(f.name, select_url(f.path)) for f in raw_files]
+    select_folder_url = select_url(str(current)) if mode == "dir" else None
 
     return render_template(
-        "browse.html", target=target, mode=mode,
-        drives=browse.list_drives(), current_path=str(current), parent_path=parent_path,
-        dirs=dirs, files=files,
+        "browse.html", target=target, mode=mode, nav_url=nav_url,
+        drives=browse.list_drives(), current_path=str(current), parent_url=parent_url,
+        dirs=dirs, files=files, select_folder_url=select_folder_url,
     )
 
 

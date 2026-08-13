@@ -1,4 +1,7 @@
+import html
+import re
 import shutil
+import urllib.parse
 from pathlib import Path
 
 import app as flask_app_module
@@ -56,6 +59,51 @@ def test_open_directory_single_inventory_redirects_to_results(tmp_path):
     assert b"Vulnerability Findings" in resp.data
     # No vuln-matches.json alongside the fixture - must say so, not look empty.
     assert b"not the same thing as" in resp.data
+
+
+def _hrefs(page_html: str) -> list[str]:
+    # Jinja HTML-escapes "&" to "&amp;" inside href="..." attributes -
+    # unescape before treating these as real URLs to parse query params from.
+    return [html.unescape(h) for h in re.findall(r'href="([^"]+)"', page_html)]
+
+
+def _query(url: str) -> dict[str, str]:
+    parsed = urllib.parse.urlparse(url)
+    return {k: v[0] for k, v in urllib.parse.parse_qs(parsed.query).items()}
+
+
+def test_browse_navigation_links_carry_other_field_values(tmp_path):
+    # Regression test: browsing for output_dir after already picking a
+    # package_path must not clobber it - every link on the browse page
+    # (drives, up, subfolder nav) needs to carry the other fields' current
+    # values through, not just the one being edited.
+    (tmp_path / "sub").mkdir()
+    package_value = "C:\\some\\package.vhdx"
+
+    resp = client().get("/browse", query_string={
+        "target": "output_dir", "path": str(tmp_path), "package_path": package_value,
+    })
+    html = resp.data.decode()
+
+    browse_hrefs = [h for h in _hrefs(html) if h.startswith("/browse")]
+    assert browse_hrefs, "expected at least one /browse navigation link (e.g. into 'sub')"
+    for href in browse_hrefs:
+        assert _query(href).get("package_path") == package_value
+
+
+def test_browse_select_folder_link_preserves_other_fields(tmp_path):
+    package_value = "C:\\some\\package.vhdx"
+
+    resp = client().get("/browse", query_string={
+        "target": "output_dir", "path": str(tmp_path), "package_path": package_value,
+    })
+    html = resp.data.decode()
+
+    select_hrefs = [h for h in _hrefs(html) if h.startswith("/?")]
+    assert select_hrefs, "expected a 'select this folder' link back to /"
+    query = _query(select_hrefs[0])
+    assert query.get("package_path") == package_value
+    assert query.get("output_dir") == str(tmp_path)
 
 
 def test_browse_unknown_target_400():

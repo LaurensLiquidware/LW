@@ -1103,6 +1103,25 @@ a new pattern, not something to fix blind from this dev sandbox.
    navigated into a real subdirectory, clicked "Select this folder," and
    confirmed the dashboard came back with that exact path pre-filled.
 
+   **Bug found immediately on real use, same day**: selecting a package
+   file, then browsing for the output directory, silently dropped the
+   already-selected package path. Cause: every link on the browse page
+   only carried the field currently being edited (`target`), not the
+   other two path fields' current values - so navigating away to pick the
+   output directory lost whatever had already been picked for the package
+   path. Fixed by threading all three field values ("carry") through
+   every link on the browse page (drives, up, subfolder navigation) and
+   the final select-file/select-folder links, computed server-side in the
+   `/browse` route rather than attempted in the template (Jinja's `|` is
+   reserved for filters, so dict-merging inline in `browse.html` wasn't a
+   clean option - precomputed full URLs in `app.py` and handed the
+   template plain `(name, url)` pairs instead). Verified with a real
+   headless-browser round trip (select a package file, then browse for
+   and select an output folder, confirm both fields still hold their
+   values) and 2 new regression tests that parse the actual rendered
+   `href`s and check `package_path` survives on every link when browsing
+   for `output_dir`, not just asserting on the final state.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

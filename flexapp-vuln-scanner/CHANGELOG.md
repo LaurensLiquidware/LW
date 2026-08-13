@@ -217,6 +217,16 @@ end-to-end run against a real package justifies cutting a version.
   subdirectory → "Select this folder" → confirm the dashboard comes back
   pre-filled with that exact path).
 
+  **Found immediately on real use**: selecting a package file, then
+  browsing for the output directory, silently dropped the already-selected
+  package path - every browse-page link only carried the field currently
+  being edited, not the other two. Fixed by threading all three path
+  fields' current values through every link on the browse page (computed
+  server-side in the `/browse` route as precomputed URLs, not attempted in
+  the template - Jinja's `|` is reserved for filters, not dict-merging).
+  2 more regression tests parse the actual rendered `href`s and check
+  `package_path` survives on every link while browsing for `output_dir`.
+
 - `pdf_report.py` (new module) + `report --pdf` flag: writes
   `<package>.report.pdf` via `reportlab` - a single polished document
   combining the coverage summary (resolution %, excluded/resolved
