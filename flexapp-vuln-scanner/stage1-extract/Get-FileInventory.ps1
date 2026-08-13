@@ -61,6 +61,7 @@ function Get-FileInventoryRecord {
             if ($FileName -ieq 'package.json') { return 'node-package' }
             if ($FileName -ieq 'MANIFEST.MF' -or $FileName -ieq 'pom.properties') { return 'jar' }
             if ($FileName -ieq 'METADATA' -or $FileName -ieq 'PKG-INFO') { return 'python-dist' }
+            if ($FileName -like '*.deps.json') { return 'dotnet-deps-json' }
             return 'unknown'
         }
 

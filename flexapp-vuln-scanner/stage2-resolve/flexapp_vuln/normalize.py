@@ -2,12 +2,12 @@
 2.3 string, where possible.
 
 Only identity methods that map cleanly onto an OSV-supported ecosystem
-(Maven, npm, PyPI - NuGet is deliberately NOT attempted here, see below) get
-a purl. Native/OS components (PE, string-signature, dotnet-manifest,
-electron-embedded) get a CPE candidate instead, via build_cpe_candidate -
-either a curated cpe-mappings.yaml override (confidence "mapped-cpe") or an
-automatic heuristic normalization (confidence "heuristic", per PLAN.md never
-to be presented as a confirmed finding).
+(Maven, npm, PyPI, NuGet) get a purl. Native/OS components (PE,
+string-signature, dotnet-manifest, electron-embedded) get a CPE candidate
+instead, via build_cpe_candidate - either a curated cpe-mappings.yaml
+override (confidence "mapped-cpe") or an automatic heuristic normalization
+(confidence "heuristic", per PLAN.md never to be presented as a confirmed
+finding).
 """
 
 from __future__ import annotations
@@ -110,6 +110,9 @@ def build_purl(identity: dict[str, Any] | None) -> str | None:
 
     if method == "python-dist-info":
         return PackageURL(type="pypi", name=_normalize_pypi_name(product), version=version).to_string()
+
+    if method == "dotnet-deps-json":
+        return PackageURL(type="nuget", name=product, version=version).to_string()
 
     # jar-manifest has no groupId, so no Maven purl can be built reliably.
     # dotnet-manifest, pe-version-resource, string-signature, electron-embedded

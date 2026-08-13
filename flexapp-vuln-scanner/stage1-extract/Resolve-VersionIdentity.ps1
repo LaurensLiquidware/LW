@@ -23,6 +23,7 @@ Import-Module (Join-Path $PSScriptRoot 'Modules/VersionResources.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'Modules/JavaManifest.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'Modules/NodeAsar.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'Modules/PythonDist.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'Modules/DepsJson.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'Modules/StringSignatures.psm1') -Force
 
 function Test-FileExclusion {
@@ -69,6 +70,21 @@ function Test-FileExclusion {
     return [PSCustomObject]@{ Excluded = $false; Reason = $null }
 }
 
+function Test-UmbrellaVersionedIdentity {
+    [CmdletBinding()]
+    param(
+        [string]$Product,
+        [array]$UmbrellaVersionedProducts
+    )
+
+    if (-not $Product -or -not $UmbrellaVersionedProducts) { return $false }
+
+    foreach ($needle in $UmbrellaVersionedProducts) {
+        if ($Product -like "*$needle*") { return $true }
+    }
+    return $false
+}
+
 function New-SyntheticFileRecord {
     param(
         [string]$RelativePath,
@@ -109,6 +125,8 @@ function Resolve-ComponentIdentity {
         [Parameter(Mandatory)]
         [array]$StringSignatures,
 
+        [array]$UmbrellaVersionedProducts = @(),
+
         [int]$JarMaxDepth = 5
     )
 
@@ -129,6 +147,23 @@ function Resolve-ComponentIdentity {
         '^\.(exe|dll|sys|ocx)$' {
             $identity = Get-DotNetAssemblyIdentity -Path $AbsolutePath
             if (-not $identity) { $identity = Get-PEVersionResourceIdentity -Path $AbsolutePath }
+
+            # Known multi-DLL "umbrella-versioning" vendors (Mozilla's
+            # Gecko platform: Firefox, Tor Browser, Thunderbird) stamp
+            # EVERY DLL in their tree with the browser's own product
+            # version - found live that this hides a bundled library's own
+            # real version (nss3.dll/softokn3.dll/freebl3.dll all resolve
+            # to "Tor Browser 140.10.0"). A PE-resource success for one of
+            # these products is therefore not treated as terminal: also
+            # run string-signature scanning and prefer it when it actually
+            # matches a known vendored-library banner - more accurate than
+            # the umbrella app version, same principle already used for
+            # tor.exe's own embedded OpenSSL banner.
+            if ($identity -and (Test-UmbrellaVersionedIdentity -Product $identity.product -UmbrellaVersionedProducts $UmbrellaVersionedProducts)) {
+                $signatureIdentity = Get-StringSignatureIdentity -Path $AbsolutePath -Signatures $StringSignatures
+                if ($signatureIdentity) { $identity = $signatureIdentity }
+            }
+
             if (-not $identity) { $identity = Get-StringSignatureIdentity -Path $AbsolutePath -Signatures $StringSignatures }
             return [PSCustomObject]@{ Identity = $identity; ExtraComponents = @() }
         }
@@ -148,6 +183,23 @@ function Resolve-ComponentIdentity {
 
     if ($leafName -ieq 'package.json') {
         return [PSCustomObject]@{ Identity = (Get-NodePackageIdentity -Path $AbsolutePath); ExtraComponents = @() }
+    }
+
+    # A single *.deps.json names dozens of NuGet dependencies (see
+    # DepsJson.psm1) - one physical file, many logical components, same
+    # shape as jar/asar containers below, not a single-identity file like
+    # package.json/METADATA.
+    if ($leafName -like '*.deps.json') {
+        $depsResults = Get-DepsJsonIdentities -Path $AbsolutePath
+        $extra = @($depsResults | ForEach-Object {
+            New-SyntheticFileRecord `
+                -RelativePath (ConvertTo-RootedRelativePath -EntryPath $_.entryPath) `
+                -SizeBytes $null `
+                -Sha256 $null `
+                -ComponentType 'dotnet-package' `
+                -Identity $_.identity
+        })
+        return [PSCustomObject]@{ Identity = $null; ExtraComponents = $extra }
     }
 
     if ($ext -eq '.asar') {

@@ -892,6 +892,70 @@ directly from this environment), before moving to the next stage.
    design here rather than guessing at NuGet-ecosystem OSV support without
    verifying it first.
 
+   **Implemented (2026-08-13).** Verified via web search (api.osv.dev is
+   also blocked from direct fetch in this dev sandbox, same as
+   services.nvd.nist.gov) that NuGet is a real OSV-supported ecosystem with
+   standard `pkg:nuget/<name>@<version>` purl querying - the scoped design
+   above was safe to build. Added `Get-DepsJsonIdentities`
+   (`stage1-extract/Modules/DepsJson.psm1`): parses `.libraries`, skips
+   `type: "project"` entries (the app itself), returns one synthetic
+   component per remaining entry (`package`, `runtimepack`, etc.) - same
+   shape as jar/asar nested components, since one `*.deps.json` names many
+   logical dependencies from a single physical file. Wired into
+   `Resolve-VersionIdentity.ps1`'s dispatcher (`*.deps.json` filename match,
+   alongside the existing `package.json`/`METADATA` special cases) and
+   `Get-FileInventory.ps1`'s componentType guess. Added the
+   `dotnet-deps-json` -> `pkg:nuget/<name>@<version>` purl mapping to
+   `stage2-resolve/normalize.py`'s `build_purl`. Verified locally against a
+   synthetic multi-package `.deps.json` fixture (pwsh is available in this
+   dev sandbox even though live NVD/OSV network calls aren't) - confirmed
+   the `project` entry is correctly skipped, `package`/`runtimepack` entries
+   both resolve, and relative-path rooting for the synthetic entries matches
+   the jar/asar convention exactly. 98 Python tests passing (2 new).
+
+6. **Candidate follow-up, now implemented: Mozilla-DLL dispatch-priority
+   fix.** Per the Tor Browser/Firefox re-run findings above,
+   `nss3.dll`/`softokn3.dll`/`freebl3.dll` never got a chance at
+   string-signature scanning because `Resolve-ComponentIdentity` treated any
+   successful `Get-PEVersionResourceIdentity` hit as terminal, even when
+   that hit was just the browser's own umbrella version stamped onto every
+   DLL in the tree. Fixed the dispatch-priority half of this (not the
+   NSS-signature half - see below): added a `UmbrellaVersionedProducts`
+   list to `string-signatures.psd1` (`Firefox`, `Tor Browser`,
+   `Thunderbird` - Mozilla's Gecko-platform family, the only vendor with
+   live evidence of this behavior so far), and a `Test-UmbrellaVersionedIdentity`
+   helper in `Resolve-VersionIdentity.ps1`: when a PE-resource identity's
+   `product` matches one of these, the dispatcher now also runs
+   string-signature scanning and prefers that result over the umbrella
+   identity *only if it actually matches a known vendored-library banner*
+   (OpenSSL/zlib/libcurl/SQLite/etc in `Signatures`) - never overrides with
+   a non-match. `Import-StringSignatures` now returns both `Signatures` and
+   `UmbrellaVersionedProducts` from the one config file; the one caller
+   (`Invoke-FlexAppInventory.ps1`) updated accordingly.
+
+   Verified locally (no Pester tests existed for stage1 before this; used
+   the same "synthetic fixture + direct pwsh invocation" style as the rest
+   of this project's local validation) against three scenarios: (1) a
+   PE identity stamped "Tor Browser 140.10.0" on a file that also contains
+   a real OpenSSL banner string - correctly switches to the OpenSSL
+   identity; (2) the same umbrella PE identity on a file with no known
+   banner text - correctly keeps the umbrella identity unchanged, no
+   regression; (3) a non-Mozilla PE identity ("7-Zip") on a file that
+   happens to contain OpenSSL-shaped text anyway - correctly left alone,
+   since it never enters the umbrella-check branch at all.
+
+   **Deliberately still NOT done**: this does not make NSS's real version
+   resolvable yet. No NSS-specific string-signature pattern was added,
+   because the exact embedded-string format still needs verifying against
+   a real binary (this dev sandbox has no way to inspect a live
+   softokn3.dll/freebl3.dll) - writing a guessed pattern here would risk
+   exactly the kind of false-positive/false-confidence this project has
+   spent the whole session avoiding. The dispatch mechanism is now correct
+   and general (it will already improve any Mozilla-family DLL that
+   happens to bundle a library `Signatures` already knows how to
+   recognize); a genuine NSS signature is a separate, still-open follow-up
+   that needs real binary access to do honestly.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

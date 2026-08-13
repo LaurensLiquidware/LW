@@ -55,7 +55,7 @@ if (-not (Test-Path -LiteralPath $OutputDir)) {
 }
 
 $exclusionRules = Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'ExclusionRules.psd1')
-$stringSignatures = Import-StringSignatures -ConfigPath (Join-Path $PSScriptRoot 'config/string-signatures.psd1')
+$stringSignatureConfig = Import-StringSignatures -ConfigPath (Join-Path $PSScriptRoot 'config/string-signatures.psd1')
 
 # Tracks currently-mounted VHDX image paths so an interrupt (Ctrl-C or engine
 # exit) can still dismount them. Per-package try/finally below is the primary
@@ -146,7 +146,7 @@ function Invoke-SinglePackage {
 
                 $absolutePath = Join-Path $mountInfo.RootPath $record.relativePath
                 try {
-                    $resolved = Resolve-ComponentIdentity -AbsolutePath $absolutePath -RelativePath $record.relativePath -ComponentType $record.componentType -StringSignatures $stringSignatures
+                    $resolved = Resolve-ComponentIdentity -AbsolutePath $absolutePath -RelativePath $record.relativePath -ComponentType $record.componentType -StringSignatures $stringSignatureConfig.Signatures -UmbrellaVersionedProducts $stringSignatureConfig.UmbrellaVersionedProducts
                     $record.identity = $resolved.Identity
                     foreach ($extra in $resolved.ExtraComponents) { $extraRecords.Add($extra) | Out-Null }
                 }

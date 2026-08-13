@@ -61,4 +61,23 @@
             Method       = 'electron-embedded'
         }
     )
+
+    # Product-name substrings (matched against a PE version resource's
+    # `product` field) known to stamp EVERY DLL in their install tree with
+    # the umbrella app's own version, rather than each bundled library's
+    # real version. Found live on real Tor Browser/Firefox scans:
+    # nss3.dll/softokn3.dll/freebl3.dll all resolved to "Tor Browser
+    # 140.10.0"/"Firefox ..." instead of NSS's own version. For a PE
+    # identity whose product matches one of these, Resolve-VersionIdentity.ps1
+    # does not treat that PE-resource success as terminal - it also runs a
+    # string-signature scan and prefers that result when it actually
+    # matches a known vendored-library banner (see Signatures above).
+    #
+    # NOT exhaustive, and does not (yet) include NSS's own softokn3/freebl3
+    # banner text - the exact format needs verifying against a real binary
+    # before writing a pattern for it (PLAN.md). This list only controls
+    # WHEN the secondary scan runs, not what it's able to find - adding an
+    # entry here alone won't resolve NSS's real version until a genuine
+    # NSS signature is added to Signatures too.
+    UmbrellaVersionedProducts = @('Firefox', 'Tor Browser', 'Thunderbird')
 }

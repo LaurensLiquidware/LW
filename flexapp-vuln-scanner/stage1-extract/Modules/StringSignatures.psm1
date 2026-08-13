@@ -19,7 +19,10 @@ function Import-StringSignatures {
     )
 
     $data = Import-PowerShellDataFile -LiteralPath $ConfigPath
-    return @($data.Signatures)
+    return [PSCustomObject]@{
+        Signatures                = @($data.Signatures)
+        UmbrellaVersionedProducts = @($data.UmbrellaVersionedProducts)
+    }
 }
 
 function Get-StringSignatureIdentity {

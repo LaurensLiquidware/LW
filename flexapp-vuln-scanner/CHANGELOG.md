@@ -206,6 +206,47 @@ end-to-end run against a real package justifies cutting a version.
   (`cpe:2.3:a:ffmpeg:ffmpeg:7.1.1:...`, `cpe:2.3:a:qt:qt:6.8.3:...`,
   `cpe:2.3:a:chromium:chromium:147.0.7727.102:...`).
 
+- `DepsJson.psm1` (new module) + `Resolve-VersionIdentity.ps1`/
+  `Get-FileInventory.ps1` wiring + `normalize.py`'s `dotnet-deps-json` purl
+  mapping: parses a .NET Core/5+ `*.deps.json`'s `.libraries` section into
+  one synthetic component per real NuGet dependency (skipping the
+  `type: "project"` entry for the app itself), the same "exact resolved
+  version" signal `jar-pom-properties` already gives Java fat jars.
+  Surfaced by the Paint.NET live test, where `paintdotnet.deps.json` was
+  left unresolved despite naming every dependency's exact version. Maps to
+  `pkg:nuget/<name>@<version>` for OSV matching - verified via web search
+  (`api.osv.dev` is also blocked from direct fetch in this dev sandbox)
+  that NuGet is a real, standard OSV-supported ecosystem before building
+  this, rather than assuming it. Verified locally against a synthetic
+  multi-package `.deps.json` fixture that the `project` entry is skipped
+  and both `package`/`runtimepack` entries resolve correctly.
+
+- `string-signatures.psd1` (`UmbrellaVersionedProducts`) +
+  `Resolve-VersionIdentity.ps1` (`Test-UmbrellaVersionedIdentity`): the
+  dispatch-priority fix flagged as a follow-up during the Tor Browser/
+  Firefox live tests. Mozilla's Gecko platform (Firefox, Tor Browser,
+  Thunderbird) stamps every DLL in its install tree with the browser's own
+  umbrella product version - previously, a successful
+  `Get-PEVersionResourceIdentity` hit was always treated as terminal, so
+  `nss3.dll`/`softokn3.dll`/`freebl3.dll` never got a chance at
+  string-signature scanning even though NSS is known to embed its own
+  version string. Now, when a PE identity's product matches a known
+  umbrella-versioned vendor, the dispatcher also runs string-signature
+  scanning and prefers that result *only if it actually matches a known
+  vendored-library banner* - never overrides on a non-match, so unrelated
+  files and non-Mozilla products are completely unaffected. Verified
+  locally (no Pester tests existed for stage1 before this) against three
+  synthetic scenarios: an umbrella-stamped file with a real OpenSSL
+  banner switches correctly; the same umbrella identity with no banner
+  text is left unchanged; a non-Mozilla product with OpenSSL-shaped text
+  anyway never enters the umbrella-check branch at all.
+
+  Deliberately still NOT done: no NSS-specific string-signature pattern
+  was added, since the exact embedded-version-string format still needs
+  verifying against a real binary (not possible from this dev sandbox) -
+  this fixes the dispatch mechanism, not NSS's own resolvability, which
+  remains an open follow-up.
+
 - `nvd_mirror.py` + `mirror-nvd` CLI subcommand + `resolve --nvd-mirror`:
   a local NVD CVE mirror, to answer scale concerns raised live once the
   429-retry fix above made a real timing problem visible - without an

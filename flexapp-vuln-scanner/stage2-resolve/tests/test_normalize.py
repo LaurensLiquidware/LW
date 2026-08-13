@@ -28,6 +28,11 @@ def test_pypi_name_normalization():
     assert build_purl(identity) == "pkg:pypi/requests-toolbelt@1.0.0"
 
 
+def test_nuget_deps_json():
+    identity = {"method": "dotnet-deps-json", "product": "Newtonsoft.Json", "version": "13.0.3"}
+    assert build_purl(identity) == "pkg:nuget/Newtonsoft.Json@13.0.3"
+
+
 def test_jar_manifest_has_no_purl():
     # No groupId available from MANIFEST.MF alone - correctly returns None
     # rather than guessing one.
