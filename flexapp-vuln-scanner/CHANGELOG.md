@@ -9,6 +9,19 @@ end-to-end run against a real package justifies cutting a version.
 
 ## [Unreleased]
 
+### Changed
+
+- `ExclusionRules.psd1`: renamed the `.xml` extension rule's reason from
+  `dotnet-xmldoc-file` to `xml-data-file`. A live test against a real
+  Notepad++ package (native C++, zero managed code - all 8 resolved
+  identities are `pe-version-resource`, none `dotnet-manifest`) showed the
+  same rule correctly excluding 108 files that were never .NET doc
+  comments - `autoCompletion\*.xml`, `themes\*.xml`, `stylers.model.xml`,
+  `langs.model.xml`. The exclusion was right both times; the old name was
+  misleadingly .NET-specific for a rule that generalizes fine to any
+  app's XML config/theme/autocomplete data. Same matching behavior, no
+  coverage-number change.
+
 ### Fixed
 
 - `Mount-ClassicFlexApp.ps1`: was waiting on a retry loop for Windows to

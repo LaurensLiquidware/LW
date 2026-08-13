@@ -65,8 +65,14 @@
         # PaintDotNet.*.dll - IntelliSense doc-comment files the .NET
         # compiler emits alongside an assembly, carrying no version/identity
         # information of their own (16 of that package's 130 unresolved
-        # files).
-        @{ Reason = 'dotnet-xmldoc-file'; Extensions = @('.xml') },
+        # files). Renamed from the original 'dotnet-xmldoc-file' after a
+        # later Notepad++ scan (a native C++ app, zero managed code) showed
+        # the same rule correctly excluding 108 .xml files that were never
+        # .NET doc comments at all - autoCompletion/theme/langs-model XML
+        # config. The exclusion was right both times; the old name was
+        # misleadingly .NET-specific for what's really a general "no
+        # third-party component ships its identity as bare .xml" rule.
+        @{ Reason = 'xml-data-file'; Extensions = @('.xml') },
         # Same scan: uncompiled localization data, same spirit as the
         # \Lang\ folder rule above but flat-named instead of folder-based
         # (PaintDotNet.Strings.3.<culture>.resources) - ~40 of that

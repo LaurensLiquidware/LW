@@ -123,6 +123,17 @@ still unresolved rather than excluded - it's a real NuGet dependency
 lockfile worth parsing for identity resolution, not noise (see
 `../PLAN.md`'s "candidate follow-up" section - not yet implemented).
 
+A live test against a real Notepad++ package (a native C++ app, zero
+managed code - confirmed by all 8 resolved identities being
+`pe-version-resource`, none `dotnet-manifest`) showed the `.xml` rule
+above correctly excluding 108 files that were never .NET doc comments at
+all - `autoCompletion\*.xml`, `themes\*.xml`, `stylers.model.xml`,
+`langs.model.xml`. The exclusion was right both times; the reason string
+was misleadingly .NET-specific for what's really a general "no
+third-party component ships its identity as bare .xml" rule. Renamed
+`dotnet-xmldoc-file` to `xml-data-file` (same matching behavior, honest
+label).
+
 ## Known limitations at this stage
 
 - Directory input is non-recursive (top-level packages only).
