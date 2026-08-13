@@ -739,6 +739,24 @@ defensive regardless (never crash on a single bad file, log and continue).
    `FileVersion` are literally the unsubstituted build macro
    `"ORT_VERSION"` - a real upstream Microsoft build defect, honestly
    reflected by this pipeline rather than guessed around.
+
+   **The re-run confirmed the fix and immediately found a second,
+   related false positive**: the `Electron Chromium` entry was gone, but
+   `omni.ja`'s arbitrary bundled text now matched `Electron Node.js`
+   instead (`"Node.js v8.11.1"`), again wrongly attributing an embedded
+   Node.js runtime - and its own decade of CVEs - to a Gecko-based app
+   with none. Two different signatures false-positiving on the exact same
+   file is evidence the file itself, not any one pattern, is the real
+   problem: `.ja` (Mozilla's own resource-bundle format) is genuine
+   Firefox content but never a vendored native library, and its arbitrary
+   JS/JSON/locale text makes it structurally unsafe for last-resort
+   string-signature scanning no matter which signature is checked. Fixed
+   at the dispatcher level instead of patching yet another pattern -
+   `.ja` files now short-circuit to a genuinely unresolved identity
+   before string-signature scanning ever runs (verified this returns
+   `$null` without even opening the file). Left unresolved rather than
+   excluded, since it's real content, just not safely identifiable this
+   way.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

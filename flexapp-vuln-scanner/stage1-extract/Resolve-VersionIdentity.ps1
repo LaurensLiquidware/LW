@@ -167,6 +167,24 @@ function Resolve-ComponentIdentity {
         return [PSCustomObject]@{ Identity = (Get-PythonDistIdentity -Path $AbsolutePath); ExtraComponents = @() }
     }
 
+    # .ja (Mozilla's "omni.ja" resource-bundle format) is never a vendored
+    # native library, but it IS a real, legitimate part of a Firefox/Gecko
+    # package - not noise to exclude. Found live, twice, on a real Firefox
+    # scan: it's packed with arbitrary JS/JSON/locale text (site-
+    # compatibility overrides, remote-debugging protocol strings, ...)
+    # that happened to match both the OpenSSL-style "Chrome/X.X.X.X" and
+    # "Node.js vX.X.X" signatures, each time wrongly attributing an
+    # embedded-Chromium/Node.js identity - and a decade of unrelated CVEs -
+    # to an app that's Gecko-based and has neither. String-signature
+    # scanning is safe for a compiled binary that might embed one vendor's
+    # banner string; it's not safe for a large arbitrary-text resource
+    # archive that could contain a fragment matching almost anything.
+    # Left genuinely unresolved rather than excluded - it's real Firefox
+    # content, just not identifiable this way.
+    if ($ext -eq '.ja') {
+        return [PSCustomObject]@{ Identity = $null; ExtraComponents = @() }
+    }
+
     if ($ComponentType -eq 'unknown') {
         $identity = Get-StringSignatureIdentity -Path $AbsolutePath -Signatures $StringSignatures
         return [PSCustomObject]@{ Identity = $identity; ExtraComponents = @() }

@@ -36,6 +36,22 @@ end-to-end run against a real package justifies cutting a version.
   the pattern to require it, verified this still matches a real Electron
   UA string and correctly no longer matches Firefox's spoof string.
 
+- `Resolve-VersionIdentity.ps1`: after the fix above, re-running the same
+  Firefox scan surfaced a second false positive from the exact same file
+  via a different signature - `omni.ja`'s arbitrary bundled text also
+  matched `Electron Node.js` (`"Node.js v8.11.1"`, likely a
+  remote-debugging-protocol or compatibility string), again wrongly
+  attributing an embedded Node.js runtime - and its own decade of CVEs -
+  to a Gecko-based app with no Node.js at all. Two different signatures
+  false-positiving on the same file is evidence the file, not the
+  pattern, is the problem: `.ja` (Mozilla's own resource-bundle archive
+  format) is real Firefox content but never a vendored native library,
+  and packing arbitrary JS/JSON/locale text makes it structurally unsafe
+  for last-resort string-signature scanning regardless of which pattern
+  is used. Fixed at the dispatcher level - `.ja` files short-circuit to
+  a genuinely unresolved identity (not excluded; it's real content, just
+  not identifiable this way) before string-signature scanning ever runs.
+
 - `reporting.py` (`render_findings`): rendered one row per
   `(component, vulnerability)` pair with no deduplication by identity,
   unlike `sbom.py` which already dedupes components by purl/CPE. Found
