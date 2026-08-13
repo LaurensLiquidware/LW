@@ -10,6 +10,17 @@
 
   {% if browse_error %}<p class="error">{{ browse_error }}</p>{% endif %}
 
+  <form method="get" action="{{ url_for('browse_fs') }}" class="jump-form input-row">
+    <input type="hidden" name="target" value="{{ target }}">
+    <input type="hidden" name="return_to" value="{{ return_to }}">
+    {% for field, value in carry.items() %}
+      <input type="hidden" name="{{ field }}" value="{{ value }}">
+    {% endfor %}
+    <input type="text" name="path" value="{{ current_path or '' }}"
+           placeholder="\\server\share\FlexAppShare (UNC path) or C:\path\to\folder">
+    <button type="submit"><span class="material-icons">arrow_forward</span>Go</button>
+  </form>
+
   <p class="breadcrumb">
     <a href="{{ nav_url() }}">Drives</a>
     {% if current_path %} / {{ current_path }}{% endif %}

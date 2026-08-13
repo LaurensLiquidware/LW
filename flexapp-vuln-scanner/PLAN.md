@@ -1444,6 +1444,36 @@ a new pattern, not something to fix blind from this dev sandbox.
     and a still-running one (a plain "—"). All 121 `stage2-resolve` + 53
     `webui` tests passing.
 
+16. **New, same day: browse a UNC path.** Requested directly ("can i
+    also browse an UNC path to flexapp location?"). The drive list in
+    `browse.list_drives()` only enumerates local `A:\`-`Z:\` letters -
+    there's no way to enumerate network shares the same way, so a UNC
+    path (`\\server\share\...`) needed a different entry point than
+    clicking through drives.
+
+    Two changes to `/browse` in `app.py`: (1) a "Jump to path" text
+    input on `browse.html` that navigates straight to whatever's typed
+    - the same `Path(...).is_dir()` check the rest of the route already
+    uses, which works identically for a UNC path as for a local one, so
+    no new path-handling logic was needed, just a new way to reach it;
+    (2) clicking "Browse" on a field that already holds a value now
+    seeds the initial listing from that value (or its parent directory,
+    for a file picker) instead of always resetting to the drive list -
+    so typing a UNC path by hand, then clicking Browse to navigate
+    further into it, doesn't throw away what was already typed.
+
+    Verified with 5 new tests (seeding from an existing `dir`-mode
+    field value, seeding from an existing `file`-mode field value at its
+    parent directory, the jump form's hidden inputs carrying every other
+    field's current value, a nonexistent typed path still 400s with the
+    existing error message) plus a headless-browser screenshot showing
+    the jump box navigating from the drive list to a real path. Actual
+    UNC connectivity couldn't be exercised in this Linux sandbox (no SMB
+    share to point at) - verified with local absolute paths instead,
+    which exercise the identical code path `pathlib.Path` uses for UNC
+    strings on Windows. All 121 `stage2-resolve` + 58 `webui` tests
+    passing.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

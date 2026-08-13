@@ -384,6 +384,48 @@ def test_browse_no_path_shows_drives():
     assert b"Drives" in resp.data
 
 
+def test_browse_seeds_from_existing_dir_field_value(tmp_path):
+    # Typing a path by hand (e.g. a UNC share the drive list can't
+    # enumerate) then clicking Browse should continue from what was
+    # typed, not reset back to the drive list.
+    (tmp_path / "child").mkdir()
+
+    resp = client().get("/browse", query_string={"target": "output_dir", "output_dir": str(tmp_path)})
+
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert str(tmp_path) in html
+    assert "child" in html
+
+
+def test_browse_seeds_from_existing_file_field_starts_at_parent_dir(tmp_path):
+    (tmp_path / "App.vhdx").write_text("x")
+
+    resp = client().get("/browse", query_string={
+        "target": "package_path", "package_path": str(tmp_path / "App.vhdx"),
+    })
+
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "App.vhdx" in html
+
+
+def test_browse_jump_form_carries_hidden_fields(tmp_path):
+    resp = client().get("/browse", query_string={
+        "target": "output_dir", "path": str(tmp_path), "package_path": "C:\\some\\package.vhdx",
+    })
+    html = resp.data.decode()
+
+    assert 'name="package_path" value="C:\\some\\package.vhdx"' in html
+    assert 'name="target" value="output_dir"' in html
+
+
+def test_browse_jump_to_nonexistent_path_returns_400():
+    resp = client().get("/browse", query_string={"target": "output_dir", "path": "/definitely/not/here"})
+    assert resp.status_code == 400
+    assert b"not a directory" in resp.data
+
+
 def test_browse_lists_subdirectories_and_offers_select_for_dir_mode(tmp_path):
     (tmp_path / "child").mkdir()
 

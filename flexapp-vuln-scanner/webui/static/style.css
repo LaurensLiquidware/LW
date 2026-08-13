@@ -213,6 +213,8 @@ form input[type="text"]:focus {
 .browse-link .material-icons { font-size: 1.1rem; }
 
 .breadcrumb { font-family: var(--font-mono); font-size: 0.857rem; color: var(--muted); }
+.jump-form { margin-bottom: 0.75rem; }
+.jump-form input[type="text"] { font-family: var(--font-mono); font-size: 0.857rem; }
 .browse-list { list-style: none; padding: 0; margin: 0.5rem 0; }
 .browse-list li { padding: 0.35rem 0.2rem; border-bottom: 1px solid var(--border); }
 .browse-list a {

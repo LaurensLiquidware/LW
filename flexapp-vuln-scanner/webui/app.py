@@ -118,12 +118,25 @@ def browse_fs():
         return url_for(return_to, **dict(carry, **{target: chosen_path}))
 
     raw_path = request.args.get("path", "").strip()
+    if not raw_path:
+        # No explicit ?path= yet (first click on "Browse") - if the field
+        # already holds something (typed by hand, e.g. a UNC share path
+        # the drive list below can't enumerate), start there instead of
+        # back at the drive list, so typing then Browse-ing continues
+        # from what you typed rather than discarding it.
+        seed = Path(carry.get(target, "").strip() or ".")
+        if mode == "dir" and carry.get(target, "").strip() and seed.is_dir():
+            raw_path = str(seed)
+        elif mode == "file" and carry.get(target, "").strip() and seed.parent.is_dir():
+            raw_path = str(seed.parent)
     if not raw_path and paths.REPO_ROOT.is_dir():
         raw_path = str(paths.REPO_ROOT)
 
+    template_args = dict(target=target, mode=mode, nav_url=nav_url, return_to=return_to, carry=carry)
+
     if not raw_path:
         return render_template(
-            "browse.html", target=target, mode=mode, nav_url=nav_url,
+            "browse.html", **template_args,
             drives=browse.list_drives(), current_path=None, parent_url=None,
             dirs=[], files=[],
         )
@@ -131,7 +144,7 @@ def browse_fs():
     current = Path(raw_path)
     if not current.is_dir():
         return render_template(
-            "browse.html", target=target, mode=mode, nav_url=nav_url,
+            "browse.html", **template_args,
             drives=browse.list_drives(), current_path=None, parent_url=None,
             dirs=[], files=[], browse_error=f"'{current}' is not a directory.",
         ), 400
@@ -146,7 +159,7 @@ def browse_fs():
     select_folder_url = select_url(str(current)) if mode == "dir" else None
 
     return render_template(
-        "browse.html", target=target, mode=mode, nav_url=nav_url,
+        "browse.html", **template_args,
         drives=browse.list_drives(), current_path=str(current), parent_url=parent_url,
         dirs=dirs, files=files, select_folder_url=select_folder_url,
     )

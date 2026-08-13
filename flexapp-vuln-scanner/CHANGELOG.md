@@ -174,6 +174,18 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- Web UI: the file/folder browser now supports UNC share paths (e.g.
+  `\\server\share\FlexAppShare`), not just local drive letters. The
+  drive list can't enumerate network shares, so browsing one needed a
+  way in: a "Jump to path" box on the browse page navigates straight to
+  whatever's typed. Also, clicking "Browse" on a field that already has
+  a value now continues from there (or its parent directory, for a file
+  picker) instead of resetting to the drive list - so typing a UNC path
+  by hand into the text input, then clicking Browse to explore further
+  into it, no longer throws away what was typed. 5 new tests; verified
+  with a headless-browser screenshot of the jump box navigating to a
+  real path.
+
 - Web UI: a "Findings by Severity" column in the "Scans Run This Session"
   table, showing each finished scan's CVE count broken down as Critical/
   High/Medium/Low (color-coded, reusing the existing severity classes).
