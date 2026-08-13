@@ -683,6 +683,37 @@ defensive regardless (never crash on a single bad file, log and continue).
    re-run is the next step, including checking whether `nss3.dll`/
    `softokn3.dll` (bundled NSS crypto libraries) turn up any real CVEs
    once resolved.
+
+   **The re-run (2026-08-13): 0.0% -> 35.3% coverage (18/51), confirming
+   the fix.** Real, current findings: `tor.exe`'s embedded OpenSSL
+   version banner (`"OpenSSL 3.5.6 7 Apr 2026"`) resolved via
+   `string-signature` and matched a long list of real 2026 OpenSSL CVEs
+   (including a CRITICAL, CVE-2026-34182) via `mapped-cpe` - a strong,
+   current-day validation of that path.
+
+   `nss3.dll`/`softokn3.dll`/`freebl3.dll` did NOT turn up their own real
+   version, though - a genuine, structural limitation, not a bug:
+   Mozilla stamps every DLL in the Firefox/Tor Browser tree with the
+   *browser's* product version (`pe-version-resource` returns "Tor
+   Browser 140.10.0" for all of them), and
+   `Resolve-VersionIdentity.ps1`'s dispatcher only falls through to
+   `Get-StringSignatureIdentity` when `Get-PEVersionResourceIdentity`
+   returns `$null` - it never does here, so string-signature scanning
+   (the same technique that found OpenSSL in `tor.exe`) never gets a
+   chance to run on these specific files, even though NSS is known to
+   embed its own plain-text version string internally. `application.ini`/
+   `platform.ini` were checked as a cheaper alternative and ruled out -
+   Firefox's well-documented format for those only carries the umbrella
+   app version, not per-bundled-library versions.
+   
+   A real fix would mean not treating a `pe-version-resource` hit as
+   terminal for known multi-DLL vendors (Mozilla, likely Chromium/
+   Electron too) - also run string-signature scanning and prefer it when
+   it matches a known library name. That's a dispatch-priority design
+   change, not a quick pattern addition, and the exact NSS string format
+   needs verifying against a real binary before writing a signature for
+   it - not done here, flagged as a candidate follow-up alongside the
+   `deps.json` parser above.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this
