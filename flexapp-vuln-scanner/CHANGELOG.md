@@ -65,6 +65,18 @@ end-to-end run against a real package justifies cutting a version.
   `[System.Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($peReader)`.
   Reproduced and verified directly against a real assembly
   (`Newtonsoft.Json.dll`) before and after the fix.
+- `nvd_client.py` (`NVDClient.query_cpe`): a CPE with no matching entry in
+  NVD's CPE dictionary returns HTTP 404 - documented NVD 2.0 API behavior,
+  not a connectivity problem - but `cli.py`'s `except
+  requests.exceptions.RequestException` catches `HTTPError` too, so it was
+  misreported as "could not reach services.nvd.nist.gov" and aborted the
+  whole `resolve` run on the first non-matching CPE (hit live: a
+  `.NET`-runtime-assembly CPE candidate built from raw build metadata,
+  e.g. `9,0,1326,6317 @Commit: ...`, that was never going to match any
+  real NVD dictionary entry). Fixed by treating a 404 response as "no
+  CVEs known for this CPE" (`{"vulnerabilities": []}`, cached like any
+  other result), leaving genuine connectivity failures (timeouts, DNS
+  errors, 5xx) still raised and reported as unreachable.
 
 ### Added
 

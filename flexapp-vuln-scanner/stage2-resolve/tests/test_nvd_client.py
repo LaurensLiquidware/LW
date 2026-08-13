@@ -60,6 +60,34 @@ def test_query_cpe_caches(tmp_path, session, clock):
     assert session.get.call_count == 1
 
 
+def test_query_cpe_404_returns_empty_result_not_an_error(tmp_path, session, clock):
+    # Documented NVD 2.0 API behavior: a syntactically valid CPE with no
+    # matching dictionary entry returns 404, not an empty 200 - this must be
+    # treated as "no CVEs known", not raised as a connectivity failure (see
+    # cli.py's UnreachableService, which only wraps RequestException).
+    client = make_client(tmp_path, session, clock)
+    resp = MagicMock()
+    resp.status_code = 404
+    session.get.return_value = resp
+
+    result = client.query_cpe("cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
+
+    assert result == {"vulnerabilities": []}
+    resp.raise_for_status.assert_not_called()
+
+
+def test_query_cpe_404_is_cached(tmp_path, session, clock):
+    client = make_client(tmp_path, session, clock)
+    resp = MagicMock()
+    resp.status_code = 404
+    session.get.return_value = resp
+
+    client.query_cpe("cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
+    client.query_cpe("cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
+
+    assert session.get.call_count == 1
+
+
 def test_no_api_key_sends_no_header(tmp_path, session, clock):
     client = make_client(tmp_path, session, clock, api_key=None)
     session.get.return_value = _mock_response({"vulnerabilities": []})

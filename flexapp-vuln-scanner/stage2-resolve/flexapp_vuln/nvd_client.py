@@ -108,6 +108,16 @@ class NVDClient:
             headers=headers,
             timeout=self.timeout,
         )
+        if response.status_code == 404:
+            # Documented NVD 2.0 API behavior: a cpeName with no matching
+            # entry in NVD's CPE dictionary returns 404, not an empty 200
+            # result. That's a real "no CVEs known for this CPE" answer, not
+            # a connectivity failure - must not be conflated with the
+            # RequestException handling in cli.py that reports unreachable
+            # hosts, or every non-matching CPE would wrongly abort the run.
+            data: dict[str, Any] = {"vulnerabilities": []}
+            self._write_cache(cpe23, data)
+            return data
         response.raise_for_status()
         data = response.json()
         self._write_cache(cpe23, data)
