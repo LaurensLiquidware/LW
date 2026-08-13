@@ -212,11 +212,15 @@ end-to-end run against a real package justifies cutting a version.
     message's text, not a success-path artifact.
   - `README.md` got the checklist's required top-of-file disclaimer
     banner (matching `FlexAppOneDownloadMonitor`'s wording) plus a
-    per-item compliance status table. **Not run**: the Grype CVE scan
-    (§5) - `grype.anchore.io` is blocked from this dev sandbox, same as
-    OSV/NVD; needs `grype sbom:bom.cdx.json` run on a machine with real
-    network access. This is a self-audit, not a formal SE-signed
-    submission - no attestation has been completed.
+    per-item compliance status table.
+  - `grype-report.json` (new, repo root): the §5 Grype scan, run by the
+    project owner against the final `bom.cdx.json` on a machine with
+    real network access (`grype.anchore.io` is blocked from this dev
+    sandbox, same as OSV/NVD, so this step couldn't run here) - **0
+    matches of any severity** across all 22 components (Grype v0.117.0,
+    vulnerability DB schema v6.1.9, built 2026-08-13T06:39:30Z). All 7
+    checklist items now pass. This is still a self-audit, not a formal
+    SE-signed submission - no attestation has been completed.
 
 - `webui/` rebranded to Liquidware's "Stratusphere UX" design system,
   from a style-guide export the project owner provided directly (colors,

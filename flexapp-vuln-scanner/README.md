@@ -24,6 +24,7 @@ this project makes about FlexApp internals.
 | [`Spark_License.pdf`](Spark_License.pdf) | Liquidware Sparks Tool License and Disclaimer - read this before use |
 | [`bom.cdx.json`](bom.cdx.json) | Software Bill of Materials (CycloneDX 1.6, JSON) - an inventory of **this tool's own** third-party components (22, all permissively licensed - MIT/BSD-3-Clause/Apache-2.0/MPL-2.0/PSF-2.0/MIT-CMU), provided so your security team can review it against your own policy. Not to be confused with the SBOM this tool *produces per scan* about a scanned FlexApp package - see `stage2-resolve/flexapp_vuln/sbom.py` for that. |
 | [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt) | Full license texts for every component in `bom.cdx.json`, plus the bundled brand/UI fonts |
+| [`grype-report.json`](grype-report.json) | Grype vulnerability scan of `bom.cdx.json` - 0 matches of any severity (2026-08-13) |
 | `CHANGELOG.md` | Version history |
 
 ## Status
@@ -231,7 +232,7 @@ Self-audited against the **Sparks Tool Project Review Checklist v1**
 | 2 | Regional date/time/number formats | Pass — no US-only date parsing found; all internal timestamps are ISO 8601 UTC |
 | 3 | External URL / CDN references | Pass — only documented endpoints are `api.osv.dev`/`services.nvd.nist.gov` (`resolve` step only; `report` needs neither). No CDN-loaded runtime assets (see `webui/static/branding/README.md` for why PrimeIcons was deliberately not used). |
 | 4 | Open source identified + CycloneDX 1.6 JSON SBOM | Pass — `bom.cdx.json`, 22 components, all permissively licensed (MIT/BSD-3-Clause/Apache-2.0/MPL-2.0/PSF-2.0/MIT-CMU), validated against the real CycloneDX 1.6 JSON schema offline |
-| 5 | Zero Critical/High CVEs (Grype scan) | **Not yet run** — `grype.anchore.io` is blocked from this dev sandbox (same as OSV/NVD); needs running on a machine with real network access: `grype sbom:bom.cdx.json -o json > grype-report.json` |
+| 5 | Zero Critical/High CVEs (Grype scan) | Pass — 0 matches of any severity across all 22 components. Grype v0.117.0, vulnerability DB schema v6.1.9 (built 2026-08-13T06:39:30Z), run against the final `bom.cdx.json` on 2026-08-13. See [`grype-report.json`](grype-report.json). |
 | 6 | Version visible to end user | Pass — `python -m flexapp_vuln --version`; webui shows it in every page's footer |
 | 7 | License PDF + SBOM packaged together and visible | Pass — both at repo root, referenced in this README's banner/Files table, and linked from the webui's footer |
 

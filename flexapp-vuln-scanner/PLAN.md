@@ -1239,11 +1239,17 @@ a new pattern, not something to fix blind from this dev sandbox.
     of both routes against the running dev server. All 104
     `stage2-resolve` + 25 `webui` tests passing.
 
-    **Deliberately NOT done**: the Grype CVE scan (§5) - `grype` isn't
-    installed in this sandbox, and `grype.anchore.io` is blocked here
-    regardless, same precedent as OSV/NVD. Needs `grype
-    sbom:bom.cdx.json -o json` run on a machine with real network
-    access. This is a self-audit, not a formal SE-signed Sparks Tool
+    **The Grype CVE scan (§5), completed same day**: `grype` isn't
+    installed in this sandbox and `grype.anchore.io` is blocked here
+    regardless (same precedent as OSV/NVD), so the project owner ran it
+    directly against the final `bom.cdx.json` on their own machine and
+    supplied the report. **Zero matches of any severity** across all 22
+    components (Grype v0.117.0, vulnerability DB schema v6.1.9, built
+    2026-08-13T06:39:30Z, scan run 2026-08-13). Saved as
+    `grype-report.json` at the repo root and referenced from
+    `README.md`'s compliance table. All 7 checklist items now show Pass.
+
+    This remains a self-audit, not a formal SE-signed Sparks Tool
     submission - the checklist's attestation section is intentionally
     left blank, since that requires a named human reviewer's sign-off,
     not something an AI assistant can complete on someone's behalf.
