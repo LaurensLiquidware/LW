@@ -85,6 +85,65 @@ def test_render_findings_separates_confirmed_from_heuristic():
     assert "Verify manually" in heuristic_section
 
 
+def test_render_findings_dedupes_same_cve_across_files_sharing_an_identity():
+    # Two physical files (e.g. the same bundled sqlite3.dll copied to two
+    # locations) can both resolve to the same CPE and carry an identical
+    # vulnerability list - each CVE should appear once, not once per file.
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a\\sqlite3.dll",
+            "identity": {"product": "SQLite", "version": "3.15.2"},
+            "cpe": "cpe:2.3:a:sqlite:sqlite:3.15.2:*:*:*:*:*:*:*",
+            "confidence": "mapped-cpe",
+            "vulnerabilities": [
+                {"id": "CVE-2017-10989", "summary": "Bad thing", "severityLevel": "CRITICAL", "source": "nvd"}
+            ],
+        },
+        {
+            "relativePath": "b\\sqlite3.dll",
+            "identity": {"product": "SQLite", "version": "3.15.2"},
+            "cpe": "cpe:2.3:a:sqlite:sqlite:3.15.2:*:*:*:*:*:*:*",
+            "confidence": "mapped-cpe",
+            "vulnerabilities": [
+                {"id": "CVE-2017-10989", "summary": "Bad thing", "severityLevel": "CRITICAL", "source": "nvd"}
+            ],
+        },
+    ]}
+    report = render_findings(vuln_matches, "TestApp")
+
+    assert report.count("CVE-2017-10989") == 1
+
+
+def test_render_findings_same_cve_different_versions_both_shown():
+    # Different versions of the same product legitimately need separate
+    # rows - dedup must key on identity (purl/cpe), not just the CVE id.
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a\\sqlite3.dll",
+            "identity": {"product": "SQLite", "version": "3.15.2"},
+            "cpe": "cpe:2.3:a:sqlite:sqlite:3.15.2:*:*:*:*:*:*:*",
+            "confidence": "mapped-cpe",
+            "vulnerabilities": [
+                {"id": "CVE-2020-13434", "summary": "x", "severityLevel": "MEDIUM", "source": "nvd"}
+            ],
+        },
+        {
+            "relativePath": "b\\sqlite3.dll",
+            "identity": {"product": "SQLite", "version": "3.7.15"},
+            "cpe": "cpe:2.3:a:sqlite:sqlite:3.7.15:*:*:*:*:*:*:*",
+            "confidence": "mapped-cpe",
+            "vulnerabilities": [
+                {"id": "CVE-2020-13434", "summary": "x", "severityLevel": "MEDIUM", "source": "nvd"}
+            ],
+        },
+    ]}
+    report = render_findings(vuln_matches, "TestApp")
+
+    assert report.count("CVE-2020-13434") == 2
+    assert "3.15.2" in report
+    assert "3.7.15" in report
+
+
 def test_render_findings_sorts_by_severity_critical_first():
     vuln_matches = {"components": [
         {

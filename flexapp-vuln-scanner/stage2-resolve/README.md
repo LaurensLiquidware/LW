@@ -193,14 +193,16 @@ you, not something I could complete from here.
 python -m pytest tests/
 ```
 
-89 tests, all passing, no network required (OSV/NVD client tests mock
+91 tests, all passing, no network required (OSV/NVD client tests mock
 `requests.Session`; NVD's rate-limit tests use an injectable fake clock so
 they run instantly rather than waiting real wall-clock seconds). Covers
 purl/CPE construction, CPE mapping table lookup, inventory loading+schema
 validation, OSV/NVD client caching/batching/rate-limiting, coverage
 computation (verified against a hand-checked fixture), SBOM structure
 (component dedup, purl-vs-CPE, no fabricated license data), findings
-rendering (severity sort order, confirmed-vs-heuristic separation), the
+rendering (severity sort order, confirmed-vs-heuristic separation,
+identity-based deduplication so a CVE shared by two files with the same
+purl/CPE renders once, not once per file), the
 CLI's combined component-assembly logic for both subcommands, the local
 NVD mirror's pagination/retry/index-build/merge/version-range matching,
 and the tokenized version comparator.

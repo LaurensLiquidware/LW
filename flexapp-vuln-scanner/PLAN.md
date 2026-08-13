@@ -581,6 +581,34 @@ defensive regardless (never crash on a single bad file, log and continue).
    a DLL's PE resource, but that's a new identity-resolution capability,
    not an exclusion-rule tweak - scoped as a candidate follow-up, not done
    here.
+
+   **Live test against a real Notepad++ package (2026-08-13)**: a native
+   C++ app (all 8 resolved identities are `pe-version-resource`, none
+   `dotnet-manifest`) - correctly identified the main exe, context-menu
+   shell extension, uninstaller, WinGup auto-updater, and 3 plugins
+   (NppExport, mimeTools, NppConverter), 53.3% coverage on a much smaller
+   package (194 files). Also caught a labeling bug: the `.xml` exclusion
+   rule correctly excluded 108 files, but they were Notepad++'s own
+   `autoCompletion`/`themes`/`langs.model` config XML, not .NET doc
+   comments - renamed the reason from `dotnet-xmldoc-file` to the honest,
+   general `xml-data-file` (same matching behavior). Noted, not
+   implemented: `contextMenu\NppShell.msix` is an MSIX (zip container with
+   a real `AppxManifest.xml`) sitting unresolved - a candidate future
+   container-identity method, same idea as jar/asar.
+
+   **First real vulnerability findings, against a real Python package
+   (2026-08-13)**: the milestone this whole PoC exists to prove out -
+   confirmed `mapped-cpe` CVE matches for bundled zlib/OpenSSL/SQLite, and
+   `exact-purl` GHSA/PYSEC matches for `pip` via OSV.dev (the first live
+   exercise of `python-dist-info` + the PyPI purl path). Also caught a
+   real rendering bug in `findings.md`: `render_findings` emitted one row
+   per `(component, vulnerability)` pair with no identity dedup, unlike
+   `sbom.py` which already dedupes by purl/CPE - when two physical files
+   share an identity (two copies of the same bundled `sqlite3.dll`), every
+   CVE was rendered once per file. On this package's real output that was
+   246 rows for what was actually 146 distinct findings. Fixed by
+   deduplicating on `(purl-or-cpe-or-relativePath, vulnerability id)`
+   before rendering, verified against the real data before and after.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

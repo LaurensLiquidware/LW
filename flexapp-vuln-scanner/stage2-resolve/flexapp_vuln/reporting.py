@@ -93,12 +93,23 @@ def render_findings(vuln_matches: dict[str, Any] | None, package_name: str) -> s
         ]
         return "\n".join(lines)
 
-    rows = []
+    # Keyed by (purl-or-cpe, vulnerability id) - the same physical component
+    # (e.g. the same bundled sqlite3.dll copied to more than one path) can
+    # appear as more than one candidate row here, each carrying an identical
+    # vulnerability list. Without deduping by identity, every CVE for that
+    # component would be rendered once per file instead of once overall -
+    # this is the same "one entry per distinct component" rule sbom.py
+    # already applies when building the SBOM.
+    rows_by_key: dict[tuple[str, str], dict[str, Any]] = {}
     for component in vuln_matches.get("components", []):
         identity = component.get("identity") or {}
         confidence = component.get("confidence")
+        dedup_identity = component.get("purl") or component.get("cpe") or component.get("relativePath")
         for vuln in component.get("vulnerabilities", []):
-            rows.append({
+            key = (dedup_identity, vuln.get("id") or "")
+            if key in rows_by_key:
+                continue
+            rows_by_key[key] = {
                 "severityLevel": vuln.get("severityLevel"),
                 "id": vuln.get("id"),
                 "summary": vuln.get("summary") or "",
@@ -107,8 +118,9 @@ def render_findings(vuln_matches: dict[str, Any] | None, package_name: str) -> s
                 "relativePath": component.get("relativePath"),
                 "confidence": confidence,
                 "source": vuln.get("source"),
-            })
+            }
 
+    rows = list(rows_by_key.values())
     rows.sort(key=lambda r: (_severity_rank(r["severityLevel"]), r["id"] or ""))
 
     confirmed = [r for r in rows if r["confidence"] in ("exact-purl", "mapped-cpe")]

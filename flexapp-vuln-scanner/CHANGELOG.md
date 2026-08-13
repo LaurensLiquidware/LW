@@ -24,6 +24,19 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Fixed
 
+- `reporting.py` (`render_findings`): rendered one row per
+  `(component, vulnerability)` pair with no deduplication by identity,
+  unlike `sbom.py` which already dedupes components by purl/CPE. Found
+  live on the first real end-to-end `resolve` run to actually surface
+  matches (a real Python package): when two physical files share an
+  identity (e.g. two copies of the same bundled `sqlite3.dll`), every CVE
+  for that identity was rendered once per file. On that package's real
+  output this meant 246 table rows for what was actually 146 distinct
+  (identity, CVE) findings. Fixed by deduplicating on
+  `(purl-or-cpe-or-relativePath, vulnerability id)` before rendering -
+  same identity-dedup rule already applied in `sbom.py`, verified against
+  the real data both before and after.
+
 - `Mount-ClassicFlexApp.ps1`: was waiting on a retry loop for Windows to
   auto-assign a drive letter to the mounted VHDX volume - confirmed via a
   live test against a real package on a real Windows 11 host that Windows
