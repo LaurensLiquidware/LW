@@ -83,7 +83,7 @@
           {% for r in result.confirmed_rows %}
           <tr>
             <td><span class="sev sev-{{ (r.severityLevel or 'unknown')|lower }}">{{ r.severityLevel or "UNKNOWN" }}</span></td>
-            <td>{{ r.id }}</td>
+            <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.id }}</a>{% else %}{{ r.id }}{% endif %}</td>
             <td>{{ r.product }}</td>
             <td>{{ r.version }}</td>
             <td>{{ r.summary }}</td>
@@ -105,7 +105,7 @@
           {% for r in result.heuristic_rows %}
           <tr>
             <td><span class="sev sev-{{ (r.severityLevel or 'unknown')|lower }}">{{ r.severityLevel or "UNKNOWN" }}</span></td>
-            <td>{{ r.id }}</td>
+            <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.id }}</a>{% else %}{{ r.id }}{% endif %}</td>
             <td>{{ r.product }}</td>
             <td>{{ r.version }}</td>
             <td>{{ r.summary }}</td>

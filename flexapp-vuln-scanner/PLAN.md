@@ -1254,6 +1254,36 @@ a new pattern, not something to fix blind from this dev sandbox.
     left blank, since that requires a named human reviewer's sign-off,
     not something an AI assistant can complete on someone's behalf.
 
+11. **New, same day: every finding's ID links to its real public
+    record.** Requested directly. Added `reporting.py`'s
+    `vulnerability_url()`: CVE ids resolve against NVD (the
+    authoritative record regardless of which source - OSV or NVD -
+    actually matched it), GHSA ids against GitHub's advisory database,
+    and everything else OSV-sourced (PYSEC-, RUSTSEC-, GO-, ...) against
+    osv.dev, which mirrors and links out to the real upstream advisory
+    for whatever ecosystem it came from. Wired into `build_finding_rows`
+    (shared by all three renderers, so the Markdown table, the web UI,
+    and the PDF can never disagree on what a given id links to) rather
+    than computed separately in each.
+
+    `render_findings`'s Markdown table now emits `[CVE-...](url)`;
+    `result.html` wraps the id in a real `<a href>`; `pdf_report.py` uses
+    reportlab's `<link href="...">` mini-markup (colored brand blue,
+    underlined) - reportlab's own hyperlink support, not a fake-looking
+    styled span. Two pre-existing tests needed a small update (they
+    counted raw CVE-id substring occurrences, which doubled now that the
+    id also appears inside its own URL - fixed to count the link-wrapped
+    form specifically, `[CVE-...]`, rather than loosening the assertion).
+
+    Verified with 5 new `reporting.py` tests (URL scheme per id pattern,
+    `None` for a missing id, the id showing up in `build_finding_rows`'
+    output, the Markdown link form), 1 new webui test (a real `<a href>`
+    to NVD appears in the rendered results page), and visually: a
+    headless-browser screenshot of the real Nextcloud Client findings
+    table with every CVE ID showing as a clickable link, plus rendering
+    the PDF and confirming a link is actually clickable in it (not just
+    styled to look like one).
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

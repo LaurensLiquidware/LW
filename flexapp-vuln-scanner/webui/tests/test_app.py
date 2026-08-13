@@ -88,6 +88,34 @@ def test_open_directory_single_inventory_redirects_to_results(tmp_path):
     assert b"not the same thing as" in resp.data
 
 
+def test_result_page_links_cve_id_to_nvd(tmp_path):
+    import json as json_module
+
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+    vuln_matches = {
+        "generatedUtc": "2026-08-13T00:00:00Z",
+        "package": {},
+        "components": [
+            {
+                "relativePath": "Program Files\\App\\lib\\libcrypto-1_1.dll",
+                "identity": {"product": "OpenSSL", "version": "1.1.1w"},
+                "purl": None,
+                "cpe": "cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*",
+                "confidence": "mapped-cpe",
+                "vulnerabilities": [
+                    {"id": "CVE-2023-0001", "summary": "x", "severity": [], "severityLevel": "HIGH", "source": "nvd"}
+                ],
+            },
+        ],
+    }
+    (tmp_path / "sample.vuln-matches.json").write_text(json_module.dumps(vuln_matches), encoding="utf-8")
+
+    resp = client().post("/open", data={"dir_path": str(tmp_path)}, follow_redirects=True)
+
+    assert resp.status_code == 200
+    assert b'href="https://nvd.nist.gov/vuln/detail/CVE-2023-0001"' in resp.data
+
+
 def _hrefs(page_html: str) -> list[str]:
     # Jinja HTML-escapes "&" to "&amp;" inside href="..." attributes -
     # unescape before treating these as real URLs to parse query params from.

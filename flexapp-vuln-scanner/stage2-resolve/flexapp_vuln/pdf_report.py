@@ -187,9 +187,16 @@ def _findings_table(entries: list[dict[str, Any]], cell_style: ParagraphStyle) -
         severity_para = Paragraph(
             f'<font color="{_severity_hex(severity)}"><b>{severity}</b></font>', cell_style
         )
+        if r.get("url"):
+            id_para = Paragraph(
+                f'<link href="{r["url"]}"><font color="#0072bc"><u>{r["id"]}</u></font></link>',
+                cell_style,
+            )
+        else:
+            id_para = Paragraph(r["id"] or "", cell_style)
         data.append([
             severity_para,
-            Paragraph(r["id"] or "", cell_style),
+            id_para,
             Paragraph(r["product"] or "", cell_style),
             Paragraph(r["version"] or "", cell_style),
             Paragraph(r["summary"] or "", cell_style),

@@ -2,9 +2,56 @@ from pathlib import Path
 
 from flexapp_vuln.coverage import compute_coverage
 from flexapp_vuln.inventory import load_inventory
-from flexapp_vuln.reporting import render_coverage_report, render_findings
+from flexapp_vuln.reporting import build_finding_rows, render_coverage_report, render_findings, vulnerability_url
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample.inventory.json"
+
+
+def test_vulnerability_url_cve_goes_to_nvd():
+    assert vulnerability_url("CVE-2023-51791") == "https://nvd.nist.gov/vuln/detail/CVE-2023-51791"
+
+
+def test_vulnerability_url_ghsa_goes_to_github_advisories():
+    assert vulnerability_url("GHSA-aaaa-bbbb-cccc") == "https://github.com/advisories/GHSA-aaaa-bbbb-cccc"
+
+
+def test_vulnerability_url_other_osv_ids_go_to_osv_dev():
+    assert vulnerability_url("PYSEC-2021-1") == "https://osv.dev/vulnerability/PYSEC-2021-1"
+
+
+def test_vulnerability_url_none_for_missing_id():
+    assert vulnerability_url(None) is None
+    assert vulnerability_url("") is None
+
+
+def test_build_finding_rows_includes_url():
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a.jar",
+            "identity": {"product": "a", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [
+                {"id": "CVE-2023-0001", "summary": "x", "severityLevel": "HIGH", "source": "nvd"}
+            ],
+        },
+    ]}
+    rows = build_finding_rows(vuln_matches)
+    assert rows[0]["url"] == "https://nvd.nist.gov/vuln/detail/CVE-2023-0001"
+
+
+def test_render_findings_links_the_id():
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a.jar",
+            "identity": {"product": "a", "version": "1.0"},
+            "confidence": "exact-purl",
+            "vulnerabilities": [
+                {"id": "CVE-2023-0001", "summary": "x", "severityLevel": "HIGH", "source": "nvd"}
+            ],
+        },
+    ]}
+    report = render_findings(vuln_matches, "TestApp")
+    assert "[CVE-2023-0001](https://nvd.nist.gov/vuln/detail/CVE-2023-0001)" in report
 
 
 def test_render_coverage_report_contains_required_sections():
@@ -111,7 +158,10 @@ def test_render_findings_dedupes_same_cve_across_files_sharing_an_identity():
     ]}
     report = render_findings(vuln_matches, "TestApp")
 
-    assert report.count("CVE-2017-10989") == 1
+    # Count the linked-row form, not raw substring - the id also appears
+    # once more inside its own URL now that findings link out (see
+    # vulnerability_url), which would otherwise double-count each row.
+    assert report.count("[CVE-2017-10989]") == 1
 
 
 def test_render_findings_same_cve_different_versions_both_shown():
@@ -139,7 +189,7 @@ def test_render_findings_same_cve_different_versions_both_shown():
     ]}
     report = render_findings(vuln_matches, "TestApp")
 
-    assert report.count("CVE-2020-13434") == 2
+    assert report.count("[CVE-2020-13434]") == 2
     assert "3.15.2" in report
     assert "3.7.15" in report
 

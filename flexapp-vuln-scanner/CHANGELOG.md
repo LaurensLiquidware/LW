@@ -174,6 +174,19 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- `reporting.py`'s new `vulnerability_url()`: every finding's ID (web UI,
+  PDF, `findings.md`) now links to its real public record - CVE ids go
+  to NVD, GHSA ids to GitHub's advisory database, everything else
+  OSV-sourced (PYSEC-, RUSTSEC-, GO-, ...) to osv.dev, which mirrors and
+  links out to the real upstream advisory for every ecosystem it tracks.
+  Wired into `build_finding_rows()` (shared by all three renderers, so
+  they can't disagree on a URL), `render_findings`'s Markdown table
+  (`[CVE-...](url)`), `result.html`'s `<a href>`, and `pdf_report.py`'s
+  reportlab `<link href="...">` markup (brand-blue, underlined). 5 new
+  `reporting.py` tests plus 1 new webui test; verified visually with a
+  headless-browser screenshot (real Nextcloud Client findings, every row
+  clickable) and by rendering the PDF and clicking a link.
+
 - Self-audited against the **Sparks Tool Project Review Checklist v1**
   (2026-08-13): audited read-only first, reported findings, got explicit
   go-ahead, then applied the Blocking items.

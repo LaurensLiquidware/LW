@@ -26,6 +26,23 @@ def _severity_rank(level: str | None) -> int:
     return _SEVERITY_RANK.get((level or "").upper(), 5)
 
 
+def vulnerability_url(vuln_id: str | None) -> str | None:
+    """Canonical public reference page for a vulnerability id, or None if
+    the id doesn't match a recognized scheme. CVE ids go to NVD (the
+    authoritative record regardless of which source matched it); GHSA ids
+    go to GitHub's advisory database; everything else OSV-sourced
+    (PYSEC-, RUSTSEC-, GO-, DSA-, ...) goes to osv.dev, which mirrors and
+    links out to the real upstream advisory for every ecosystem it tracks.
+    """
+    if not vuln_id:
+        return None
+    if vuln_id.startswith("CVE-"):
+        return f"https://nvd.nist.gov/vuln/detail/{vuln_id}"
+    if vuln_id.startswith("GHSA-"):
+        return f"https://github.com/advisories/{vuln_id}"
+    return f"https://osv.dev/vulnerability/{vuln_id}"
+
+
 def render_coverage_report(coverage: dict[str, Any], package_name: str) -> str:
     lines = [f"# Coverage Report — {package_name}", ""]
 
@@ -105,6 +122,7 @@ def build_finding_rows(vuln_matches: dict[str, Any]) -> list[dict[str, Any]]:
             rows_by_key[key] = {
                 "severityLevel": vuln.get("severityLevel"),
                 "id": vuln.get("id"),
+                "url": vulnerability_url(vuln.get("id")),
                 "summary": vuln.get("summary") or "",
                 "product": identity.get("product") or component.get("relativePath"),
                 "version": identity.get("version") or "",
@@ -146,8 +164,9 @@ def render_findings(vuln_matches: dict[str, Any] | None, package_name: str) -> s
         for r in entries:
             severity = r["severityLevel"] or "UNKNOWN"
             summary = (r["summary"][:100] + "…") if len(r["summary"]) > 100 else r["summary"]
+            id_cell = f"[{r['id']}]({r['url']})" if r["url"] else (r["id"] or "")
             table.append(
-                f"| {severity} | {r['id']} | {r['product']} | {r['version']} | "
+                f"| {severity} | {id_cell} | {r['product']} | {r['version']} | "
                 f"{summary} | {r['source']} | {r['confidence']} |"
             )
         return table
