@@ -14,10 +14,17 @@ from pathlib import Path
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, url_for
 
+import browse
 import jobs
 import paths  # noqa: F401 - sys.path setup, must run before flexapp_vuln imports
 
 app = Flask(__name__)
+
+_BROWSE_TARGETS = {
+    "package_path": "file",
+    "output_dir": "dir",
+    "dir_path": "dir",
+}
 
 # Ephemeral store for "open an existing output directory" results, keyed by a
 # random id so download links never carry a raw filesystem path from the
@@ -33,9 +40,55 @@ _DOWNLOAD_KINDS = {
 }
 
 
+def _prefill(package_path: str = "", output_dir: str = "", dir_path: str = "") -> dict[str, str]:
+    return {"package_path": package_path, "output_dir": output_dir, "dir_path": dir_path}
+
+
 @app.route("/")
 def index():
-    return render_template("index.html", jobs=jobs.REGISTRY.list_all())
+    prefill = _prefill(
+        package_path=request.args.get("package_path", ""),
+        output_dir=request.args.get("output_dir", ""),
+        dir_path=request.args.get("dir_path", ""),
+    )
+    return render_template("index.html", jobs=jobs.REGISTRY.list_all(), prefill=prefill)
+
+
+@app.route("/browse")
+def browse_fs():
+    target = request.args.get("target", "")
+    if target not in _BROWSE_TARGETS:
+        abort(400)
+    mode = _BROWSE_TARGETS[target]
+    raw_path = request.args.get("path", "").strip()
+    if not raw_path and paths.REPO_ROOT.is_dir():
+        raw_path = str(paths.REPO_ROOT)
+
+    if not raw_path:
+        return render_template(
+            "browse.html", target=target, mode=mode,
+            drives=browse.list_drives(), current_path=None, parent_path=None,
+            dirs=[], files=[],
+        )
+
+    current = Path(raw_path)
+    if not current.is_dir():
+        return render_template(
+            "browse.html", target=target, mode=mode,
+            drives=browse.list_drives(), current_path=None, parent_path=None,
+            dirs=[], files=[], browse_error=f"'{current}' is not a directory.",
+        ), 400
+
+    file_extensions = browse.PACKAGE_EXTENSIONS if mode == "file" else None
+    dirs, files = browse.list_directory(current, file_extensions=file_extensions)
+    parent = current.parent
+    parent_path = str(parent) if parent != current else None
+
+    return render_template(
+        "browse.html", target=target, mode=mode,
+        drives=browse.list_drives(), current_path=str(current), parent_path=parent_path,
+        dirs=dirs, files=files,
+    )
 
 
 @app.route("/scan", methods=["POST"])
@@ -47,6 +100,7 @@ def new_scan():
     if not package_path or not output_dir:
         return render_template(
             "index.html", jobs=jobs.REGISTRY.list_all(),
+            prefill=_prefill(package_path=package_path, output_dir=output_dir),
             form_error="Both a package path and an output directory are required.",
         ), 400
 
@@ -98,10 +152,12 @@ def download_job(id: str, kind: str):
 
 @app.route("/open", methods=["POST"])
 def open_directory():
-    dir_path = Path(request.form.get("dir_path", "").strip())
+    dir_path_raw = request.form.get("dir_path", "").strip()
+    dir_path = Path(dir_path_raw)
     if not dir_path.is_dir():
         return render_template(
             "index.html", jobs=jobs.REGISTRY.list_all(),
+            prefill=_prefill(dir_path=dir_path_raw),
             open_error=f"'{dir_path}' is not a directory.",
         ), 400
 
@@ -109,6 +165,7 @@ def open_directory():
     if not inventory_files:
         return render_template(
             "index.html", jobs=jobs.REGISTRY.list_all(),
+            prefill=_prefill(dir_path=dir_path_raw),
             open_error=f"No *.inventory.json file found directly under '{dir_path}'.",
         ), 400
 
@@ -123,6 +180,7 @@ def open_directory():
         return redirect(url_for("open_results", open_id=opened_ids[0]))
     return render_template(
         "index.html", jobs=jobs.REGISTRY.list_all(),
+        prefill=_prefill(dir_path=dir_path_raw),
         opened_choices=[(oid, _OPENED[oid]["package_name"]) for oid in opened_ids],
     )
 

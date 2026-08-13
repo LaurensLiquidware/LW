@@ -12,10 +12,18 @@
   {% if form_error %}<p class="error">{{ form_error }}</p>{% endif %}
   <form method="post" action="{{ url_for('new_scan') }}">
     <label>Package path (.vhdx / .exe / .flexapp)
-      <input type="text" name="package_path" placeholder="C:\flexapp-vuln-scanner\VHDX\Example.vhdx" required>
+      <span class="input-row">
+        <input type="text" name="package_path" value="{{ prefill.package_path }}"
+               placeholder="C:\flexapp-vuln-scanner\VHDX\Example.vhdx" required>
+        <a class="browse-link" href="{{ url_for('browse_fs', target='package_path') }}">Browse…</a>
+      </span>
     </label>
     <label>Output directory
-      <input type="text" name="output_dir" placeholder="C:\flexapp-vuln-scanner\scan-out\example" required>
+      <span class="input-row">
+        <input type="text" name="output_dir" value="{{ prefill.output_dir }}"
+               placeholder="C:\flexapp-vuln-scanner\scan-out\example" required>
+        <a class="browse-link" href="{{ url_for('browse_fs', target='output_dir') }}">Browse…</a>
+      </span>
     </label>
     <label>NVD API key (optional)
       <input type="text" name="nvd_api_key" placeholder="leave blank to use NVD_API_KEY env var / unauthenticated">
@@ -34,7 +42,11 @@
   {% if open_error %}<p class="error">{{ open_error }}</p>{% endif %}
   <form method="post" action="{{ url_for('open_directory') }}">
     <label>Output directory
-      <input type="text" name="dir_path" placeholder="C:\flexapp-vuln-scanner\scan-out\nextcloud" required>
+      <span class="input-row">
+        <input type="text" name="dir_path" value="{{ prefill.dir_path }}"
+               placeholder="C:\flexapp-vuln-scanner\scan-out\nextcloud" required>
+        <a class="browse-link" href="{{ url_for('browse_fs', target='dir_path') }}">Browse…</a>
+      </span>
     </label>
     <button type="submit">Open</button>
   </form>

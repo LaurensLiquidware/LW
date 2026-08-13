@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Browse — {{ "choose a file" if mode == "file" else "choose a folder" }}</h2>
+  <p class="hint">
+    Selecting for: <code>{{ target }}</code>
+    {% if mode == "file" %}(showing <code>.vhdx</code>/<code>.exe</code>/<code>.flexapp</code> files only){% endif %}
+  </p>
+
+  {% if browse_error %}<p class="error">{{ browse_error }}</p>{% endif %}
+
+  <p class="breadcrumb">
+    <a href="{{ url_for('browse_fs', target=target) }}">Drives</a>
+    {% if current_path %} / {{ current_path }}{% endif %}
+  </p>
+
+  {% if current_path is none %}
+    <ul class="browse-list">
+      {% for drive in drives %}
+        <li><a href="{{ url_for('browse_fs', target=target, path=drive) }}">📁 {{ drive }}</a></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    {% if mode == "dir" %}
+      <p>
+        <a class="select-here" href="{{ url_for('index', **{target: current_path}) }}">
+          Select this folder ({{ current_path }})
+        </a>
+      </p>
+    {% endif %}
+
+    <ul class="browse-list">
+      {% if parent_path %}
+        <li><a href="{{ url_for('browse_fs', target=target, path=parent_path) }}">⬆ .. (up)</a></li>
+      {% endif %}
+      {% for d in dirs %}
+        <li><a href="{{ url_for('browse_fs', target=target, path=d.path) }}">📁 {{ d.name }}</a></li>
+      {% endfor %}
+      {% for f in files %}
+        <li><a href="{{ url_for('index', **{target: f.path}) }}">📄 {{ f.name }}</a></li>
+      {% endfor %}
+    </ul>
+
+    {% if mode == "file" and not files and not dirs %}
+      <p class="hint">Nothing here - no subfolders and no .vhdx/.exe/.flexapp files.</p>
+    {% endif %}
+  {% endif %}
+</section>
+
+{% endblock %}

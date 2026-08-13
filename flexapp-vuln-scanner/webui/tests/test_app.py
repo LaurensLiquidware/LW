@@ -58,6 +58,46 @@ def test_open_directory_single_inventory_redirects_to_results(tmp_path):
     assert b"not the same thing as" in resp.data
 
 
+def test_browse_unknown_target_400():
+    resp = client().get("/browse", query_string={"target": "nonsense"})
+    assert resp.status_code == 400
+
+
+def test_browse_no_path_shows_drives():
+    resp = client().get("/browse", query_string={"target": "output_dir"})
+    assert resp.status_code == 200
+    assert b"Drives" in resp.data
+
+
+def test_browse_lists_subdirectories_and_offers_select_for_dir_mode(tmp_path):
+    (tmp_path / "child").mkdir()
+
+    resp = client().get("/browse", query_string={"target": "output_dir", "path": str(tmp_path)})
+
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "child" in html
+    assert "Select this folder" in html
+
+
+def test_browse_file_mode_only_lists_package_extensions(tmp_path):
+    (tmp_path / "package.vhdx").write_text("x")
+    (tmp_path / "notes.txt").write_text("x")
+
+    resp = client().get("/browse", query_string={"target": "package_path", "path": str(tmp_path)})
+
+    html = resp.data.decode()
+    assert "package.vhdx" in html
+    assert "notes.txt" not in html
+    # File-picker mode has no "select this folder" affordance.
+    assert "Select this folder" not in html
+
+
+def test_browse_nonexistent_path_returns_400(tmp_path):
+    resp = client().get("/browse", query_string={"target": "output_dir", "path": str(tmp_path / "nope")})
+    assert resp.status_code == 400
+
+
 def test_download_unknown_job_and_kind_404(tmp_path):
     resp = client().get("/download/job/does-not-exist/pdf")
     assert resp.status_code == 404

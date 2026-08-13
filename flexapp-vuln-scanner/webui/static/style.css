@@ -53,6 +53,34 @@ form input[type="text"] {
   border-radius: 4px;
   font-family: monospace;
 }
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+.input-row input[type="text"] { margin-top: 0; flex: 1; }
+.browse-link {
+  white-space: nowrap;
+  color: var(--link);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.browse-link:hover { text-decoration: underline; }
+
+.breadcrumb { font-family: monospace; font-size: 0.9rem; color: var(--muted); }
+.browse-list { list-style: none; padding: 0; margin: 0.5rem 0; }
+.browse-list li { padding: 0.35rem 0.2rem; border-bottom: 1px solid var(--border); }
+.browse-list a { text-decoration: none; color: var(--fg); }
+.browse-list a:hover { color: var(--link); }
+.select-here {
+  display: inline-block;
+  background: var(--header-bg);
+  color: white !important;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  text-decoration: none;
+}
 button {
   background: var(--header-bg);
   color: var(--header-fg);

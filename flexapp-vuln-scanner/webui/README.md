@@ -31,6 +31,13 @@ dashboard:
   command line) and it renders the same coverage/findings view, reusing a
   sibling `vuln-matches.json` if present, with no network calls.
 
+Both path fields have a **Browse…** link next to them — a server-side
+filesystem browser (drives → folders → files) so you don't have to type or
+paste paths by hand. It defaults to this repo's own directory and lets you
+navigate anywhere the app can already read; for the package-path field it
+only lists `.vhdx`/`.exe`/`.flexapp` files, for the output-directory fields
+it's folder-only with a "Select this folder" button.
+
 ## Requirements for "Run a new scan"
 
 - `pwsh` (PowerShell 7) on `PATH` — Stage 1 is PowerShell, invoked as a
@@ -55,6 +62,11 @@ This is a **local, single-user tool**, not a multi-user web service:
   arbitrary files (whatever directory you type into "Open an existing
   scan output folder") — the same trust level as you having a terminal
   open on this machine, nothing more, nothing less.
+- The **Browse…** filesystem picker lists directory contents on request
+  (any path the app already has read access to) - it doesn't grant any
+  access this process didn't already have, and is subject to the same
+  "local, single-user, 127.0.0.1-only" trust boundary as everything else
+  here.
 - Download links never take a raw filesystem path from the browser. Every
   scan (run fresh or opened from disk) gets a random in-memory id, and
   `/download/job/<id>/<kind>` / `/download/open/<id>/<kind>` only serve

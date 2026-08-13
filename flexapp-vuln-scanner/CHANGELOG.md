@@ -201,6 +201,22 @@ end-to-end run against a real package justifies cutting a version.
   already produced - screenshotted for a visual check of table rendering
   and severity color-coding.
 
+- `webui/browse.py` (new module) + `/browse` route: a server-side
+  filesystem browser (drives → folders → files) behind a "Browse…" link
+  next to every path input, requested right after trying the UI - typing
+  full paths by hand defeated some of the point of a UI. File-picker mode
+  (package path) filters to `.vhdx`/`.exe`/`.flexapp`; directory-picker
+  mode (output dir / open-existing dir) is folder-only with a "Select this
+  folder" button. Selecting an entry redirects to `/` with the path as a
+  query parameter, which the dashboard reads to prefill the right input -
+  including on validation-error re-renders, so the form never loses what
+  you'd typed or browsed to. Not a new trust boundary (documented in
+  `webui/README.md`): this process already runs arbitrary local PowerShell
+  against whatever path you type in. 9 new tests, plus a live
+  headless-browser round trip (open browse view → navigate into a real
+  subdirectory → "Select this folder" → confirm the dashboard comes back
+  pre-filled with that exact path).
+
 - `pdf_report.py` (new module) + `report --pdf` flag: writes
   `<package>.report.pdf` via `reportlab` - a single polished document
   combining the coverage summary (resolution %, excluded/resolved

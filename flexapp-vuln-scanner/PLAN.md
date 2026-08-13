@@ -1076,6 +1076,33 @@ a new pattern, not something to fix blind from this dev sandbox.
    and the results page to visually confirm table rendering and severity
    color-coding render correctly, not just that the numbers matched.
 
+   **Follow-up, same day: a filesystem browser for the path fields.**
+   Requested directly after trying the UI - typing/pasting full paths by
+   hand into "Run a new scan"/"Open an existing scan output folder"
+   defeated some of the point of having a UI at all. Added a small
+   server-side directory browser (`browse.py` + a `/browse` route +
+   `browse.html`): drives → folders → files, defaulting to this repo's own
+   directory. Two modes share the same view - file-picker mode (package
+   path) filters to `.vhdx`/`.exe`/`.flexapp` only and has no "select this
+   folder" affordance; directory-picker mode (output dir / open-existing
+   dir) shows folders only with a "Select this folder" button. Selecting
+   an entry redirects back to `/` with the chosen path as a query
+   parameter, which the dashboard now reads to prefill the right input -
+   including on validation-error re-renders, so a partially-filled form
+   never loses what you'd already typed or browsed to.
+
+   Not a new trust boundary: this process already runs arbitrary local
+   PowerShell against whatever path you type in, so listing directory
+   contents on request doesn't grant it anything it didn't already have -
+   documented explicitly in `webui/README.md`'s "Security" section rather
+   than left implicit. Verified with 9 new tests (`browse.py`'s
+   dir/file-extension filtering and nonexistent-path handling directly;
+   the `/browse` route's mode-specific rendering, unknown-target
+   rejection, and error handling through Flask's test client) plus a
+   live, driven-by-a-headless-browser round trip: opened the browse view,
+   navigated into a real subdirectory, clicked "Select this folder," and
+   confirmed the dashboard came back with that exact path pre-filled.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or
