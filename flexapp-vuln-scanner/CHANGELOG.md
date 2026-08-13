@@ -179,6 +179,33 @@ end-to-end run against a real package justifies cutting a version.
   real inventories that nothing newly-excluded ever had a resolved
   identity.
 
+- `cpe-mappings.yaml`: added FFmpeg, Qt, and Chromium as curated
+  `mapped-cpe` overrides, and switched the existing `Electron Chromium`
+  entry from a `google:chrome` approximation to the same real Chromium
+  CPE. Each was checked against the real NVD CPE dictionary (via web
+  search, since `nvd.nist.gov` itself is blocked from direct fetch in this
+  dev environment, same as `services.nvd.nist.gov`) before adding -
+  confirmed real, dedicated entries: `cpe:2.3:a:ffmpeg:ffmpeg`,
+  `cpe:2.3:a:qt:qt` (not `qt6` - Qt5 and Qt6 share the same NVD product),
+  `cpe:2.3:a:chromium:chromium` (distinct from Google Chrome). Checked and
+  deliberately did NOT add mappings for OBS Studio, x264, CEF, or ANGLE -
+  none have a dedicated NVD CPE entry to match against (OBS Studio's own
+  product doesn't appear in the dictionary at all; ANGLE/CEF bugs surface
+  as Chromium CVEs instead of their own).
+
+  Added a version-transform mechanism (`cpe_mappings.py`'s
+  `find_version_transform`, an optional `versionPattern`/`versionGroup`
+  on a mapping entry) because a vendor/product fix alone wasn't enough:
+  FFmpeg's detected version carries its own git-tag convention
+  (`"n7.1.1"`, leading `n`) and Qt's carries a Win32 FILEVERSION
+  resource's 4-part format (`"6.8.3.0"`) - neither matches NVD's plain
+  3-part dictionary format. A version that doesn't fit the expected shape
+  falls back to the raw value unchanged rather than raising or mangling
+  the CPE. Verified against real OBS Studio and Chromium data that all
+  three produce clean, correctly-shaped CPE strings
+  (`cpe:2.3:a:ffmpeg:ffmpeg:7.1.1:...`, `cpe:2.3:a:qt:qt:6.8.3:...`,
+  `cpe:2.3:a:chromium:chromium:147.0.7727.102:...`).
+
 - `nvd_mirror.py` + `mirror-nvd` CLI subcommand + `resolve --nvd-mirror`:
   a local NVD CVE mirror, to answer scale concerns raised live once the
   429-retry fix above made a real timing problem visible - without an

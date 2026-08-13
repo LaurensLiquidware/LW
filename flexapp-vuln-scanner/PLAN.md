@@ -784,6 +784,35 @@ defensive regardless (never crash on a single bad file, log and continue).
    inventories (Paint.NET, 7-Zip, OBS Studio, Remix, Chromium) that
    nothing newly-excluded ever had a resolved identity - small coverage
    bumps across all of them (e.g. 7-Zip 50%->60%, Remix 73.1%->75.4%).
+
+   **`cpe-mappings.yaml` curation against the real NVD dictionary
+   (2026-08-13)**: `nvd.nist.gov` itself is blocked from direct fetch in
+   this dev environment (same as `services.nvd.nist.gov`), but web
+   search still surfaces its indexed detail pages - used that to check
+   the app-specific products this file's own comment had previously
+   left out for being unverified. Confirmed real, dedicated NVD entries
+   for FFmpeg (`ffmpeg:ffmpeg`, 428 records), Qt (`qt:qt` - not `qt6`,
+   397 records), and Chromium (`chromium:chromium`, distinct from Google
+   Chrome); confirmed NO dedicated entry exists for OBS Studio, x264,
+   CEF, or ANGLE (OBS Studio's own product doesn't appear in the
+   dictionary at all under any name found; ANGLE/CEF bugs surface as
+   Chromium CVEs instead of their own) - correctly left those out rather
+   than guessing.
+
+   A vendor/product fix alone wasn't enough for FFmpeg/Qt: their
+   detected version strings (FFmpeg's own git-tag convention `"n7.1.1"`;
+   Qt's 4-part Win32 FILEVERSION `"6.8.3.0"`) don't match NVD's plain
+   3-part dictionary format. Added a version-transform mechanism
+   (`versionPattern`/`versionGroup` on a mapping entry) rather than
+   leaving those two silently non-functional - falls back to the raw
+   version unchanged if the pattern doesn't match, same "don't guess"
+   spirit as everywhere else in this pipeline. Also switched the
+   existing `Electron Chromium` mapping from its documented
+   `google:chrome` approximation to the now-confirmed real
+   `chromium:chromium` CPE - more accurate, since Electron bundles
+   Chromium, not Chrome itself. Verified against real OBS Studio and
+   Chromium data that all three produce clean, correctly-shaped CPE
+   strings ready for a live `resolve` run to confirm real matches.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

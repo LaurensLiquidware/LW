@@ -32,10 +32,7 @@ class CpeMappings:
             data = yaml.safe_load(f) or {}
         return cls(mappings=data.get("mappings", []))
 
-    def find(self, identity: dict[str, Any] | None) -> tuple[str, str] | None:
-        """Returns (cpeVendor, cpeProduct) for the first matching override,
-        or None if nothing in the table matches this identity.
-        """
+    def _find_entry(self, identity: dict[str, Any] | None) -> dict[str, Any] | None:
         if not identity:
             return None
 
@@ -64,9 +61,40 @@ class CpeMappings:
                 continue
 
             cpe = entry.get("cpe", {})
-            cpe_vendor = cpe.get("vendor")
-            cpe_product = cpe.get("product")
-            if cpe_vendor and cpe_product:
-                return cpe_vendor, cpe_product
+            if cpe.get("vendor") and cpe.get("product"):
+                return entry
 
         return None
+
+    def find(self, identity: dict[str, Any] | None) -> tuple[str, str] | None:
+        """Returns (cpeVendor, cpeProduct) for the first matching override,
+        or None if nothing in the table matches this identity.
+        """
+        entry = self._find_entry(identity)
+        if not entry:
+            return None
+        cpe = entry["cpe"]
+        return cpe["vendor"], cpe["product"]
+
+    def find_version_transform(self, identity: dict[str, Any] | None) -> tuple[str, int] | None:
+        """Returns (regexPattern, captureGroup) for the matching entry's
+        optional `versionPattern`/`versionGroup`, or None if the matching
+        entry has no version transform (or nothing matched at all).
+
+        Exists because a Stage 1 identity's raw version string doesn't
+        always match NVD's own version format for that product - found
+        live comparing against the real NVD CPE dictionary: FFmpeg reports
+        its own git-tag-style version ("n7.1.1", leading "n") where NVD's
+        dictionary uses plain "7.1.1"; Qt's Win32 FILEVERSION resource is
+        4-part ("6.8.3.0") where NVD's dictionary is 3-part ("6.8.3"). A
+        vendor/product fix alone doesn't help if the version itself still
+        can't match any real dictionary entry.
+        """
+        entry = self._find_entry(identity)
+        if not entry:
+            return None
+        cpe = entry.get("cpe", {})
+        pattern = cpe.get("versionPattern")
+        if not pattern:
+            return None
+        return pattern, cpe.get("versionGroup", 1)

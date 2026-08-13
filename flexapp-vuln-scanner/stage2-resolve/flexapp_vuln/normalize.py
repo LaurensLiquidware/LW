@@ -145,6 +145,16 @@ def build_cpe_candidate(
     if mapped:
         vendor, product = mapped
         confidence = "mapped-cpe"
+        version_transform = mappings.find_version_transform(identity)
+        if version_transform:
+            pattern, group = version_transform
+            match = re.match(pattern, str(version))
+            # A version that doesn't fit the expected shape falls back to
+            # the raw value unchanged - same "don't guess" spirit as the
+            # rest of this module; worst case is a CPE that doesn't match
+            # anything in NVD (silently zero findings), not a wrong one.
+            if match:
+                version = match.group(group)
     else:
         vendor_raw = identity.get("vendor") or identity.get("product")
         product_raw = identity.get("product")

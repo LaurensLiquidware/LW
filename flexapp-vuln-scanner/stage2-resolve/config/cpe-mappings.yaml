@@ -19,17 +19,21 @@
 # automatic heuristic normalization - tagged confidence "heuristic", never
 # "mapped-cpe", so a report never overstates how sure this mapping is.
 #
-# Deliberately NOT included here: app-specific products seen in a live test
-# (OBS Studio, FFmpeg, Qt6, x264, Chromium, ANGLE, CEF) whose Win32
-# ProductName/CompanyName strings vary across their own binaries (e.g. "OBS
-# Project" vs. "OBS" as CompanyName produced two different CPEs for the same
-# real product). Adding a guessed canonical vendor string for those without
-# verifying it against the real NVD CPE dictionary would be presenting a
-# guess as "mapped-cpe" confidence - no more trustworthy than "heuristic",
-# just labeled as if it were. The four below (OpenSSL/zlib/curl/SQLite) are
-# unambiguous, universally-known open source project CPEs, which is a
-# meaningfully different level of confidence than guessing at a specific
-# vendor's internal CPE dictionary entry.
+# Deliberately NOT included here: OBS Studio, x264, CEF, ANGLE. Checked
+# each against the real NVD CPE dictionary (2026-08-13, via web search
+# since services.nvd.nist.gov and nvd.nist.gov are both blocked from
+# direct fetch in this dev environment) and found no dedicated CPE entry
+# for any of them - OBS Studio's own product has none at all (a search
+# for "OBS Studio" only turned up an unrelated "obs-server" product);
+# ANGLE's and CEF's bugs surface as Chromium CVEs instead of their own.
+# Adding a guessed canonical vendor string without a real dictionary entry
+# to verify against would be presenting a guess as "mapped-cpe"
+# confidence - no more trustworthy than "heuristic", just labeled as if
+# it were, and here there's nothing to match against regardless.
+#
+# FFmpeg/Qt/Chromium below ARE confirmed real NVD dictionary entries
+# (checked the same way) - previously left out for the same "unverified"
+# reason, added once verified.
 
 mappings:
   - match:
@@ -65,18 +69,53 @@ mappings:
       vendor: sqlite
       product: sqlite
 
-  # Chromium-in-Electron vs. standalone Google Chrome is an approximation:
-  # Electron bundles Chromium, not Chrome itself, but most Chromium engine
-  # CVEs apply to both. This is a curated override (so it's "mapped-cpe",
-  # not "heuristic"), but the approximation itself should be called out
-  # wherever this match is surfaced in a report - it is not the same
-  # confidence as, say, the OpenSSL banner match above.
+  # Confirmed real NVD dictionary entry: cpe:2.3:a:ffmpeg:ffmpeg:<version>
+  # (428 records). Detected FFmpeg identities carry FFmpeg's own git-tag
+  # version convention ("n7.1.1", leading "n") - NVD's dictionary uses
+  # plain "7.1.1" - so a vendor/product fix alone wouldn't match anything;
+  # versionPattern strips the "n" and anything past the X.Y.Z triple.
+  - match:
+      product: FFmpeg
+    cpe:
+      vendor: ffmpeg
+      product: ffmpeg
+      versionPattern: '^n?(\d+\.\d+\.\d+)'
+      versionGroup: 1
+
+  # Confirmed real NVD dictionary entry: cpe:2.3:a:qt:qt:<version> (397
+  # records) - the dictionary's product is "qt", not "qt6"; Qt5 and Qt6
+  # share the same NVD product name. Detected "Qt6" identities carry a
+  # Win32 FILEVERSION resource's 4-part version ("6.8.3.0") where NVD's
+  # dictionary is 3-part ("6.8.3"); versionPattern drops the trailing
+  # 4th segment.
+  - match:
+      product: Qt6
+    cpe:
+      vendor: qt
+      product: qt
+      versionPattern: '^(\d+\.\d+\.\d+)(?:\.\d+)?$'
+      versionGroup: 1
+
+  # Confirmed real NVD dictionary entry: cpe:2.3:a:chromium:chromium:<version>
+  # - a real, dedicated Chromium product distinct from Google Chrome.
+  # Detected 4-part versions (e.g. "127.0.6533.120") already match a real
+  # dictionary example found ("11.0.696.64"), no version transform needed.
+  - match:
+      product: Chromium
+    cpe:
+      vendor: chromium
+      product: chromium
+
+  # Chromium-in-Electron: Electron bundles Chromium, not Google Chrome
+  # itself, so the dedicated Chromium CPE above is more accurate than the
+  # google:chrome approximation this used before that entry was confirmed
+  # against the real NVD dictionary.
   - match:
       method: electron-embedded
       product: Electron Chromium
     cpe:
-      vendor: google
-      product: chrome
+      vendor: chromium
+      product: chromium
 
   - match:
       method: electron-embedded

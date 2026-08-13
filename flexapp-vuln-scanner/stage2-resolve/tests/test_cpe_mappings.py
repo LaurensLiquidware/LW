@@ -83,6 +83,33 @@ def test_load_real_config_file_parses():
     assert mappings.find(identity) == ("openssl", "openssl")
 
 
+def test_find_version_transform_returns_pattern_and_group():
+    mappings = CpeMappings(mappings=[
+        {
+            "match": {"product": "FFmpeg"},
+            "cpe": {"vendor": "ffmpeg", "product": "ffmpeg", "versionPattern": r"^n?(\d+\.\d+\.\d+)", "versionGroup": 1},
+        }
+    ])
+    identity = {"method": "pe-version-resource", "product": "FFmpeg", "version": "n7.1.1"}
+    assert mappings.find_version_transform(identity) == (r"^n?(\d+\.\d+\.\d+)", 1)
+
+
+def test_find_version_transform_none_when_entry_has_no_pattern():
+    mappings = CpeMappings(mappings=[
+        {"match": {"product": "OpenSSL"}, "cpe": {"vendor": "openssl", "product": "openssl"}},
+    ])
+    identity = {"method": "string-signature", "product": "OpenSSL", "version": "1.1.1w"}
+    assert mappings.find_version_transform(identity) is None
+
+
+def test_find_version_transform_none_when_nothing_matches():
+    mappings = CpeMappings(mappings=[
+        {"match": {"product": "OpenSSL"}, "cpe": {"vendor": "openssl", "product": "openssl", "versionPattern": r"(\d+)"}},
+    ])
+    identity = {"method": "string-signature", "product": "zlib", "version": "1.3"}
+    assert mappings.find_version_transform(identity) is None
+
+
 def test_load_missing_file_returns_empty():
     mappings = CpeMappings.load("/nonexistent/path.yaml")
     assert mappings.find({"method": "string-signature", "product": "OpenSSL"}) is None

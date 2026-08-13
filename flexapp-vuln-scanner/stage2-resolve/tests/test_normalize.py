@@ -126,3 +126,55 @@ def test_cpe_version_with_raw_space_and_colon_is_escaped():
         "2.1.23296\\ git\\ hash\\:\\ e323abb5b08e:*:*:*:*:*:*:*"
     )
     assert confidence == "heuristic"
+
+
+_FFMPEG_MAPPINGS = CpeMappings(mappings=[
+    {
+        "match": {"product": "FFmpeg"},
+        "cpe": {
+            "vendor": "ffmpeg",
+            "product": "ffmpeg",
+            "versionPattern": r"^n?(\d+\.\d+\.\d+)",
+            "versionGroup": 1,
+        },
+    }
+])
+_QT_MAPPINGS = CpeMappings(mappings=[
+    {
+        "match": {"product": "Qt6"},
+        "cpe": {
+            "vendor": "qt",
+            "product": "qt",
+            "versionPattern": r"^(\d+\.\d+\.\d+)(?:\.\d+)?$",
+            "versionGroup": 1,
+        },
+    }
+])
+
+
+def test_cpe_version_transform_strips_ffmpeg_git_tag_prefix():
+    # Real FFmpeg identities carry FFmpeg's own git-tag version convention
+    # ("n7.1.1") which doesn't match NVD's plain "7.1.1" dictionary format.
+    identity = {"method": "pe-version-resource", "product": "FFmpeg", "version": "n7.1.1"}
+    cpe, confidence = build_cpe_candidate(identity, _FFMPEG_MAPPINGS)
+    assert cpe == "cpe:2.3:a:ffmpeg:ffmpeg:7.1.1:*:*:*:*:*:*:*"
+    assert confidence == "mapped-cpe"
+
+
+def test_cpe_version_transform_drops_qt_fourth_segment():
+    # Real Qt identities carry a Win32 FILEVERSION resource's 4-part
+    # version ("6.8.3.0") which doesn't match NVD's 3-part dictionary
+    # format ("6.8.3").
+    identity = {"method": "pe-version-resource", "product": "Qt6", "version": "6.8.3.0"}
+    cpe, confidence = build_cpe_candidate(identity, _QT_MAPPINGS)
+    assert cpe == "cpe:2.3:a:qt:qt:6.8.3:*:*:*:*:*:*:*"
+    assert confidence == "mapped-cpe"
+
+
+def test_cpe_version_transform_falls_back_when_pattern_does_not_match():
+    # A version that doesn't fit the expected shape must fall back to the
+    # raw value unchanged, not raise or produce a mangled CPE.
+    identity = {"method": "pe-version-resource", "product": "FFmpeg", "version": "unknown-build"}
+    cpe, confidence = build_cpe_candidate(identity, _FFMPEG_MAPPINGS)
+    assert cpe == "cpe:2.3:a:ffmpeg:ffmpeg:unknown-build:*:*:*:*:*:*:*"
+    assert confidence == "mapped-cpe"
