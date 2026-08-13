@@ -88,6 +88,12 @@ above, and drove the addition of `.ini`/`.pak`/`.effect` to
 components — see `../PLAN.md`'s resolved assumption 1 for the full
 before/after coverage numbers on that package).
 
+A second live test against a real 7-Zip package found the same class of
+issue from a different angle: 92% of that package's "unresolved" files
+were per-language translation `.txt` files under a `\Lang\` folder. Added
+`\Lang\`/`\Locale\`/`\Locales\`/`\i18n\`/`\l10n\` as a new
+`localization-file` path rule.
+
 ## Known limitations at this stage
 
 - Directory input is non-recursive (top-level packages only).

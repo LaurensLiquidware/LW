@@ -456,6 +456,42 @@ defensive regardless (never crash on a single bad file, log and continue).
    `coverage-report.md` stating **53.0% resolution coverage** - the exact
    number predicted from analyzing the raw JSON directly, now confirmed via
    the actual reporting pipeline rather than a hand calculation.
+
+   **Second live test, a real 7-Zip package (2026-08-13)**: much smaller
+   (112 files), and surfaced the same class of finding from a different
+   angle. Raw coverage looked very low (5.6%) until digging in: 93 of 101
+   "unresolved" files (92%) were per-language translation `.txt` files
+   under a `\Lang\` folder - not components. Added `\Lang\`/`\Locale\`/
+   `\Locales\`/`\i18n\`/`\l10n\` as a new `localization-file`
+   `ExclusionRules.psd1` path rule (broader than just 7-Zip's specific
+   folder name, to generalize to other apps' localization conventions),
+   which moved the honest coverage number to **42.9%**. The 6 resolved
+   files (`7z.exe`, `7z.dll`, `7zFM.exe`, `7zG.exe`, `7-zip.dll`,
+   `7-zip32.dll`) all correctly attributed to the same real component
+   (Igor Pavlov / 7-Zip / 26.01) and deduplicated to one `sbom.cdx.json`
+   entry, exactly as designed.
+
+   Also found and fixed, reviewing this run's actual output files rather
+   than just the numbers: (a) `sbom.py` was emitting `"name": null` for
+   package.json-derived components with no name field, which is invalid
+   per the real CycloneDX 1.6 schema (confirmed via `jsonschema.validate`
+   against the official schema) - fixed by skipping nameless components
+   from the SBOM (they still count as "resolved" for coverage purposes);
+   (b) `normalize.py`'s CPE escaper only handled backslash/colon, on the
+   wrong assumption that version strings were "already CPE-safe" - real
+   Win32 ProductVersion strings (`x264`'s `"0.164.3106 eaa68fa"`, ANGLE's
+   `"2.1.23296 git hash: e323abb5b08e"`) proved that false, producing
+   invalid CPE 2.3 strings with raw unescaped spaces; fixed with a proper
+   CPE-spec reserved-character escaper; (c) `cpe_mappings.py` required an
+   exact `method` match, so a real `zlib` Win32 version resource (method
+   `pe-version-resource`) missed the existing mapping written only for
+   the `string-signature` path - made `method` optional in a mapping
+   entry. Deliberately did NOT add guessed mappings for OBS
+   Studio/FFmpeg/Qt6/x264/Chromium/ANGLE/CEF (seen fragmenting into
+   multiple CPEs across binaries with different vendor-string variants) -
+   without live NVD access to verify the real dictionary entry, that would
+   present a guess as `mapped-cpe` confidence, no more trustworthy than
+   `heuristic` but labeled as if it were.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

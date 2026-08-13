@@ -9,7 +9,16 @@
     # implemented here) - see PLAN.md's "Noise reduction" section.
 
     PathContainsRules = @(
-        @{ Reason = 'os-system-path'; Contains = @('\Windows\', '\WinSxS\', '\System32\', '\SysWOW64\') }
+        @{ Reason = 'os-system-path'; Contains = @('\Windows\', '\WinSxS\', '\System32\', '\SysWOW64\') },
+        # Added 2026-08-13 from a real 7-Zip scan: 93 of 101 "unresolved"
+        # files (92%) were per-language translation .txt files under a
+        # \Lang\ folder - not components. Moved that package's honest
+        # coverage number from 5.6% to 42.9%. Scoped broadly by folder
+        # name (any file under it), not just .txt, since a localization
+        # folder essentially never contains an actual third-party
+        # component - and this generalizes beyond 7-Zip's specific
+        # "Lang" naming to the other common conventions apps use.
+        @{ Reason = 'localization-file'; Contains = @('\Lang\', '\Locale\', '\Locales\', '\i18n\', '\l10n\') }
     )
 
     NamePatternRules = @(
