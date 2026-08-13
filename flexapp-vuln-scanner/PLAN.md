@@ -547,6 +547,40 @@ defensive regardless (never crash on a single bad file, log and continue).
    against a real package, live-vs-mirror, to confirm the real-world
    speedup and check the mirror's version-range matching against genuine
    NVD data.
+
+   **Full live `resolve` + `report` run against Paint.NET (2026-08-13)**:
+   completed cleanly with no errors (confirming the 404/429 fixes hold up
+   live), 442 candidates, 312 CPE-expressible, 0 purl-expressible
+   (expected - `dotnet-manifest`/`pe-version-resource` don't map to a
+   purl), 0 vulnerability matches. The coverage report's method breakdown
+   now shows real `dotnet-manifest` resolution working
+   (271 `dotnet-manifest` / 41 `pe-version-resource`, confirming the fix
+   above), and the zero-matches result is plausible rather than
+   suspicious: most of those 312 CPEs are `heuristic`-confidence
+   auto-normalized strings with no curated `cpe-mappings.yaml` entry,
+   unlikely to match a real NVD dictionary entry exactly - a real,
+   honestly-labeled limitation of this pipeline, not a bug.
+
+   The now-visible unresolved-files list (130 files) surfaced a new noise
+   pattern: this package was installed via Chocolatey on the capture
+   machine, so Chocolatey's own package-manager footprint got captured
+   into the VHDX alongside Paint.NET itself. Added four more
+   `ExclusionRules.psd1` categories - `package-manager-path`
+   (`\chocolatey\`/`\ChocolateyHttpCache\`), `dotnet-xmldoc-file` (`.xml`
+   doc-comment files), `dotnet-resource-data` (`.resources`/`.resx`),
+   `readme-license-text`, and `shell-shortcut` (`.lnk`) - verified against
+   the real inventory JSON that none of the 126 newly-excluded files ever
+   had a resolved identity. Moved that package's honest resolution
+   coverage from **70.6% to 98.7%**.
+
+   Deliberately deferred rather than implemented: `paintdotnet.deps.json`
+   (currently excluded as noise) actually lists every NuGet dependency
+   name + exact resolved version - a real lockfile, same idea as the
+   `jar-pom-properties` highest-confidence path already in the pipeline.
+   Parsing it would give exact-version identities instead of guessing from
+   a DLL's PE resource, but that's a new identity-resolution capability,
+   not an exclusion-rule tweak - scoped as a candidate follow-up, not done
+   here.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

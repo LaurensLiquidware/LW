@@ -105,6 +105,18 @@ call threw on every invocation and was swallowed by the catch-all. Fixed
 by invoking it as a static method instead; verified against a real
 assembly before and after.
 
+A follow-up run against the same Paint.NET package, after that fix,
+surfaced a new noise pattern once the unresolved-files list was reliable:
+the package had been installed via Chocolatey on the capture machine, so
+Chocolatey's own package-manager footprint (nuspec/nupkg, install-state
+files, cached HTTP API responses, logs, helper scripts) got captured into
+the VHDX too. Added `package-manager-path`, `dotnet-xmldoc-file`
+(`.xml` doc-comment files paired with each assembly),
+`dotnet-resource-data` (`.resources`/`.resx`), `readme-license-text`, and
+`shell-shortcut` (`.lnk`) to `ExclusionRules.psd1` - verified none of the
+126 newly-excluded files had ever had a resolved identity. Moved that
+package's honest resolution coverage from 70.6% to 98.7%.
+
 ## Known limitations at this stage
 
 - Directory input is non-recursive (top-level packages only).

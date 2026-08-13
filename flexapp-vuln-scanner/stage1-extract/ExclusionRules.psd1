@@ -18,14 +18,27 @@
         # folder essentially never contains an actual third-party
         # component - and this generalizes beyond 7-Zip's specific
         # "Lang" naming to the other common conventions apps use.
-        @{ Reason = 'localization-file'; Contains = @('\Lang\', '\Locale\', '\Locales\', '\i18n\', '\l10n\') }
+        @{ Reason = 'localization-file'; Contains = @('\Lang\', '\Locale\', '\Locales\', '\i18n\', '\l10n\') },
+        # Added 2026-08-13 from a real Paint.NET scan: that package was
+        # installed via Chocolatey on the capture machine, and Chocolatey's
+        # own package-manager footprint (nuspec/nupkg, install-state
+        # sentinel files, cached HTTP API responses, logs, helper scripts)
+        # got swept into the VHDX alongside the actual app - none of it is
+        # part of Paint.NET itself. ~65 of that package's 130 unresolved
+        # files were this, in one path prefix.
+        @{ Reason = 'package-manager-path'; Contains = @('\chocolatey\', '\ChocolateyHttpCache\') }
     )
 
     NamePatternRules = @(
         @{ Reason = 'resource-only-assembly'; Patterns = @('*.resources.dll') },
         @{ Reason = 'debug-symbols';          Patterns = @('*.pdb') },
         @{ Reason = 'compiled-help';          Patterns = @('*.chm', '*.hlp') },
-        @{ Reason = 'windows-manifest';       Patterns = @('*.manifest') }
+        @{ Reason = 'windows-manifest';       Patterns = @('*.manifest') },
+        # Added 2026-08-13 from the same Paint.NET scan: bundled-plugin
+        # license/readme text (AvifFileType, DDSFileTypePlus, JpegXLFileType,
+        # WebPFileType) plus the app's own root License.txt - documentation,
+        # not components.
+        @{ Reason = 'readme-license-text'; Patterns = @('License.txt', 'Readme.txt', 'Third Party Notices.txt', 'VERIFICATION.txt') }
     )
 
     ExtensionRules = @(
@@ -40,7 +53,19 @@
         # moved that package's honest coverage number from 3.7% to 53.0%.
         @{ Reason = 'config-file';       Extensions = @('.ini') },
         @{ Reason = 'resource-pack-file'; Extensions = @('.pak') },
-        @{ Reason = 'shader-effect-file'; Extensions = @('.effect') }
+        @{ Reason = 'shader-effect-file'; Extensions = @('.effect') },
+        # Added 2026-08-13 from the same Paint.NET scan: one .xml per
+        # PaintDotNet.*.dll - IntelliSense doc-comment files the .NET
+        # compiler emits alongside an assembly, carrying no version/identity
+        # information of their own (16 of that package's 130 unresolved
+        # files).
+        @{ Reason = 'dotnet-xmldoc-file'; Extensions = @('.xml') },
+        # Same scan: uncompiled localization data, same spirit as the
+        # \Lang\ folder rule above but flat-named instead of folder-based
+        # (PaintDotNet.Strings.3.<culture>.resources) - ~40 of that
+        # package's 130 unresolved files.
+        @{ Reason = 'dotnet-resource-data'; Extensions = @('.resources', '.resx') },
+        @{ Reason = 'shell-shortcut';    Extensions = @('.lnk') }
     )
 
     # Satellite localization assemblies live in culture-code subfolders

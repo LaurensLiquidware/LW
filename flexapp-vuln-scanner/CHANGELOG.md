@@ -118,6 +118,23 @@ end-to-end run against a real package justifies cutting a version.
   files were per-language translation `.txt` files under a `\Lang\`
   folder. Moved that package's honest resolution coverage from 5.6% to
   42.9%.
+- `ExclusionRules.psd1`: added four more noise categories from the
+  Paint.NET live test, after the `dotnet-manifest` fix made the real
+  unresolved-files list visible for the first time - that package was
+  installed via Chocolatey on the capture machine, so Chocolatey's own
+  package-manager footprint (nuspec/nupkg, install-state sentinel files,
+  cached HTTP API responses, logs, helper scripts) got swept into the
+  VHDX alongside the app itself: `package-manager-path`
+  (`\chocolatey\`/`\ChocolateyHttpCache\`, ~65 files),
+  `dotnet-xmldoc-file` (`.xml` IntelliSense doc-comment files paired 1:1
+  with each assembly, 16 files), `dotnet-resource-data`
+  (`.resources`/`.resx` uncompiled localization data, 38 files),
+  `readme-license-text` (bundled-plugin `License.txt`/`Readme.txt`/
+  `Third Party Notices.txt`/`VERIFICATION.txt`, 12 files), and
+  `shell-shortcut` (`.lnk`, 1 file). Verified against the real inventory
+  JSON that none of the 126 newly-excluded files had ever had a resolved
+  identity - moved that package's honest resolution coverage from 70.6%
+  to **98.7%**.
 - `cpe-mappings.yaml`: added a second `curl` mapping entry for
   `"The curl library"` - curl.dll's actual Win32 `ProductName` (confirmed
   live), distinct from the string-signature path's `"libcurl"` label.
