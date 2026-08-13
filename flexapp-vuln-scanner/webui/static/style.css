@@ -342,6 +342,8 @@ table.stats td:first-child { font-weight: 600; width: 60%; }
 .sev-medium, .sev-moderate { color: var(--sev-medium); }
 .sev-low { color: var(--sev-low); }
 .sev-counts { display: inline-flex; gap: 0.75rem; font-size: 0.857rem; white-space: nowrap; }
+.sev-legend { margin-bottom: 0.75rem; }
+.sev-legend .sev { margin: 0 0.15rem; }
 
 pre#log {
   background: var(--p-surface-900);

@@ -80,6 +80,12 @@
 <section class="panel">
   <h2>Scans Run This Session</h2>
   {% if jobs %}
+    <p class="hint sev-legend">
+      <span class="sev sev-critical">C</span> Critical ·
+      <span class="sev sev-high">H</span> High ·
+      <span class="sev sev-medium">M</span> Medium ·
+      <span class="sev sev-low">L</span> Low
+    </p>
     <table>
       <thead><tr><th>Started</th><th>Package</th><th>Status</th><th>Findings by Severity</th><th></th></tr></thead>
       <tbody>

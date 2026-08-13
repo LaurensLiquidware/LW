@@ -71,6 +71,18 @@ def test_index_shows_dash_for_a_job_still_running():
     assert "still-running.vhdx" in html
 
 
+def test_index_shows_severity_legend_when_jobs_exist():
+    jobs.REGISTRY.create("legend-check.vhdx", "/tmp/out")
+
+    resp = client().get("/")
+    html = resp.data.decode()
+
+    assert "Critical" in html
+    assert "High" in html
+    assert "Medium" in html
+    assert "Low" in html
+
+
 def test_footer_shows_version_on_every_page():
     # Sparks Tool Project Review Checklist §6: version must be visible
     # without reading source, on the tool's normal interface.

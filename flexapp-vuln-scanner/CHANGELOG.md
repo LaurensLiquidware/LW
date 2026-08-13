@@ -186,7 +186,9 @@ end-to-end run against a real package justifies cutting a version.
   on every scan/refresh/opened-folder result. 8 new tests; verified with
   a headless-browser screenshot against a running dev server showing a
   finished scan's exact counts (2 critical, 1 high, 1 medium, 1 low) next
-  to a still-running scan's dash.
+  to a still-running scan's dash. Added a small legend above the table
+  ("C Critical · H High · M Medium · L Low") once the letter-only column
+  turned out not to be self-explanatory on its own.
 
 - `findings.csv`: a plain CSV export of every finding row (confirmed and
   heuristic combined, with a `Confidence` column so a spreadsheet reader
