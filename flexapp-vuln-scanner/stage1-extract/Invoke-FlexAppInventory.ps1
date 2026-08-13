@@ -183,7 +183,7 @@ function Invoke-SinglePackage {
         }
         finally {
             if ($mountInfo) {
-                Dismount-ClassicFlexApp -VhdxPath $vhdxPath
+                Dismount-ClassicFlexApp -VhdxPath $vhdxPath -RootPath $mountInfo.RootPath -DiskNumber $mountInfo.DiskNumber -PartitionNumber $mountInfo.PartitionNumber
                 $script:MountedImages.Remove($vhdxPath) | Out-Null
             }
         }
