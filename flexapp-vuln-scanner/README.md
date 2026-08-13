@@ -1,11 +1,30 @@
 # FlexApp Vulnerability Scanner (PoC)
 
+**Version 0.1.0**
+
+> **IMPORTANT: READ BEFORE DOWNLOADING OR USING.** This is a Liquidware
+> **Sparks Tool** - a community/field-contributed utility, **not a
+> Liquidware commercial product**. It is provided outside Liquidware's
+> standard product development lifecycle, **"AS IS" with no warranty,
+> support, or maintenance**, and used at your own risk. See
+> [`Spark_License.pdf`](Spark_License.pdf) for the full license and
+> disclaimer.
+
 A feasibility measurement, not a product: for a real enterprise FlexApp
 package, what percentage of the third-party components inside it can be
 resolved to a version identity precise enough to match against a
 vulnerability database? See [`PLAN.md`](PLAN.md) for the full design
 rationale, the exact coverage-percentage definition, and the assumptions
 this project makes about FlexApp internals.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| [`Spark_License.pdf`](Spark_License.pdf) | Liquidware Sparks Tool License and Disclaimer - read this before use |
+| [`bom.cdx.json`](bom.cdx.json) | Software Bill of Materials (CycloneDX 1.6, JSON) - an inventory of **this tool's own** third-party components (22, all permissively licensed - MIT/BSD-3-Clause/Apache-2.0/MPL-2.0/PSF-2.0/MIT-CMU), provided so your security team can review it against your own policy. Not to be confused with the SBOM this tool *produces per scan* about a scanned FlexApp package - see `stage2-resolve/flexapp_vuln/sbom.py` for that. |
+| [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt) | Full license texts for every component in `bom.cdx.json`, plus the bundled brand/UI fonts |
+| `CHANGELOG.md` | Version history |
 
 ## Status
 
@@ -197,14 +216,29 @@ browser instead of separate files.
   on a failed extraction is still undocumented — see `PLAN.md`'s resolved
   assumption 3 for how Stage 1 handles that.
 
-## License
+## License and Sparks Tool compliance
 
-[`Spark_License.pdf`](Spark_License.pdf) — Liquidware's standard Sparks
-Tool license and disclaimer, added at the project owner's request. Note
-this project hasn't been through the same formal Sparks Tool audit process
-`FlexAppOneDownloadMonitor` (a sibling project in this repo) has — see that
-project's `SPARKS-AUDIT.md` if you're looking for an example of what that
-process covers.
+See the disclaimer banner and "Files" table at the top for
+[`Spark_License.pdf`](Spark_License.pdf), [`bom.cdx.json`](bom.cdx.json),
+and [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt).
+
+Self-audited against the **Sparks Tool Project Review Checklist v1**
+(2026-08-13) — status per item:
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Double-byte / Unicode handling | Pass, one minor fix applied (`Expand-FlexAppOne.ps1`'s failure-path stderr/stdout capture reads now use explicit `-Encoding UTF8`) |
+| 2 | Regional date/time/number formats | Pass — no US-only date parsing found; all internal timestamps are ISO 8601 UTC |
+| 3 | External URL / CDN references | Pass — only documented endpoints are `api.osv.dev`/`services.nvd.nist.gov` (`resolve` step only; `report` needs neither). No CDN-loaded runtime assets (see `webui/static/branding/README.md` for why PrimeIcons was deliberately not used). |
+| 4 | Open source identified + CycloneDX 1.6 JSON SBOM | Pass — `bom.cdx.json`, 22 components, all permissively licensed (MIT/BSD-3-Clause/Apache-2.0/MPL-2.0/PSF-2.0/MIT-CMU), validated against the real CycloneDX 1.6 JSON schema offline |
+| 5 | Zero Critical/High CVEs (Grype scan) | **Not yet run** — `grype.anchore.io` is blocked from this dev sandbox (same as OSV/NVD); needs running on a machine with real network access: `grype sbom:bom.cdx.json -o json > grype-report.json` |
+| 6 | Version visible to end user | Pass — `python -m flexapp_vuln --version`; webui shows it in every page's footer |
+| 7 | License PDF + SBOM packaged together and visible | Pass — both at repo root, referenced in this README's banner/Files table, and linked from the webui's footer |
+
+This is a **self-audit, not a formal signed-off Sparks Tool submission** —
+no SE has completed the checklist's attestation. `FlexAppOneDownloadMonitor`
+(a sibling project in this repo) has been through that full process; see
+its `SPARKS-AUDIT.md` for what that looks like.
 
 ## Non-goals (this PoC)
 

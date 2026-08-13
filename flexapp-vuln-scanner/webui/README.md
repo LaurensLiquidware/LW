@@ -51,6 +51,12 @@ it's folder-only with a "Select this folder" button.
 None of this is needed for "Open an existing scan output folder" — that
 path only reads files already on disk.
 
+Every page's footer shows the running tool version and links to
+`/license` (serves the repo root's `Spark_License.pdf`) and `/sbom`
+(serves the repo root's `bom.cdx.json` — this tool's own third-party
+dependency SBOM, not a scanned package's) — Sparks Tool Project Review
+Checklist §§6-7.
+
 ## Security
 
 This is a **local, single-user tool**, not a multi-user web service:

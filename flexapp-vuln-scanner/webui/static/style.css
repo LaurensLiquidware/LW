@@ -145,6 +145,16 @@ header img.brand-logo { height: 22px; width: auto; display: block; }
 
 main { max-width: 1000px; margin: 0 auto; padding: 0 1.5rem; }
 
+footer {
+  max-width: 1000px;
+  margin: 2rem auto 0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+footer a { color: var(--link); }
+
 .panel {
   background: var(--panel-bg);
   border: 1px solid var(--border);

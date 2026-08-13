@@ -21,6 +21,33 @@ def test_index_loads():
     assert b"Run a New Scan" in resp.data
 
 
+def test_footer_shows_version_on_every_page():
+    # Sparks Tool Project Review Checklist §6: version must be visible
+    # without reading source, on the tool's normal interface.
+    import flexapp_vuln
+    resp = client().get("/")
+    assert f"v{flexapp_vuln.__version__}".encode() in resp.data
+
+
+def test_license_route_serves_spark_license_pdf():
+    resp = client().get("/license")
+    assert resp.status_code == 200
+    assert resp.data.startswith(b"%PDF-")
+
+
+def test_sbom_route_serves_tool_bom_when_present():
+    resp = client().get("/sbom")
+    # bom.cdx.json ships at the repo root as of this checklist pass - if
+    # it's ever missing (e.g. a stripped-down checkout), 404 is correct
+    # rather than a crash.
+    assert resp.status_code in (200, 404)
+    if resp.status_code == 200:
+        import json
+        data = json.loads(resp.data)
+        assert data["bomFormat"] == "CycloneDX"
+        assert data["specVersion"] == "1.6"
+
+
 def test_new_scan_missing_fields_returns_400():
     resp = client().post("/scan", data={"package_path": "", "output_dir": ""})
     assert resp.status_code == 400

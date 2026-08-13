@@ -1171,6 +1171,83 @@ a new pattern, not something to fix blind from this dev sandbox.
    shipped in the sibling `FlexAppOneDownloadMonitor` project, so both now
    carry the same file rather than two independently-sourced copies.
 
+10. **Same day: self-audit against the Sparks Tool Project Review
+    Checklist v1, then applied the approved fixes.** Followed the
+    checklist's own explicit protocol (which matches this repo's
+    CLAUDE.md working agreement): read-only audit of all 7 items first,
+    findings reported with a Blocking/Should-fix split, explicit
+    go-ahead requested before any edit - "OK" received, then implemented.
+
+    Findings, before any fix: encoding was already solid everywhere
+    except two unguarded `Get-Content` calls on a PowerShell failure
+    path; no US-only date parsing anywhere, all internal timestamps
+    already ISO 8601 UTC; no CDN/telemetry/hardcoded-credential/
+    disabled-TLS issues found; **no SBOM existed for this tool's own
+    dependencies** (distinct from `sbom.py`'s scanned-package output -
+    a real gap, not a naming confusion); **no user-facing version
+    display** (a version string existed internally but never reached a
+    CLI flag or the webui); `Spark_License.pdf` was at the root already
+    but with no SBOM to sit beside it and no disclaimer banner in
+    `README.md` yet; no third-party notices file existed.
+
+    Fixes applied: generated `bom.cdx.json` from a **clean venv**
+    (`cyclonedx-py environment` against a fresh install of exactly
+    `requirements.txt` + `webui/requirements.txt`, not this dev
+    sandbox's already-polluted environment) so the resolved-version tree
+    reflects what a real install produces, not a guess. Excluded `pip`/
+    `setuptools` from the final SBOM - they're venv bootstrap machinery
+    present in any environment, not something this tool's code actually
+    imports, and including them would misrepresent what the tool
+    depends on. Validated the result against the real CycloneDX 1.6 JSON
+    schema **offline**, using `cyclonedx-python-lib`'s own validator
+    (which resolves its `$ref`s from locally-bundled schema files) rather
+    than raw `jsonschema` with a resolver that tries to fetch schema
+    fragments over the network and fails in this sandbox. All 22
+    components came back permissively licensed (MIT/BSD-3-Clause/
+    Apache-2.0/MPL-2.0/PSF-2.0/MIT-CMU) - confirmed by inspecting the
+    actual license metadata, not assumed from memory - so no escalation
+    was needed for copyleft/source-available-but-not-open licenses.
+
+    Built `THIRD-PARTY-NOTICES.txt` by pulling each component's real
+    bundled license file out of its installed dist-info (found for all
+    but a couple, after fixing a package-name-normalization bug in the
+    first attempt - dist-info folder names replace `-` with `_` in the
+    name segment, which broke a naive substring match), falling back to
+    the standard SPDX template text only for the couple of packages whose
+    own distribution didn't bundle a license file locally, noted
+    inline rather than silently substituted.
+
+    Added `python -m flexapp_vuln --version` (reads the existing
+    `flexapp_vuln.__version__` - one source of truth, not a second
+    hardcoded string) and a footer on every webui page showing the same
+    version plus links to `/license` and `/sbom` (both fixed server
+    paths serving files at the repo root - no user-supplied path
+    involved, so this doesn't reopen the arbitrary-path-read question
+    the download routes already closed off for scan results).
+
+    Fixed `Expand-FlexAppOne.ps1`'s two unguarded `Get-Content` calls
+    (failure-path stderr/stdout capture reads) to specify `-Encoding
+    UTF8` explicitly - low blast radius, since it only affects an
+    already-thrown diagnostic message's text, not a success-path
+    artifact anything downstream depends on.
+
+    Added the checklist-required disclaimer banner to the top of
+    `README.md` (matching `FlexAppOneDownloadMonitor`'s wording) plus a
+    per-item compliance status table, and verified with 3 new webui
+    tests (footer shows the live version; `/license` serves a real PDF;
+    `/sbom` serves valid CycloneDX JSON when present) plus a live check
+    of both routes against the running dev server. All 104
+    `stage2-resolve` + 25 `webui` tests passing.
+
+    **Deliberately NOT done**: the Grype CVE scan (§5) - `grype` isn't
+    installed in this sandbox, and `grype.anchore.io` is blocked here
+    regardless, same precedent as OSV/NVD. Needs `grype
+    sbom:bom.cdx.json -o json` run on a machine with real network
+    access. This is a self-audit, not a formal SE-signed Sparks Tool
+    submission - the checklist's attestation section is intentionally
+    left blank, since that requires a named human reviewer's sign-off,
+    not something an AI assistant can complete on someone's behalf.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

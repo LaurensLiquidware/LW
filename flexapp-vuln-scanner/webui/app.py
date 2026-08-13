@@ -18,7 +18,35 @@ import browse
 import jobs
 import paths  # noqa: F401 - sys.path setup, must run before flexapp_vuln imports
 
+from flexapp_vuln import __version__ as TOOL_VERSION
+
 app = Flask(__name__)
+
+
+@app.context_processor
+def inject_version():
+    # Sparks Tool Project Review Checklist §6: the end user must be able to
+    # see the version without reading source - every page's footer shows it.
+    return {"tool_version": TOOL_VERSION}
+
+
+@app.route("/license")
+def spark_license():
+    # Checklist §7: license PDF must be reachable from the running tool, not
+    # just findable in the source tree. Fixed path, no user input involved.
+    return send_file(paths.REPO_ROOT / "Spark_License.pdf")
+
+
+@app.route("/sbom")
+def tool_sbom():
+    # Checklist §7: this tool's OWN dependency SBOM (bom.cdx.json at the repo
+    # root) - distinct from a scanned package's SBOM, which downloads via
+    # /download/job|open/<id>/sbom instead.
+    sbom_path = paths.REPO_ROOT / "bom.cdx.json"
+    if not sbom_path.is_file():
+        abort(404)
+    return send_file(sbom_path)
+
 
 _BROWSE_TARGETS = {
     "package_path": "file",

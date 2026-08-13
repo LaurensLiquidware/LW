@@ -54,8 +54,15 @@ function Expand-FlexAppOnePackage {
     $xmlPath  = Get-ChildItem -LiteralPath $OutputDir -Filter '*.xml'  -File -ErrorAction SilentlyContinue | Select-Object -First 1
 
     if (-not $vhdxPath) {
-        $stderrText = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { '' }
-        $stdoutText = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { '' }
+        # -Encoding UTF8, matching this project's explicit-encoding convention
+        # elsewhere - Sparks Tool Project Review Checklist §1. Best-effort: the
+        # actual encoding flexappone.exe writes to these redirected
+        # stdout/stderr files is undocumented (see PLAN.md's "flexappone.exe
+        # assumptions" note), so this is only exercised on the failure path
+        # (an already-thrown, human-read diagnostic message), not a success-
+        # path artifact whose correctness the rest of the pipeline depends on.
+        $stderrText = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw -Encoding UTF8 } else { '' }
+        $stdoutText = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw -Encoding UTF8 } else { '' }
         throw "Extraction of '$PackageExePath' did not produce a .vhdx in '$OutputDir' (exit code $($process.ExitCode)). stdout: $stdoutText stderr: $stderrText"
     }
 

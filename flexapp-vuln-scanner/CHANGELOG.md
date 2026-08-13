@@ -174,6 +174,50 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- Self-audited against the **Sparks Tool Project Review Checklist v1**
+  (2026-08-13): audited read-only first, reported findings, got explicit
+  go-ahead, then applied the Blocking items.
+  - `bom.cdx.json` (new, repo root): CycloneDX 1.6 JSON SBOM of this
+    tool's OWN third-party dependencies (requests, jsonschema,
+    packageurl-python, PyYAML, reportlab, Flask + transitives - 22
+    components after excluding `pip`/`setuptools`, which are venv
+    bootstrap tooling, not runtime dependencies this tool imports) -
+    distinct from `sbom.py`'s output, which describes a *scanned FlexApp
+    package's* components. Generated from a clean venv (`cyclonedx-py
+    environment`) so the resolved-version tree is real, not hand-typed,
+    and **validated against the actual CycloneDX 1.6 JSON schema offline**
+    (`cyclonedx.validation.json.JsonStrictValidator`, not just reasoned
+    about). All 22 components are permissively licensed (MIT/
+    BSD-3-Clause/Apache-2.0/MPL-2.0/PSF-2.0/MIT-CMU) - no copyleft/
+    source-available-but-not-open licenses found, so no escalation needed.
+  - `THIRD-PARTY-NOTICES.txt` (new, repo root): full license text for
+    every `bom.cdx.json` component, pulled from each package's own
+    installed dist-info where present, falling back to the standard SPDX
+    template text only where a package's distribution didn't bundle one
+    locally (noted inline). Also documents the bundled brand/UI font
+    licenses (Inter: SIL OFL 1.1, Material Symbols Rounded: Apache-2.0).
+  - `python -m flexapp_vuln --version` (new CLI flag, `cli.py`) and a
+    version string in every webui page's footer (`app.py`'s
+    `inject_version` context processor) - one source of truth
+    (`flexapp_vuln.__version__`), both reading it live rather than a
+    second hardcoded literal.
+  - webui footer also links `/license` (serves `Spark_License.pdf`) and
+    `/sbom` (serves `bom.cdx.json`) - both fixed server paths, no
+    user-supplied path involved, so this doesn't reopen the
+    arbitrary-path-read question the download routes already closed off.
+  - `Expand-FlexAppOne.ps1`'s failure-path stderr/stdout capture reads
+    now specify `-Encoding UTF8` explicitly, matching this project's
+    existing explicit-encoding convention everywhere else (checklist §1);
+    scoped as low-risk since it only affects an already-thrown diagnostic
+    message's text, not a success-path artifact.
+  - `README.md` got the checklist's required top-of-file disclaimer
+    banner (matching `FlexAppOneDownloadMonitor`'s wording) plus a
+    per-item compliance status table. **Not run**: the Grype CVE scan
+    (§5) - `grype.anchore.io` is blocked from this dev sandbox, same as
+    OSV/NVD; needs `grype sbom:bom.cdx.json` run on a machine with real
+    network access. This is a self-audit, not a formal SE-signed
+    submission - no attestation has been completed.
+
 - `webui/` rebranded to Liquidware's "Stratusphere UX" design system,
   from a style-guide export the project owner provided directly (colors,
   Inter variable font, Material Symbols Rounded icons, the flame/droplet

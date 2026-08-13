@@ -30,6 +30,7 @@ from .osv_client import OSVClient
 from .pdf_report import render_pdf_report
 from .reporting import render_coverage_report, render_findings
 from .sbom import build_sbom
+from . import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -308,6 +309,10 @@ def _cmd_report(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="flexapp-vuln")
+    parser.add_argument(
+        "--version", action="version", version=f"flexapp-vuln {__version__}",
+        help="Show the tool version and exit",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     resolve_parser = subparsers.add_parser(

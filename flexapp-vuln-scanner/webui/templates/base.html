@@ -17,5 +17,13 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+  <footer>
+    FlexApp Vulnerability Scanner v{{ tool_version }} —
+    Liquidware Sparks Tool: community/field-contributed, provided
+    "AS IS" with no warranty, support, or maintenance. See
+    <a href="{{ url_for('spark_license') }}">Spark_License.pdf</a>
+    and <a href="{{ url_for('tool_sbom') }}">bom.cdx.json</a> (this tool's own
+    third-party components).
+  </footer>
 </body>
 </html>
