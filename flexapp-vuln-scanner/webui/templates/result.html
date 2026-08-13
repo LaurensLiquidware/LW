@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>{{ result.package_name }}</h2>
+  <p class="hint">{{ result.inventory_path }}</p>
+
+  <div class="downloads">
+    <a href="{{ url_for(download_route, id=download_id, kind='pdf') }}">Download PDF report</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='sbom') }}">SBOM (CycloneDX)</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='coverage_report') }}">coverage-report.md</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='findings') }}">findings.md</a>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Resolution Coverage</h2>
+  {% set pct = result.coverage.coveragePercent %}
+  <p class="big-stat">
+    {% if pct is not none %}{{ "%.1f"|format(pct) }}%{% else %}N/A{% endif %}
+  </p>
+  <table class="stats">
+    <tr><td>Total files scanned</td><td>{{ result.coverage.totalFilesScanned }}</td></tr>
+    <tr><td>Files excluded (noise filtering)</td><td>{{ result.coverage.excludedCount }}</td></tr>
+    <tr><td>Candidate components</td><td>{{ result.coverage.candidateComponents }}</td></tr>
+    <tr><td>Components resolved</td><td>{{ result.coverage.resolvedComponents }}</td></tr>
+    <tr><td>Components unresolved</td><td>{{ result.coverage.unresolvedComponents }}</td></tr>
+  </table>
+
+  {% if result.coverage.resolvedByMethod %}
+    <h3>Resolved components, by method</h3>
+    <table>
+      <thead><tr><th>Method</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for method, count in result.coverage.resolvedByMethod.items() %}
+        <tr><td>{{ method }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if result.coverage.excludedByReason %}
+    <h3>Excluded files, by reason</h3>
+    <table>
+      <thead><tr><th>Reason</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for reason, count in result.coverage.excludedByReason.items() %}
+        <tr><td>{{ reason }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if result.coverage.unresolvedFiles %}
+    <h3>Unresolved components ({{ result.coverage.unresolvedFiles|length }})</h3>
+    <div class="scroll-table">
+      <table>
+        <thead><tr><th>Path</th><th>Component type</th></tr></thead>
+        <tbody>
+          {% for f in result.coverage.unresolvedFiles %}
+          <tr><td>{{ f.relativePath }}</td><td>{{ f.componentType }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Vulnerability Findings</h2>
+
+  {% if not result.has_vuln_matches %}
+    <p class="hint">
+      No vulnerability-matching data was supplied for this report - this is
+      not the same thing as "no vulnerabilities found."
+    </p>
+  {% else %}
+    <h3>Confirmed matches — exact-purl / mapped-cpe ({{ result.confirmed_rows|length }})</h3>
+    {% if result.confirmed_rows %}
+      <table class="findings">
+        <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Summary</th><th>Source</th></tr></thead>
+        <tbody>
+          {% for r in result.confirmed_rows %}
+          <tr>
+            <td><span class="sev sev-{{ (r.severityLevel or 'unknown')|lower }}">{{ r.severityLevel or "UNKNOWN" }}</span></td>
+            <td>{{ r.id }}</td>
+            <td>{{ r.product }}</td>
+            <td>{{ r.version }}</td>
+            <td>{{ r.summary }}</td>
+            <td>{{ r.source }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>None.</p>
+    {% endif %}
+
+    <h3>Low-confidence matches — heuristic ({{ result.heuristic_rows|length }})</h3>
+    <p class="hint"><strong>Verify manually before treating any of these as a confirmed finding.</strong></p>
+    {% if result.heuristic_rows %}
+      <table class="findings">
+        <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Summary</th><th>Source</th></tr></thead>
+        <tbody>
+          {% for r in result.heuristic_rows %}
+          <tr>
+            <td><span class="sev sev-{{ (r.severityLevel or 'unknown')|lower }}">{{ r.severityLevel or "UNKNOWN" }}</span></td>
+            <td>{{ r.id }}</td>
+            <td>{{ r.product }}</td>
+            <td>{{ r.version }}</td>
+            <td>{{ r.summary }}</td>
+            <td>{{ r.source }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>None.</p>
+    {% endif %}
+  {% endif %}
+</section>
+
+{% endblock %}

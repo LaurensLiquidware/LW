@@ -174,6 +174,33 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- `webui/` (new top-level component): a local Flask app that runs the
+  whole pipeline from a browser - "Run a new scan" shells out to `pwsh`
+  for Stage 1 (`Invoke-FlexAppInventory.ps1`), then calls Stage 2's
+  `flexapp_vuln` functions in-process (the same `resolve_vuln_matches`/
+  `compute_coverage`/`build_sbom`/`render_pdf_report` the CLI uses, so
+  results can't drift) to query OSV.dev/NVD and write all five output
+  files. "Open an existing scan output folder" renders the same
+  coverage/findings view from any directory with a `*.inventory.json`,
+  reusing a sibling `vuln-matches.json` if present, with zero network
+  calls. Binds to `127.0.0.1` only; download links use random per-scan
+  ids rather than raw filesystem paths from the browser (see
+  `webui/README.md`'s "Security" section). Renamed `cli.py`'s
+  `_package_display_name` to `package_display_name` (dropped the
+  underscore) so both the CLI and the web UI can share it without
+  reaching into a "private" name.
+
+  Verified with Flask test-client tests (11 passing) covering the Stage 1
+  missing-`pwsh`/missing-script error path, the full Stage 2 + PDF
+  pipeline via real fixture data (no network), and the HTTP routes
+  (missing-field validation, unknown-job 404s, download-kind validation).
+  Also live-validated end-to-end: ran the actual dev server, opened the
+  real Nextcloud Client scan output directory through the browser (not
+  the small test fixture), and confirmed the same 71.6% coverage, 34
+  confirmed findings, and 56 unresolved components the CLI/PDF path
+  already produced - screenshotted for a visual check of table rendering
+  and severity color-coding.
+
 - `pdf_report.py` (new module) + `report --pdf` flag: writes
   `<package>.report.pdf` via `reportlab` - a single polished document
   combining the coverage summary (resolution %, excluded/resolved

@@ -246,7 +246,7 @@ def _cmd_mirror_nvd(args: argparse.Namespace) -> int:
     return 0
 
 
-def _package_display_name(inventory: dict[str, Any]) -> str:
+def package_display_name(inventory: dict[str, Any]) -> str:
     package = inventory.get("package", {})
     flex_xml = package.get("flexAppXml") or {}
     return flex_xml.get("displayName") or Path(package.get("sourcePath", "unknown-package")).stem
@@ -259,7 +259,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
 
     inventory = load_inventory(inventory_path, schema_path=args.schema)
     cpe_mappings = CpeMappings.load(args.cpe_mappings)
-    package_name = _package_display_name(inventory)
+    package_name = package_display_name(inventory)
     out_base = inventory_path.stem.removesuffix(".inventory")
 
     vuln_matches = None

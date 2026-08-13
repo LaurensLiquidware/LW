@@ -12,7 +12,8 @@ this project makes about FlexApp internals.
 | Stage | Status |
 |---|---|
 | Stage 1 — extraction & inventory (PowerShell 7) | **Built and live-validated** against a real OBS Studio package on a real Windows host (2026-08-13) — both classic VHDX and FlexApp One, byte-identical results, zero crashes. See below for the one bug it caught and fixed. |
-| Stage 2 — resolution & vulnerability matching (Python) | **Built — the full pipeline exists.** OSV.dev + NVD/CPE matching, plus `sbom.cdx.json`/`coverage-report.md`/`findings.md` reporting. See below for what's validated vs. still needing live network access. |
+| Stage 2 — resolution & vulnerability matching (Python) | **Built — the full pipeline exists.** OSV.dev + NVD/CPE matching, plus `sbom.cdx.json`/`coverage-report.md`/`findings.md`/PDF reporting. See below for what's validated vs. still needing live network access. |
+| Web UI (Flask) | **Built and live-validated** — runs Stage 1 + Stage 2 from a browser, or browses any past scan's output. See [`webui/README.md`](webui/README.md). |
 
 ## What it does
 
@@ -136,7 +137,18 @@ python -m flexapp_vuln report path/to/package.inventory.json --out out/ \
 `sbom.cdx.json`/`coverage-report.md` — the headline coverage percentage
 this whole PoC exists to measure is about identity resolution, not
 vulnerability matching. Only `findings.md` needs the `vuln-matches.json`
-from `resolve`; without it, it says so plainly.
+from `resolve`; without it, it says so plainly. Pass `--pdf` to also get a
+polished combined coverage + findings PDF.
+
+## Web UI
+
+[`webui/README.md`](webui/README.md) has a local Flask app that runs the
+whole pipeline above from a browser (pick a package, click "Start scan",
+watch it progress through Stage 1 → Stage 2) or opens any past scan's
+output directory to browse its coverage/findings without re-running
+anything. Live-validated (2026-08-13) against real Nextcloud Client scan data (see
+`PLAN.md`) — same coverage percentage, same findings, rendered in a
+browser instead of separate files.
 
 ## Known limitations
 
@@ -187,7 +199,8 @@ from `resolve`; without it, it says so plainly.
 
 ## Non-goals (this PoC)
 
-No GUI, no web service, no database, no ProfileUnity console integration,
-no Stratusphere correlation, no remediation/repackaging automation, and no
-attempt to handle every application type. See `PLAN.md` for the full
-rationale.
+No database, no authentication/multi-user support, no ProfileUnity console
+integration, no Stratusphere correlation, no remediation/repackaging
+automation, and no attempt to handle every application type. (A local,
+single-user web UI was added — see above — but it's still local-only, not
+a hosted multi-user service.) See `PLAN.md` for the full rationale.

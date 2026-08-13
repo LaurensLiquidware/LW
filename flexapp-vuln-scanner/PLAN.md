@@ -1022,6 +1022,60 @@ a new pattern, not something to fix blind from this dev sandbox.
    rendered the real Nextcloud Client scan data end-to-end and inspected
    the output directly.
 
+8. **New feature, implemented: a local web UI (`webui/`).** Requested
+   directly, as a "full pipeline runner" (pick a package, click a button,
+   watch it run) rather than just a report viewer - explicitly out of this
+   PoC's original non-goals list ("No GUI, no web service"), superseded by
+   this direct request. Chose a local Flask app over a desktop GUI toolkit
+   or a static-HTML-only approach: cross-platform, no install beyond
+   `pip install flask`, and naturally suited to streaming a running job's
+   log/status via polling.
+
+   "Run a new scan" shells out to `pwsh` for Stage 1
+   (`Invoke-FlexAppInventory.ps1`, unavoidable - it's PowerShell), captures
+   its stdout/stderr into a per-job log, parses the `Wrote
+   <path>.inventory.json` line it prints to find the result without
+   assuming a naming convention, then calls Stage 2's `flexapp_vuln`
+   functions **in-process** (`resolve_vuln_matches`, `compute_coverage`,
+   `build_sbom`, `render_coverage_report`/`render_findings`,
+   `render_pdf_report` - the exact functions `cli.py`'s `resolve`/`report`
+   commands call) rather than shelling out to a second Python process.
+   Renamed `cli.py`'s `_package_display_name` to `package_display_name` so
+   both the CLI and the web UI share one implementation instead of the web
+   UI reaching into a "private" name or duplicating it.
+
+   "Open an existing scan output folder" reuses the same Stage 2 write
+   path (`jobs.write_reports`, shared with the fresh-scan flow so the two
+   code paths can't quietly diverge) against any directory containing a
+   `*.inventory.json`, loading a sibling `vuln-matches.json` if one already
+   exists rather than re-querying OSV/NVD - the same "no network needed"
+   property `report` already has.
+
+   Jobs run in a background thread with an in-memory registry (no
+   database - this is a local, single-user tool, see `webui/README.md`).
+   Download links deliberately never carry a raw filesystem path from the
+   browser: every scan (fresh or opened) gets a random id, and
+   `/download/job/<id>/<kind>` / `/download/open/<id>/<kind>` only serve
+   the exact paths this process already computed for that id - chose this
+   over a generic `?path=` parameter specifically to avoid building an
+   arbitrary-file-read primitive, even though the realistic risk is low for
+   a `127.0.0.1`-only local tool. The dev server binds to `127.0.0.1` only,
+   documented as a hard requirement (not a default to casually change) in
+   `webui/README.md`'s "Security" section.
+
+   Verified with 11 Flask-test-client tests (Stage 1 missing-`pwsh`/
+   missing-script error path; the full Stage 2 + PDF pipeline via
+   `load_existing_result` against real fixture data, no network; HTTP
+   routes - missing-field validation, unknown-job 404s, download-kind
+   validation). Then live-validated beyond unit tests: ran the actual dev
+   server, drove it with a headless browser against the real Nextcloud
+   Client scan output directory (not the small test fixture) via "Open an
+   existing scan output folder," and confirmed the same 71.6% coverage,
+   34 confirmed findings, and 56 unresolved components the CLI/PDF path
+   already produced for that package - screenshotted both the dashboard
+   and the results page to visually confirm table rendering and severity
+   color-coding render correctly, not just that the numbers matched.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

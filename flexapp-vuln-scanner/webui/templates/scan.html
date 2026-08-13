@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Scan: {{ job.package_path }}</h2>
+  <p>Status: <span id="status" class="status status-{{ job.status }}">{{ job.status }}</span></p>
+  <pre id="log">{{ job.log|join("\n") }}</pre>
+  <p id="error" class="error">{{ job.error or "" }}</p>
+  <p id="results-link"></p>
+</section>
+
+<script>
+const jobId = {{ job.id|tojson }};
+const doneStates = new Set(["done", "error"]);
+
+function poll() {
+  fetch(`/scan/${jobId}/poll`)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById("status").textContent = data.status;
+      document.getElementById("status").className = "status status-" + data.status;
+      document.getElementById("log").textContent = data.log.join("\n");
+      document.getElementById("error").textContent = data.error || "";
+      if (data.status === "done") {
+        document.getElementById("results-link").innerHTML =
+          `<a href="/scan/${jobId}/results">View results</a>`;
+      }
+      if (!data.done) {
+        setTimeout(poll, 1500);
+      }
+    });
+}
+poll();
+</script>
+
+{% endblock %}
