@@ -438,6 +438,24 @@ defensive regardless (never crash on a single bad file, log and continue).
    a matching `string-signatures.psd1` pattern - expanding the pattern set
    further would mean guessing at byte content I can't inspect directly,
    so this stays an honest "unresolved," not a fabricated match.
+
+   Also found a real schema-contract violation this way: some of OBS
+   Studio's own internal plugin `package.json` files use a bare numeric
+   version (`"version": 9`, not `"9"`) - `ConvertFrom-Json` returned that as
+   a PowerShell int, which `Get-NodePackageIdentity`/
+   `Get-AsarPackageIdentities` passed straight through, violating the
+   schema's "version is string|null" contract and failing
+   `jsonschema.validate` on the Stage 2 side. Fixed by explicitly coercing
+   both name/version to string (guarding the `$null`-becomes-`""` PowerShell
+   coercion gotcha found earlier) rather than trusting `package.json`'s
+   fields to already be the type the spec expects.
+
+   **Confirmed end to end after the fix**: full re-run on the same real
+   package produced a schema-valid inventory JSON, and Stage 2's `report`
+   command generated a valid 14-component `sbom.cdx.json` and a
+   `coverage-report.md` stating **53.0% resolution coverage** - the exact
+   number predicted from analyzing the raw JSON directly, now confirmed via
+   the actual reporting pipeline rather than a hand calculation.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this
