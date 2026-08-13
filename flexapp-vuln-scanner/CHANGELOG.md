@@ -59,18 +59,51 @@ end-to-end run against a real package justifies cutting a version.
       convention.
   - `stage1-extract/README.md` — usage, what each step does, known
     limitations.
+- Stage 2 resolution (`stage2-resolve/`), OSV.dev matching only so far:
+  - `flexapp_vuln/inventory.py` — loads and validates a Stage 1 inventory
+    JSON against `schemas/inventory.schema.json`.
+  - `flexapp_vuln/normalize.py` — builds a Package URL (purl) from a Stage 1
+    identity, for the three ecosystems that map cleanly (Maven via
+    `jar-pom-properties`, npm via `node-package-json` including scoped
+    packages, PyPI via `python-dist-info` with proper name normalization).
+    Everything else (native PE, `jar-manifest` with no groupId,
+    string-signature/electron-embedded) correctly returns no purl — deferred
+    to the NVD/CPE matching step, not silently dropped.
+  - `flexapp_vuln/confidence.py` — match confidence levels
+    (`exact-purl`/`mapped-cpe`/`heuristic`) per `PLAN.md`.
+  - `flexapp_vuln/osv_client.py` — OSV.dev client: batch purl→vuln-ID lookup
+    (`/v1/querybatch`) then per-ID detail fetch (`/v1/vulns/{id}`), with an
+    on-disk cache that's never re-queried once populated.
+  - `flexapp_vuln/cli.py` — `python -m flexapp_vuln resolve <inventory.json>
+    --out <dir>`, writing `<package>.osv-matches.json`. Fails with a clear
+    message (not a raw traceback) when `api.osv.dev` is unreachable.
+  - `tests/`: 22 tests, no network required — purl construction, inventory
+    schema validation, OSV client caching/batching (mocked `requests`), and
+    CLI component assembly.
+  - `requirements.txt` (top-level, pinned): `requests`, `jsonschema`,
+    `packageurl-python`, `pytest`.
+  - `stage2-resolve/README.md` — usage, what "OSV matching" covers at this
+    step, and the `api.osv.dev` reachability caveat below.
 - Top-level `README.md` and this `CHANGELOG.md`.
 
 ### Notes
 
-- Everything above except the actual `Mount-DiskImage`/`Dismount-DiskImage`
-  calls and a real FlexApp One package invocation has been functionally
-  validated: real `.package.xml` samples, real jars built with the JDK's
-  `jar` tool (including a naturally line-wrapped `MANIFEST.MF`), a real
-  `app.asar` built with the `asar` npm package, hashes cross-checked against
-  `sha256sum`, and full inventory output validated against
-  `schemas/inventory.schema.json`. One bug was found and fixed this way: a
-  `[string]`-typed parameter was silently coercing `$null` to `""` instead
-  of preserving JSON `null` for a nested `.asar` entry's hash field.
-- Stage 2 (OSV.dev matching, NVD matching, SBOM/coverage/findings reporting)
-  has not been started.
+- Stage 1: everything except the actual `Mount-DiskImage`/
+  `Dismount-DiskImage` calls and a real FlexApp One package invocation has
+  been functionally validated: real `.package.xml` samples, real jars built
+  with the JDK's `jar` tool (including a naturally line-wrapped
+  `MANIFEST.MF`), a real `app.asar` built with the `asar` npm package,
+  hashes cross-checked against `sha256sum`, and full inventory output
+  validated against `schemas/inventory.schema.json`. One bug was found and
+  fixed this way: a `[string]`-typed parameter was silently coercing `$null`
+  to `""` instead of preserving JSON `null` for a nested `.asar` entry's
+  hash field.
+- Stage 2: `api.osv.dev` is blocked by this development environment's
+  network egress policy (confirmed via the proxy status endpoint — the same
+  category of block hit against `grype.anchore.io` during an earlier,
+  unrelated Sparks Tool audit in this repo). The OSV client is validated
+  against OSV's documented public API via mocked-HTTP tests instead of a
+  live call. Live end-to-end validation against the real API still needs an
+  environment where it's reachable.
+- NVD/CPE matching and the reporting step (`sbom.cdx.json`,
+  `coverage-report.md`, `findings.md`) have not been started.

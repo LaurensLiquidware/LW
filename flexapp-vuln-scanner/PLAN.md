@@ -390,7 +390,17 @@ defensive regardless (never crash on a single bad file, log and continue).
    against `sha256sum`, and the full pipeline's output validated against
    `schemas/inventory.schema.json`. `Mount-ClassicFlexApp.ps1` and
    `Expand-FlexAppOne.ps1` still need Windows + a real package to validate.
-3. OSV.dev matching (purl-based) + confidence tagging + on-disk cache.
+3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
+   cache. Purls built for `jar-pom-properties`/`node-package-json`/
+   `python-dist-info` only (the three OSV-supported ecosystems this
+   pipeline's identity methods map onto cleanly); everything else correctly
+   gets `purl: null` here, deferred to step 4. `api.osv.dev` is blocked by
+   this dev environment's network policy (same category as the
+   `grype.anchore.io` block from the earlier Sparks audit) - the client is
+   validated with 22 passing mocked-HTTP unit tests instead of a live call,
+   and the CLI fails with a clear message rather than a raw traceback when
+   it can't reach the API. Live end-to-end validation against the real
+   OSV.dev API still needs an environment where it's reachable.
 4. NVD 2.0 CPE matching + cpe-mappings.yaml + rate-limit handling + cache.
 5. Reporting: `sbom.cdx.json`, `coverage-report.md`, `findings.md`.
 
