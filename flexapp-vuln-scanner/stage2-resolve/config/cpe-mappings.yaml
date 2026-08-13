@@ -5,39 +5,61 @@
 # known mappings can be curated by hand instead of guessed.
 #
 # Each entry's `match` is checked against a Stage 1 identity object:
-#   method  - required; one of pe-version-resource, dotnet-manifest,
-#             string-signature, electron-embedded
+#   method  - OPTIONAL; one of pe-version-resource, dotnet-manifest,
+#             string-signature, electron-embedded. Omit unless the entry
+#             genuinely needs to be scoped to one method - found live that
+#             requiring an exact method match caused a real "zlib" Win32
+#             version resource (method pe-version-resource) to miss a
+#             mapping written only for the string-signature path, even
+#             though "zlib" unambiguously means the same thing either way.
 #   vendor  - optional, case-insensitive exact match against identity.vendor
 #   product - optional, case-insensitive exact match against identity.product
 # `cpe` gives the NVD CPE 2.3 vendor/product to use instead of guessing.
 # First matching entry wins. Anything with no match here falls back to an
 # automatic heuristic normalization - tagged confidence "heuristic", never
 # "mapped-cpe", so a report never overstates how sure this mapping is.
+#
+# Deliberately NOT included here: app-specific products seen in a live test
+# (OBS Studio, FFmpeg, Qt6, x264, Chromium, ANGLE, CEF) whose Win32
+# ProductName/CompanyName strings vary across their own binaries (e.g. "OBS
+# Project" vs. "OBS" as CompanyName produced two different CPEs for the same
+# real product). Adding a guessed canonical vendor string for those without
+# verifying it against the real NVD CPE dictionary would be presenting a
+# guess as "mapped-cpe" confidence - no more trustworthy than "heuristic",
+# just labeled as if it were. The four below (OpenSSL/zlib/curl/SQLite) are
+# unambiguous, universally-known open source project CPEs, which is a
+# meaningfully different level of confidence than guessing at a specific
+# vendor's internal CPE dictionary entry.
 
 mappings:
   - match:
-      method: string-signature
       product: OpenSSL
     cpe:
       vendor: openssl
       product: openssl
 
   - match:
-      method: string-signature
       product: zlib
     cpe:
       vendor: zlib
       product: zlib
 
   - match:
-      method: string-signature
       product: libcurl
     cpe:
       vendor: haxx
       product: curl
 
+  # "The curl library" is curl.dll's actual Win32 ProductName (confirmed
+  # live) - same project, different label than the string-signature path's
+  # "libcurl", so it needs its own entry rather than relying on the one above.
   - match:
-      method: string-signature
+      product: The curl library
+    cpe:
+      vendor: haxx
+      product: curl
+
+  - match:
       product: SQLite
     cpe:
       vendor: sqlite

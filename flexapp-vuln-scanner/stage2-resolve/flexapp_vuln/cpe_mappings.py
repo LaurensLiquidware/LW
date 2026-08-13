@@ -45,7 +45,16 @@ class CpeMappings:
 
         for entry in self._mappings:
             match = entry.get("match", {})
-            if match.get("method") != method:
+            # `method` is optional in a mapping entry: found live that a
+            # real "zlib" Win32 version resource (method
+            # pe-version-resource) missed a mapping written only for the
+            # string-signature path, because it required an exact method
+            # match. A distinctive product name like "zlib" is unambiguous
+            # regardless of which method found it - only scope by method
+            # when the entry itself needs that (e.g. "Electron Chromium" is
+            # a label that's only ever produced by electron-embedded).
+            match_method = match.get("method")
+            if match_method is not None and match_method != method:
                 continue
             match_vendor = match.get("vendor")
             if match_vendor is not None and match_vendor.lower() != vendor:

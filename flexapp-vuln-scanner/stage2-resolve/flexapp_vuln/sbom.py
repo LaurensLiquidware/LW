@@ -50,6 +50,16 @@ def build_sbom(
         if not identity:
             continue
 
+        # A resolved identity with no product name (found live: some
+        # package.json files have a bare "version" and no "name" field) has
+        # nothing to put in CycloneDX's required, string-typed `name` field.
+        # It still counts as "resolved" for coverage.py's purposes (real
+        # identity data was found), but a nameless SBOM component isn't
+        # valid CycloneDX and isn't useful to a reader anyway - skip it here
+        # rather than emitting `"name": null` and failing schema validation.
+        if not identity.get("product"):
+            continue
+
         purl = build_purl(identity)
         cpe, cpe_confidence = (None, None) if purl else build_cpe_candidate(identity, cpe_mappings)
         confidence = "exact-purl" if purl else cpe_confidence

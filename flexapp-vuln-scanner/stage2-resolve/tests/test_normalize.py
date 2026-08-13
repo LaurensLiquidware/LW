@@ -106,3 +106,23 @@ def test_cpe_escapes_colon_in_normalized_component():
     from flexapp_vuln.normalize import _escape_cpe_component
 
     assert _escape_cpe_component("foo:bar") == "foo\\:bar"
+
+
+def test_cpe_version_with_raw_space_and_colon_is_escaped():
+    # Found live: a real Win32 ProductVersion string
+    # ("2.1.23296 git hash: e323abb5b08e") reached the CPE unescaped,
+    # producing an invalid CPE 2.3 formatted string. `version` is kept
+    # verbatim (not heuristic-normalized like vendor/product), so the
+    # escaper itself must handle spaces and colons directly.
+    identity = {
+        "method": "pe-version-resource",
+        "vendor": "Google LLC",
+        "product": "ANGLE libEGL Dynamic Link Library",
+        "version": "2.1.23296 git hash: e323abb5b08e",
+    }
+    cpe, confidence = build_cpe_candidate(identity, _EMPTY_MAPPINGS)
+    assert cpe == (
+        "cpe:2.3:a:google:angle_libegl_dynamic_link_library:"
+        "2.1.23296\\ git\\ hash\\:\\ e323abb5b08e:*:*:*:*:*:*:*"
+    )
+    assert confidence == "heuristic"

@@ -49,12 +49,19 @@ def _heuristic_normalize(text: str) -> str:
     return _NON_ALNUM_RUN.sub("_", stripped.lower()).strip("_")
 
 
+
+# CPE 2.3 formatted-string "special characters" (NIST IR 7695 §6.1.2.4) that
+# must be backslash-escaped. Found live: a real Win32 version resource's
+# ProductVersion contained raw spaces and a colon ("2.1.23296 git hash:
+# e323abb5b08e") - vendor/product go through _heuristic_normalize (which
+# already collapses everything non-alnum to underscores) but `version` is
+# deliberately kept verbatim for precise matching, so it needs this escaping
+# applied directly rather than assuming it's already CPE-safe.
+_CPE_SPECIAL_CHARS = re.compile(r'([!"#$%&\'()*+,/:;<=>?@\[\]^`{|}~\\ ])')
+
+
 def _escape_cpe_component(text: str) -> str:
-    # CPE 2.3 formatted-string escaping for the handful of special
-    # characters realistically possible in a normalized vendor/product/
-    # version string here. Not a full CPE-spec-complete escaper - our
-    # inputs are already alnum/underscore/dot by construction upstream.
-    return text.replace("\\", "\\\\").replace(":", "\\:")
+    return _CPE_SPECIAL_CHARS.sub(r"\\\1", text)
 
 # PyPI purl normalization per the purl spec: lowercase, runs of -._ collapsed to a single -.
 _PYPI_NAME_RUN = re.compile(r"[-_.]+")

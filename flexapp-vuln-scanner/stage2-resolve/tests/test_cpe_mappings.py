@@ -45,6 +45,22 @@ def test_find_method_mismatch():
     assert mappings.find(identity) is None
 
 
+def test_find_matches_regardless_of_method_when_unscoped():
+    # Found live: a real "zlib" Win32 version resource (method
+    # pe-version-resource) should still hit a mapping written without a
+    # method constraint, the same way a string-signature-sourced "zlib"
+    # would.
+    mappings = CpeMappings(mappings=[
+        {
+            "match": {"product": "zlib"},
+            "cpe": {"vendor": "zlib", "product": "zlib"},
+        }
+    ])
+    for method in ("string-signature", "pe-version-resource", "dotnet-manifest"):
+        identity = {"method": method, "product": "zlib", "version": "1.3.1"}
+        assert mappings.find(identity) == ("zlib", "zlib")
+
+
 def test_find_vendor_only_match():
     mappings = CpeMappings(mappings=[
         {
