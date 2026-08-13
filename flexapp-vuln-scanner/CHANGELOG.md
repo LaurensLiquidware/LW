@@ -174,6 +174,40 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- `webui/` rebranded to Liquidware's "Stratusphere UX" design system,
+  from a style-guide export the project owner provided directly (colors,
+  Inter variable font, Material Symbols Rounded icons, the flame/droplet
+  logo). Rewrote `static/style.css` around the real brand tokens (primary
+  blue scale, zinc-based neutrals, radii, shadows, 14px dense root),
+  added the logo to the header (`base.html`) and as favicon, replaced
+  every emoji glyph in `browse.html`/`index.html` with Material Symbols
+  Rounded (`.material-icons` + ligature), and did a Title Case copy pass
+  on headings/labels per the design system's own content guidelines.
+  Deliberately did **not** reuse the design system's Good/Fair/Poor
+  semantic colors for CVE severity - GFP green means "healthy" in the
+  source product, and no CVE severity (not even LOW) is an honest "good,"
+  so severity badges map only to the brand's "poor" (red)/"fair" (amber)
+  tones. Also deliberately did **not** use PrimeIcons (the design
+  system's primary/default icon font): its `.woff2` binary isn't in the
+  export, only CDN-loaded CSS - pulling an icon font from a CDN would
+  give this local, offline-friendly tool's own UI a network dependency it
+  doesn't otherwise have. Used Material Symbols Rounded instead, which
+  *is* bundled locally and is the design system's own documented
+  fallback where PrimeIcons lacks a glyph - see
+  `webui/static/branding/README.md`. Same severity color tokens applied
+  to `pdf_report.py`'s hex constants and its table chrome (zinc-800/100/
+  300) for consistency between the web UI and the PDF. Verified visually
+  with a headless browser across the dashboard, browse view, and a real
+  results page (Nextcloud Client scan data) - logo, fonts, icons, and
+  severity colors all confirmed rendering correctly; all 22 webui + 104
+  stage2-resolve tests still passing (2 needed updating for the Title
+  Case copy change).
+
+- Added `Spark_License.pdf` (Liquidware's standard Sparks Tool license/
+  disclaimer) to this project's root, at the project owner's request -
+  matches the copy already shipped in the sibling `FlexAppOneDownloadMonitor`
+  project (identical file, confirmed by hash).
+
 - `webui/` (new top-level component): a local Flask app that runs the
   whole pipeline from a browser - "Run a new scan" shells out to `pwsh`
   for Stage 1 (`Invoke-FlexAppInventory.ps1`), then calls Stage 2's

@@ -18,7 +18,7 @@ def client():
 def test_index_loads():
     resp = client().get("/")
     assert resp.status_code == 200
-    assert b"Run a new scan" in resp.data
+    assert b"Run a New Scan" in resp.data
 
 
 def test_new_scan_missing_fields_returns_400():
@@ -125,7 +125,7 @@ def test_browse_lists_subdirectories_and_offers_select_for_dir_mode(tmp_path):
     assert resp.status_code == 200
     html = resp.data.decode()
     assert "child" in html
-    assert "Select this folder" in html
+    assert "Select This Folder" in html
 
 
 def test_browse_file_mode_only_lists_package_extensions(tmp_path):
@@ -138,7 +138,7 @@ def test_browse_file_mode_only_lists_package_extensions(tmp_path):
     assert "package.vhdx" in html
     assert "notes.txt" not in html
     # File-picker mode has no "select this folder" affordance.
-    assert "Select this folder" not in html
+    assert "Select This Folder" not in html
 
 
 def test_browse_nonexistent_path_returns_400(tmp_path):

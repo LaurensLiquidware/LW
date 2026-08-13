@@ -197,6 +197,15 @@ browser instead of separate files.
   on a failed extraction is still undocumented — see `PLAN.md`'s resolved
   assumption 3 for how Stage 1 handles that.
 
+## License
+
+[`Spark_License.pdf`](Spark_License.pdf) — Liquidware's standard Sparks
+Tool license and disclaimer, added at the project owner's request. Note
+this project hasn't been through the same formal Sparks Tool audit process
+`FlexAppOneDownloadMonitor` (a sibling project in this repo) has — see that
+project's `SPARKS-AUDIT.md` if you're looking for an example of what that
+process covers.
+
 ## Non-goals (this PoC)
 
 No database, no authentication/multi-user support, no ProfileUnity console

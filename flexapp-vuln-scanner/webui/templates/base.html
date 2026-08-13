@@ -3,11 +3,16 @@
 <head>
   <meta charset="utf-8">
   <title>{% block title %}FlexApp Vulnerability Scanner{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/assets/logo.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header>
-    <h1><a href="{{ url_for('index') }}">FlexApp Vulnerability Scanner</a></h1>
+    <a href="{{ url_for('index') }}">
+      <img class="brand-logo" alt="Liquidware"
+           src="{{ url_for('static', filename='branding/assets/logo-primary-light.svg') }}">
+      FlexApp Vulnerability Scanner
+    </a>
   </header>
   <main>
     {% block content %}{% endblock %}

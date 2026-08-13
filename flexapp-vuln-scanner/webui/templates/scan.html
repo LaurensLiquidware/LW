@@ -23,7 +23,7 @@ function poll() {
       document.getElementById("error").textContent = data.error || "";
       if (data.status === "done") {
         document.getElementById("results-link").innerHTML =
-          `<a href="/scan/${jobId}/results">View results</a>`;
+          `<a href="/scan/${jobId}/results">View Results</a>`;
       }
       if (!data.done) {
         setTimeout(poll, 1500);

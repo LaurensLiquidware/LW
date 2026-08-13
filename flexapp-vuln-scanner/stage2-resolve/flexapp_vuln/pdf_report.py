@@ -28,16 +28,21 @@ from reportlab.platypus import (
 
 from .reporting import build_finding_rows
 
-_HEADER_BG = colors.HexColor("#1f2937")
-_ROW_ALT_BG = colors.HexColor("#f3f4f6")
-_GRID_COLOR = colors.HexColor("#d1d5db")
+# Liquidware brand tokens (see webui/static/style.css's header comment for
+# the full rationale): surface-800/100/300 for the neutral table chrome, and
+# CVE severity mapped to the brand's "poor"/"fair" reds and ambers only -
+# never "good" green, since no CVE severity (not even LOW) is an honest
+# "good" the way that color means in the brand's Good/Fair/Poor language.
+_HEADER_BG = colors.HexColor("#27272a")   # surface-800
+_ROW_ALT_BG = colors.HexColor("#f4f4f5")  # surface-100
+_GRID_COLOR = colors.HexColor("#d4d4d8")  # surface-300
 
 _SEVERITY_HEX = {
-    "CRITICAL": "#7f1d1d",
-    "HIGH": "#b91c1c",
-    "MEDIUM": "#b45309",
-    "MODERATE": "#b45309",
-    "LOW": "#6b7280",
+    "CRITICAL": "#7f1d1d",  # darker than poor-color - worst tier
+    "HIGH": "#dc2626",      # poor-color (red-600)
+    "MEDIUM": "#ca8a04",    # fair-color (yellow-600)
+    "MODERATE": "#ca8a04",
+    "LOW": "#71717a",       # surface-500
 }
 
 

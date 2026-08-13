@@ -6,10 +6,10 @@
   <p class="hint">{{ result.inventory_path }}</p>
 
   <div class="downloads">
-    <a href="{{ url_for(download_route, id=download_id, kind='pdf') }}">Download PDF report</a>
-    <a href="{{ url_for(download_route, id=download_id, kind='sbom') }}">SBOM (CycloneDX)</a>
-    <a href="{{ url_for(download_route, id=download_id, kind='coverage_report') }}">coverage-report.md</a>
-    <a href="{{ url_for(download_route, id=download_id, kind='findings') }}">findings.md</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='pdf') }}"><span class="material-icons">picture_as_pdf</span>PDF Report</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='sbom') }}"><span class="material-icons">inventory_2</span>SBOM (CycloneDX)</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='coverage_report') }}"><span class="material-icons">summarize</span>coverage-report.md</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='findings') }}"><span class="material-icons">bug_report</span>findings.md</a>
   </div>
 </section>
 
@@ -28,7 +28,7 @@
   </table>
 
   {% if result.coverage.resolvedByMethod %}
-    <h3>Resolved components, by method</h3>
+    <h3>Resolved Components, by Method</h3>
     <table>
       <thead><tr><th>Method</th><th>Count</th></tr></thead>
       <tbody>
@@ -40,7 +40,7 @@
   {% endif %}
 
   {% if result.coverage.excludedByReason %}
-    <h3>Excluded files, by reason</h3>
+    <h3>Excluded Files, by Reason</h3>
     <table>
       <thead><tr><th>Reason</th><th>Count</th></tr></thead>
       <tbody>
@@ -52,7 +52,7 @@
   {% endif %}
 
   {% if result.coverage.unresolvedFiles %}
-    <h3>Unresolved components ({{ result.coverage.unresolvedFiles|length }})</h3>
+    <h3>Unresolved Components ({{ result.coverage.unresolvedFiles|length }})</h3>
     <div class="scroll-table">
       <table>
         <thead><tr><th>Path</th><th>Component type</th></tr></thead>
@@ -75,7 +75,7 @@
       not the same thing as "no vulnerabilities found."
     </p>
   {% else %}
-    <h3>Confirmed matches — exact-purl / mapped-cpe ({{ result.confirmed_rows|length }})</h3>
+    <h3>Confirmed Matches — exact-purl / mapped-cpe ({{ result.confirmed_rows|length }})</h3>
     {% if result.confirmed_rows %}
       <table class="findings">
         <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Summary</th><th>Source</th></tr></thead>
@@ -96,7 +96,7 @@
       <p>None.</p>
     {% endif %}
 
-    <h3>Low-confidence matches — heuristic ({{ result.heuristic_rows|length }})</h3>
+    <h3>Low-Confidence Matches — heuristic ({{ result.heuristic_rows|length }})</h3>
     <p class="hint"><strong>Verify manually before treating any of these as a confirmed finding.</strong></p>
     {% if result.heuristic_rows %}
       <table class="findings">

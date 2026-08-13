@@ -1122,6 +1122,55 @@ a new pattern, not something to fix blind from this dev sandbox.
    `href`s and check `package_path` survives on every link when browsing
    for `output_dir`, not just asserting on the final state.
 
+9. **New, same day: rebranded the web UI to Liquidware's real design
+   system.** The project owner provided an actual style-guide export
+   (`Liquidware_style_guide_baseline.zip`, the "Stratusphere UX" design
+   system - colors, Inter font, PrimeIcons/Material Symbols icon fonts,
+   logo SVGs, a full README documenting the product's content voice and
+   visual language) rather than asking for a guess. Extracted and applied
+   it directly: primary blue scale, zinc-based neutral scale, the brand's
+   radii/shadow/spacing tokens, Inter variable font, the flame/droplet
+   logo in the header and as favicon, and a Title Case copy pass across
+   headings and form labels per the design system's own documented
+   content rules (Title Case for UI chrome, imperative-verb buttons, no
+   emoji anywhere).
+
+   Two deliberate, documented substitutions rather than literal
+   compliance:
+   - **CVE severity colors do not reuse GFP (Good/Fair/Poor).** GFP is
+     Stratusphere's real data-language and green there means "healthy" -
+     no CVE severity, not even LOW, is an honest "good" in that sense, so
+     reusing green for a real vulnerability finding would misrepresent it.
+     Severity badges (web UI and `pdf_report.py`, kept in sync) map only
+     to the brand's "poor" (red-600) and "fair" (amber-600) tones, plus a
+     darker red for CRITICAL and neutral gray for LOW/UNKNOWN.
+   - **PrimeIcons (the design system's default icon font) was not used**,
+     even though the guide names it first: the export's own README flags
+     that the `.woff2` binary isn't included, only CSS class definitions
+     meant to load the font from a CDN in previews. Pulling an icon font
+     from a CDN would give this otherwise self-contained, offline-friendly
+     local tool's own page rendering a new network dependency it doesn't
+     need for anything else. Used **Material Symbols Rounded** instead -
+     genuinely bundled locally in the export, Apache-2.0 licensed, and
+     explicitly documented as the design system's own fallback icon font
+     where PrimeIcons lacks a glyph. Replaced every emoji glyph in
+     `browse.html`/`index.html` (folder/file/up-arrow/select) with it.
+
+   Verified with a real headless-browser pass across the dashboard, the
+   browse view (drives/folders/files, the "Select This Folder" button),
+   and a results page rendered from real Nextcloud Client scan data -
+   logo, Inter font, brand blue, dark zinc table headers, and the
+   red/amber severity coloring all confirmed rendering correctly, not
+   just asserted from the CSS source. All 22 `webui` tests and 104
+   `stage2-resolve` tests still passing (2 needed updating for the Title
+   Case copy change, e.g. "Run a New Scan").
+
+   Also added `Spark_License.pdf` (Liquidware's standard Sparks Tool
+   license/disclaimer) to this project's root, at the project owner's
+   request - confirmed by hash it's byte-identical to the copy already
+   shipped in the sibling `FlexAppOneDownloadMonitor` project, so both now
+   carry the same file rather than two independently-sourced copies.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

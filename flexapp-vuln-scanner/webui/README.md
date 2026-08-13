@@ -77,6 +77,19 @@ This is a **local, single-user tool**, not a multi-user web service:
   app clears "Scans run this session"; past output files on disk are
   untouched and can always be re-opened.
 
+## Branding
+
+This UI is styled to Liquidware's "Stratusphere UX" design system (colors,
+Inter font, Material Symbols Rounded icons, the flame/droplet logo mark) —
+see `static/branding/README.md` for exactly which assets were pulled in,
+what wasn't (PrimeIcons — no local font binary in the source export, and
+this tool avoids depending on a CDN for its own UI), and why. The color
+tokens in `static/style.css` intentionally do **not** reuse the design
+system's Good/Fair/Poor semantic colors for CVE severity — GFP's green
+means "healthy" in the source product, and no CVE severity is an honest
+"good," so severity badges only ever use the brand's "poor" (red) and
+"fair" (amber) tones, never green.
+
 ## Tests
 
 ```bash

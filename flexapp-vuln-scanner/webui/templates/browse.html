@@ -2,7 +2,7 @@
 {% block content %}
 
 <section class="panel">
-  <h2>Browse — {{ "choose a file" if mode == "file" else "choose a folder" }}</h2>
+  <h2>Browse — {{ "Choose a File" if mode == "file" else "Choose a Folder" }}</h2>
   <p class="hint">
     Selecting for: <code>{{ target }}</code>
     {% if mode == "file" %}(showing <code>.vhdx</code>/<code>.exe</code>/<code>.flexapp</code> files only){% endif %}
@@ -18,27 +18,27 @@
   {% if current_path is none %}
     <ul class="browse-list">
       {% for drive in drives %}
-        <li><a href="{{ nav_url(drive) }}">📁 {{ drive }}</a></li>
+        <li><a href="{{ nav_url(drive) }}"><span class="material-icons">dns</span>{{ drive }}</a></li>
       {% endfor %}
     </ul>
   {% else %}
     {% if select_folder_url %}
       <p>
         <a class="select-here" href="{{ select_folder_url }}">
-          Select this folder ({{ current_path }})
+          <span class="material-icons">check</span>Select This Folder ({{ current_path }})
         </a>
       </p>
     {% endif %}
 
     <ul class="browse-list">
       {% if parent_url %}
-        <li><a href="{{ parent_url }}">⬆ .. (up)</a></li>
+        <li><a href="{{ parent_url }}"><span class="material-icons">arrow_upward</span>.. (Up)</a></li>
       {% endif %}
       {% for name, url in dirs %}
-        <li><a href="{{ url }}">📁 {{ name }}</a></li>
+        <li><a href="{{ url }}"><span class="material-icons">folder</span>{{ name }}</a></li>
       {% endfor %}
       {% for name, url in files %}
-        <li><a href="{{ url }}">📄 {{ name }}</a></li>
+        <li><a href="{{ url }}"><span class="material-icons">description</span>{{ name }}</a></li>
       {% endfor %}
     </ul>
 
