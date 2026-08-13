@@ -55,6 +55,7 @@
               "jar",
               "node-package",
               "python-dist",
+              "dotnet-package",
               "native-string-scan",
               "unknown"
             ]
@@ -72,6 +73,7 @@
                   "node-package-json",
                   "electron-embedded",
                   "python-dist-info",
+                  "dotnet-deps-json",
                   "string-signature"
                 ]
               },
