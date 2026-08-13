@@ -757,6 +757,33 @@ defensive regardless (never crash on a single bad file, log and continue).
    `$null` without even opening the file). Left unresolved rather than
    excluded, since it's real content, just not safely identifiable this
    way.
+
+   **Cross-package survey (2026-08-13)**: ran `resolve`+`report` against
+   OBS Studio and 7-Zip (previously Stage-1-only), giving 9 real packages
+   total with full vulnerability-matching results. OBS Studio was the
+   single biggest CVE find of the whole project: bundled `libcurl
+   8.12.1-DEV` matched ~30 real CVEs (6 CRITICAL) via the curated
+   `cpe-mappings.yaml` entry, plus 2 more from bundled zlib. Across all 9
+   packages, only 4 (Python, Remix-H1-DROOG, Tor Browser, OBS Studio)
+   produced any confirmed finding at all - every one traced to either
+   `jar-pom-properties`+OSV or a curated `mapped-cpe` entry for a
+   well-known bundled native library. Every package where the *main*
+   application binary was the only thing resolved (`heuristic`-only)
+   produced zero findings - the honest boundary this project set out to
+   measure, not a gap in effort.
+
+   Also noticed, with now-overwhelming evidence: `appinstall.cap`/
+   `printers.bak`/`DisableShortPaths`/`Suppress.ACL` showed up in a
+   top-level `\Data\` folder (sibling to `\Volumes\C\...`, not inside it)
+   on all 9 packages, always these exact 4 filenames, always unresolved.
+   Added `flexapp-capture-scaffolding` to `ExclusionRules.psd1` - FlexApp/
+   ProfileUnity's own package-capture scaffolding, not app content.
+   Scoped to the exact folder+filename combination (not a bare filename
+   or folder-name match) so a real app's own internal folder that happens
+   to be named "data" is never touched. Verified against 5 real
+   inventories (Paint.NET, 7-Zip, OBS Studio, Remix, Chromium) that
+   nothing newly-excluded ever had a resolved identity - small coverage
+   bumps across all of them (e.g. 7-Zip 50%->60%, Remix 73.1%->75.4%).
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

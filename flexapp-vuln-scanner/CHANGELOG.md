@@ -166,6 +166,19 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- `ExclusionRules.psd1`: added `flexapp-capture-scaffolding`
+  (`\Data\appinstall.cap`/`\Data\printers.bak`/`\Data\DisableShortPaths`/
+  `\Data\Suppress.ACL`) after these exact 4 filenames showed up in a
+  top-level `\Data\` folder (sibling to `\Volumes\C\...`, not inside it)
+  on all 9 real packages tested so far - FlexApp/ProfileUnity's own
+  package-capture scaffolding, never app content, always unresolved.
+  Scoped to the exact folder+filename combination rather than a bare
+  filename or folder-name match, so a real app's own internal folder
+  that happens to be named "data" (e.g. OBS Studio's own
+  `obs-studio\data\obs-studio\...`) is never touched. Verified against 5
+  real inventories that nothing newly-excluded ever had a resolved
+  identity.
+
 - `nvd_mirror.py` + `mirror-nvd` CLI subcommand + `resolve --nvd-mirror`:
   a local NVD CVE mirror, to answer scale concerns raised live once the
   429-retry fix above made a real timing problem visible - without an

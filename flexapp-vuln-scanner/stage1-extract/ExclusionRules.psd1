@@ -72,7 +72,20 @@
         # - not part of the packaged app, just an artifact of any machine
         # that has ever run a JRE. Only 2 occurrences in this package, but
         # unambiguous and likely to recur on any Java app's capture.
-        @{ Reason = 'jre-telemetry'; Contains = @('\.oracle_jre_usage\') }
+        @{ Reason = 'jre-telemetry'; Contains = @('\.oracle_jre_usage\') },
+        # Added 2026-08-13: appinstall.cap/printers.bak/DisableShortPaths/
+        # Suppress.ACL had shown up in a top-level "\Data\" folder (sibling
+        # to "\Volumes\C\...", not inside it) on every single one of 9
+        # different real packages tested so far (OBS Studio, 7-Zip,
+        # Paint.NET, Notepad++, Python, Remix-H1-DROOG, Tor Browser,
+        # Firefox, Chromium) - always these exact 4 filenames, always
+        # unresolved (identity: null every time). This is FlexApp/
+        # ProfileUnity's own package-capture scaffolding, not app content -
+        # scoped to the exact folder+filename combination (not a bare
+        # filename or folder-name match) so a real app's own "data" folder
+        # elsewhere in the tree (e.g. OBS Studio's own
+        # "obs-studio\data\obs-studio\...") is never touched.
+        @{ Reason = 'flexapp-capture-scaffolding'; Contains = @('\Data\appinstall.cap', '\Data\printers.bak', '\Data\DisableShortPaths', '\Data\Suppress.ACL') }
     )
 
     NamePatternRules = @(
