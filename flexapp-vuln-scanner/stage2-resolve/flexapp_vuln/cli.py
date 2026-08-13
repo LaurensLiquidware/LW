@@ -25,6 +25,7 @@ from .cpe_mappings import CpeMappings
 from .inventory import iter_non_excluded_files, load_inventory
 from .normalize import build_cpe_candidate, build_purl
 from .nvd_client import NVDClient
+from .nvd_mirror import NVDLocalMatcher, build_index, iter_all_cves, load_mirror, merge_index, save_mirror
 from .osv_client import OSVClient
 from .reporting import render_coverage_report, render_findings
 from .sbom import build_sbom
@@ -56,6 +57,7 @@ def resolve_vuln_matches(
     cache_dir: Path,
     cpe_mappings: CpeMappings | None = None,
     nvd_api_key: str | None = None,
+    nvd_mirror_path: Path | None = None,
 ) -> dict[str, Any]:
     cpe_mappings = cpe_mappings or CpeMappings.load()
 
@@ -87,14 +89,24 @@ def resolve_vuln_matches(
     except requests.exceptions.RequestException as exc:
         raise UnreachableService("api.osv.dev", exc) from exc
 
-    nvd_client = NVDClient(cache_dir=cache_dir, api_key=nvd_api_key)
+    # A local mirror (see nvd_mirror.py, built via `mirror-nvd`) answers
+    # every CPE candidate from an in-memory index with zero network calls -
+    # skips the live API's 5-50 req/30s rate limit entirely, which matters
+    # once a package's resolved-component count runs into the hundreds.
     nvd_matches: dict[str, list[dict[str, Any]]] = {}
-    try:
+    if nvd_mirror_path is not None:
+        local_matcher = NVDLocalMatcher.from_path(nvd_mirror_path)
         for cpe23 in sorted(cpe_set):
-            response = nvd_client.query_cpe(cpe23)
+            response = local_matcher.query_cpe(cpe23)
             nvd_matches[cpe23] = NVDClient.extract_cves(response)
-    except requests.exceptions.RequestException as exc:
-        raise UnreachableService("services.nvd.nist.gov", exc) from exc
+    else:
+        nvd_client = NVDClient(cache_dir=cache_dir, api_key=nvd_api_key)
+        try:
+            for cpe23 in sorted(cpe_set):
+                response = nvd_client.query_cpe(cpe23)
+                nvd_matches[cpe23] = NVDClient.extract_cves(response)
+        except requests.exceptions.RequestException as exc:
+            raise UnreachableService("services.nvd.nist.gov", exc) from exc
 
     components = []
     for candidate in candidates:
@@ -162,6 +174,7 @@ def _cmd_resolve(args: argparse.Namespace) -> int:
             cache_dir=Path(args.cache_dir),
             cpe_mappings=cpe_mappings,
             nvd_api_key=args.nvd_api_key,
+            nvd_mirror_path=Path(args.nvd_mirror) if args.nvd_mirror else None,
         )
     except UnreachableService as exc:
         print(
@@ -189,6 +202,46 @@ def _cmd_resolve(args: argparse.Namespace) -> int:
         f"  {total} candidate components, {with_purl} purl-expressible (OSV), "
         f"{with_cpe} CPE-expressible (NVD), {with_vulns} with matches"
     )
+    return 0
+
+
+def _cmd_mirror_nvd(args: argparse.Namespace) -> int:
+    from datetime import datetime, timedelta, timezone
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    mirror_path = out_dir / "nvd-mirror.json"
+
+    last_mod_start = last_mod_end = None
+    existing = None
+    if args.modified_since_days is not None:
+        if mirror_path.exists():
+            existing = load_mirror(mirror_path)
+        now = datetime.now(timezone.utc)
+        last_mod_start = (now - timedelta(days=args.modified_since_days)).strftime("%Y-%m-%dT%H:%M:%S.000")
+        last_mod_end = now.strftime("%Y-%m-%dT%H:%M:%S.000")
+        print(f"Incremental refresh: fetching CVEs modified between {last_mod_start} and {last_mod_end}")
+    else:
+        print("Full mirror rebuild: fetching the entire NVD CVE dataset - this can take "
+              "a long time (hours without an API key, tens of minutes with one)")
+
+    cves = list(iter_all_cves(
+        api_key=args.nvd_api_key,
+        last_mod_start=last_mod_start,
+        last_mod_end=last_mod_end,
+    ))
+    print(f"Fetched {len(cves)} CVE records")
+
+    new_index = build_index(iter(cves))
+    if existing is not None:
+        updated_ids = {cve["id"] for cve in cves if cve.get("id")}
+        index = merge_index(existing, new_index, updated_ids)
+    else:
+        index = new_index
+
+    generated_utc = datetime.now(timezone.utc).isoformat()
+    path = save_mirror(index, out_dir, generated_utc)
+    print(f"Wrote {path} ({len(index['cveDetails'])} CVEs, {len(index['cpeIndex'])} distinct vendor:product keys)")
     return 0
 
 
@@ -257,7 +310,35 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="NVD API key (default: NVD_API_KEY env var, or unauthenticated 5 req/30s if unset)",
     )
+    resolve_parser.add_argument(
+        "--nvd-mirror",
+        default=None,
+        help="Path to a local nvd-mirror.json built by `mirror-nvd` - answers every CPE "
+             "candidate locally with zero network calls instead of live-querying NVD "
+             "(default: query the live API)",
+    )
     resolve_parser.set_defaults(func=_cmd_resolve)
+
+    mirror_parser = subparsers.add_parser(
+        "mirror-nvd", help="Bulk-download the full NVD CVE dataset into a local mirror for `resolve --nvd-mirror`"
+    )
+    mirror_parser.add_argument("--out", required=True, help="Output directory for nvd-mirror.json")
+    mirror_parser.add_argument(
+        "--nvd-api-key",
+        default=None,
+        help="NVD API key (default: NVD_API_KEY env var). Strongly recommended - a full "
+             "mirror build is ~260k+ CVEs, which takes hours at the unauthenticated 5 "
+             "req/30s limit vs. tens of minutes at 50 req/30s with a key.",
+    )
+    mirror_parser.add_argument(
+        "--modified-since-days",
+        type=int,
+        default=None,
+        help="Incremental refresh: only fetch CVEs modified in the last N days, merging "
+             "into an existing nvd-mirror.json in --out if one exists (default: full "
+             "rebuild from scratch)",
+    )
+    mirror_parser.set_defaults(func=_cmd_mirror_nvd)
 
     report_parser = subparsers.add_parser(
         "report", help="Generate sbom.cdx.json + coverage-report.md + findings.md"

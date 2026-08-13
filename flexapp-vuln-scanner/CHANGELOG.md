@@ -89,6 +89,23 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- `nvd_mirror.py` + `mirror-nvd` CLI subcommand + `resolve --nvd-mirror`:
+  a local NVD CVE mirror, to answer scale concerns raised live once the
+  429-retry fix above made a real timing problem visible - without an
+  API key, live-querying NVD per CPE candidate at 5 req/30s means a
+  single few-hundred-component package takes 20-30+ minutes, which
+  doesn't hold up across many customer packages. NVD retired its
+  downloadable JSON/XML CVE feed files in December 2023 in favor of an
+  API-only model, so this bulk-paginates the same 2.0 API once (no
+  `cpeName` filter, `resultsPerPage=2000`) into a local index built from
+  each CVE's real CPE match criteria (including version ranges), then
+  matches locally with zero further network calls. `--modified-since-days`
+  supports a cheaper incremental refresh that merges into an existing
+  mirror rather than rebuilding from scratch. Version-range matching uses
+  a new best-effort tokenized comparator (`version_compare.py`,
+  RPM/dpkg-style) - documented as non-authoritative, same spirit as this
+  project's `heuristic` confidence tier. The live per-CPE `resolve` path
+  is unchanged and remains the default; the mirror is opt-in.
 - `ExclusionRules.psd1`: added `.ini`/`.pak`/`.effect` as noise categories
   (`config-file`/`resource-pack-file`/`shader-effect-file`), found by a live
   test against a real OBS Studio package - 90% of that package's

@@ -525,6 +525,28 @@ defensive regardless (never crash on a single bad file, log and continue).
    identities was silently downgraded). Re-running Paint.NET (or any
    .NET-heavy package) after this fix should now show real
    `dotnet-manifest` entries in the method breakdown.
+
+   **First live attempt at the `resolve` step (2026-08-13)**, now that a
+   real Windows host had working network access: surfaced two more real
+   bugs in `nvd_client.py`, both the same shape - a documented, recoverable
+   NVD API response (404 for "no dictionary match", 429 for
+   "rate-limited") was caught by `cli.py`'s blanket
+   `except requests.exceptions.RequestException` and misreported as
+   "could not reach services.nvd.nist.gov", aborting the whole run. Fixed
+   by treating 404 as an empty, cacheable result, and 429 with
+   retry-with-backoff (honoring `Retry-After`). That in turn surfaced a
+   real **scale** problem, not a bug: without an API key, NVD's 5 req/30s
+   limit means a package with a few hundred resolved components takes
+   20-30+ minutes for the NVD side alone - not viable across many customer
+   packages. Added a local NVD mirror (`nvd_mirror.py`, `mirror-nvd` CLI
+   subcommand, `resolve --nvd-mirror`) that bulk-paginates NVD's full CVE
+   dataset once (NVD retired downloadable feed files in December 2023, so
+   this is the API-only equivalent) and matches locally afterward with
+   zero network calls per scan. The live per-CPE path remains the default;
+   the mirror is opt-in. Still pending: an actual timed `resolve` run
+   against a real package, live-vs-mirror, to confirm the real-world
+   speedup and check the mirror's version-range matching against genuine
+   NVD data.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

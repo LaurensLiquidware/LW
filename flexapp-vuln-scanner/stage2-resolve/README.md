@@ -54,6 +54,53 @@ Flags:
 - `--nvd-api-key KEY` — NVD API key (defaults to the `NVD_API_KEY`
   environment variable; unauthenticated requests are limited to 5 per 30
   seconds vs. 50 with a key, per `PLAN.md`).
+- `--nvd-mirror PATH` — answer every CPE candidate from a local mirror
+  (see "Local NVD mirror" below) instead of the live API. No rate limit,
+  no network call per component — the only realistic option once a
+  package's resolved-component count runs into the hundreds.
+
+### Local NVD mirror
+
+Live-querying NVD per CPE candidate doesn't hold up at real-world scale:
+without an API key it's 5 requests/30s, so a single package with a few
+hundred resolved components can take 20-30+ minutes, and that only gets
+worse across many customer packages. NVD retired its downloadable
+JSON/XML CVE feed files in December 2023 in favor of an API-only model, so
+"download the feed" now means bulk-paginating the same 2.0 API once (no
+`cpeName` filter, `resultsPerPage=2000`) and building a local index from
+each CVE's actual CPE match criteria — including version ranges — then
+matching locally with zero further network calls.
+
+```bash
+# One-time (or periodic) full mirror build - strongly recommend an API
+# key here: a full build is 260k+ CVEs, hours without a key vs. tens of
+# minutes with one.
+python -m flexapp_vuln mirror-nvd --out mirror/ --nvd-api-key "$NVD_API_KEY"
+
+# Cheaper incremental refresh - only fetch what NVD says changed recently,
+# merged into the existing mirror/nvd-mirror.json.
+python -m flexapp_vuln mirror-nvd --out mirror/ --nvd-api-key "$NVD_API_KEY" --modified-since-days 7
+
+# Then every `resolve` run is instant and offline for the NVD side:
+python -m flexapp_vuln resolve path/to/package.inventory.json --out out/ --nvd-mirror mirror/nvd-mirror.json
+```
+
+Version-range matching (`versionStartIncluding`/`versionEndExcluding`/etc.)
+uses `version_compare.py`'s tokenized (RPM/dpkg-style) comparator, which
+is best-effort — NVD version strings aren't semver, and this is not a
+CPE-spec-authoritative comparator. This is the same caveat that already
+applies to `heuristic`-confidence matches elsewhere in this pipeline:
+matches derived from a range comparison are only as good as the
+comparator, even though the underlying CPE data is exact. Composite
+"vulnerable only when product A AND library B are both present"
+conditions (`configurations[].nodes[].operator`) are also not modeled —
+every `vulnerable: true` CPE match anywhere in any node is treated as an
+independent match, which can occasionally over-match a rare composite
+condition. Both are documented in `nvd_mirror.py`'s module docstring, not
+silently assumed away.
+
+The live `--nvd-api-key`/no-mirror path remains the default and is
+unaffected — the mirror is opt-in via `--nvd-mirror`.
 
 ### `report`
 
@@ -146,12 +193,14 @@ you, not something I could complete from here.
 python -m pytest tests/
 ```
 
-61 tests, all passing, no network required (OSV/NVD client tests mock
+89 tests, all passing, no network required (OSV/NVD client tests mock
 `requests.Session`; NVD's rate-limit tests use an injectable fake clock so
 they run instantly rather than waiting real wall-clock seconds). Covers
 purl/CPE construction, CPE mapping table lookup, inventory loading+schema
 validation, OSV/NVD client caching/batching/rate-limiting, coverage
 computation (verified against a hand-checked fixture), SBOM structure
 (component dedup, purl-vs-CPE, no fabricated license data), findings
-rendering (severity sort order, confirmed-vs-heuristic separation), and the
-CLI's combined component-assembly logic for both subcommands.
+rendering (severity sort order, confirmed-vs-heuristic separation), the
+CLI's combined component-assembly logic for both subcommands, the local
+NVD mirror's pagination/retry/index-build/merge/version-range matching,
+and the tokenized version comparator.
