@@ -28,7 +28,11 @@ Add `-Verbose` to see each mount/walk step as it happens.
 
 ## What it does
 
-1. Classic `.vhdx`: mounted read-only via `Mount-DiskImage`, always dismounted
+1. Classic `.vhdx`: mounted read-only via `Mount-DiskImage`, then mounted to
+   a scratch folder via `Add-PartitionAccessPath` (confirmed on a real
+   Windows 11 host: Windows does not reliably auto-assign a drive letter to
+   a VHDX volume even though the disk/partition come online healthy - so
+   this is not optional, waiting longer never helps), always dismounted
    in a `finally` block (plus an engine-exit safety net for Ctrl-C).
 2. FlexApp One `.exe`/`.flexapp`: unwrapped via `<Package>.exe --extract <tmp> --skipico`
    (hardcoded — see `Expand-FlexAppOne.ps1`'s safety note on why no other
@@ -74,21 +78,30 @@ Program Files\App\outer-app.jar!/BOOT-INF/lib/inner-lib-2.15.3.jar
 Each carries its own `sizeBytes`/`sha256` (of the nested entry's bytes,
 where computable) and `identity`, exactly like a physical file would.
 
+## Live validation (2026-08-13)
+
+Run against a real OBS Studio package on a real Windows host, both as
+classic VHDX and FlexApp One — byte-identical results (2170 files, zero
+crashes, zero read errors). This is what caught the drive-letter issue
+above, and drove the addition of `.ini`/`.pak`/`.effect` to
+`ExclusionRules.psd1` (config/locale/resource-pack data files, not
+components — see `../PLAN.md`'s resolved assumption 1 for the full
+before/after coverage numbers on that package).
+
 ## Known limitations at this stage
 
 - Directory input is non-recursive (top-level packages only).
 - Exclusion is a path/name heuristic only - the PLAN.md stretch goal of
   hashing against a known-good clean-Windows-install set is not implemented.
-- `Mount-ClassicFlexApp.ps1` and `Expand-FlexAppOne.ps1` require Windows and
-  a real package to validate — untested against the real FlexApp One
-  executable and VHDX mount path in this environment. Everything else
-  (XML parsing, file walk/hash, jar/asar/python/string-signature
-  resolution, exclusion rules) has been syntax-checked and functionally
-  smoke-tested on Linux PowerShell 7.6 against real `.package.xml` samples
-  and real jar/asar files built with `jar`/`asar`, with hashes cross-checked
-  against `sha256sum` and full output validated against
-  `../schemas/inventory.schema.json`.
+- `string-signatures.psd1`'s pattern set is narrower than a real package
+  needs - the live test found real third-party libraries (`lua51.dll`,
+  `librist.dll`, `srt.dll`, `datachannel.dll`) with neither a Win32 version
+  resource nor a matching pattern. Left unresolved rather than guessing at
+  byte content not inspected directly.
 - Electron's bundled Chromium/Node versions are resolved via string-signature
   scanning of the main executable (`method: electron-embedded`), not by
   inspecting `app.asar` - the archive reader here only extracts
-  `package.json` metadata.
+  `package.json` metadata. (In the live test, `libcef.dll`'s own Win32
+  version resource already embedded its Chromium version, so this path
+  wasn't needed for that package - but it remains the fallback for apps
+  that don't embed it that way.)

@@ -1,14 +1,17 @@
 # PLAN.md — FlexApp Package Composition & Vulnerability PoC
 
-Status: **All five build-order steps complete as of 2026-08-13** — Stage 1
-extraction/identity-resolution (PowerShell) and Stage 2 OSV/NVD
-matching + reporting (Python) are built and unit-tested (61 Python tests,
-plus Stage 1's PowerShell smoke tests against real artifacts). What
-remains is real-world validation this environment can't do: a Windows host
-to exercise `Mount-ClassicFlexApp.ps1`/`Expand-FlexAppOne.ps1` against real
-FlexApp packages, and network access to `api.osv.dev`/
-`services.nvd.nist.gov` (both blocked by this environment's egress
-policy) to confirm the live vulnerability-matching path end to end.
+Status: **All five build-order steps complete, and Stage 1 validated live
+against a real package on 2026-08-13.** You ran both classic VHDX and
+FlexApp One against a real OBS Studio capture on a real Windows host —
+both produced byte-identical results (2170 files, zero crashes, zero read
+errors), which incidentally confirms the FlexApp One unwrap reconstructs
+the exact same underlying package as its classic-VHDX counterpart. That
+run caught and fixed one real bug (`Mount-ClassicFlexApp.ps1` waiting for
+a drive letter that Windows never assigns — see "Assumptions," point 1,
+addendum) and drove one real improvement to the exclusion ruleset (see
+below). Still open: live network validation of the `resolve` command
+against the real OSV.dev/NVD APIs, which this dev environment's egress
+policy blocks - that's on you, not something I could complete from here.
 
 ## Goal (restated)
 
@@ -180,13 +183,27 @@ per method as a finding in its own right.
 
 ## Assumptions about FlexApp internals — please verify before I build
 
-1. **Classic FlexApp (.vhdx) layout**: I'm assuming the VHDX contains a
-   standard NTFS volume with the captured application installed under a
-   `Program Files` / `Program Files (x86)` / app-specific root, mountable
-   read-only with `Mount-DiskImage -Access ReadOnly` on Windows 10/11 or
-   Server, no BitLocker/encryption on the VHDX itself. Confirm this holds for
-   your real test packages, and tell me if any are encrypted or require a
-   specific FlexApp/ProfileUnity component installed to mount.
+1. **Classic FlexApp (.vhdx) layout — CONFIRMED, with one real bug fixed,
+   from a live test on 2026-08-13.** A real OBS Studio VHDX mounted cleanly
+   via `Mount-DiskImage -Access ReadOnly` (NTFS, no BitLocker, no special
+   FlexApp/ProfileUnity component needed to mount it) - but the disk and
+   partition came online healthy while **Windows never assigned a drive
+   letter**, no matter how long `Mount-ClassicFlexApp.ps1`'s original
+   retry-and-wait loop waited. This wasn't a timing issue - no letter was
+   ever coming. Fixed by mounting to a scratch folder via
+   `Add-PartitionAccessPath` instead of depending on/racing with automatic
+   drive-letter assignment, which also sidesteps drive-letter exhaustion on
+   a host scanning many packages. Confirmed working after the fix, on both
+   classic VHDX and FlexApp One (which unwraps to the same VHDX format) -
+   both produced byte-identical inventory output for the same package.
+   - **New discovery**: the VHDX's internal path layout isn't a flat
+     `Program Files\...` root - files sit under a wrapper like
+     `<capture-timestamp>-<name>-1\Volumes\C\Program Files\...`. This
+     doesn't affect anything today (nothing currently parses `relativePath`
+     structurally), but it means `flexAppXml.shortcutTargets` (a raw
+     `C:\Program Files\...` string from the package XML) can't be
+     naively string-matched against `relativePath` if that's ever wanted -
+     it would need the wrapper prefix stripped first.
 2. **FlexApp package XML metadata — RESOLVED**, confirmed from a real
    sample (`winscp_20260730160821.package.xml`) on 2026-08-12:
    - It's a sidecar file named `<vhdx-basename>.package.xml`, sitting next to
@@ -389,14 +406,38 @@ defensive regardless (never crash on a single bad file, log and continue).
 
 1. **Done.** Stage 1 extraction (mount/extract + file walk + hashing + XML
    metadata).
-2. **Done.** Identity resolution methods, in the priority order from the
-   brief (PE → .NET → Java → Node/Electron → Python → string-scan), plus the
-   exclusion ruleset. Syntax-checked and functionally smoke-tested on Linux
-   PowerShell 7.6 - real `.package.xml` samples, real jars built with `jar`,
-   a real `app.asar` built with the `asar` npm package, hashes cross-checked
+2. **Done, and live-validated.** Identity resolution methods, in the
+   priority order from the brief (PE → .NET → Java → Node/Electron →
+   Python → string-scan), plus the exclusion ruleset. Syntax-checked and
+   functionally smoke-tested on Linux PowerShell 7.6 before the live test -
+   real `.package.xml` samples, real jars built with `jar`, a real
+   `app.asar` built with the `asar` npm package, hashes cross-checked
    against `sha256sum`, and the full pipeline's output validated against
-   `schemas/inventory.schema.json`. `Mount-ClassicFlexApp.ps1` and
-   `Expand-FlexAppOne.ps1` still need Windows + a real package to validate.
+   `schemas/inventory.schema.json`.
+
+   **Live test against a real OBS Studio package (2026-08-13)**: 2170
+   files, zero crashes, zero read errors. Real Win32 version resources
+   resolved cleanly and with real vendor/product/version strings - FFmpeg
+   DLLs, `libcurl.dll`, and notably `libcef.dll` (Chromium Embedded
+   Framework), whose own version resource already embeds the Chromium
+   version (`127.145.7+g2b7d20b+chromium-127.0.6533.120`) with no
+   string-signature guessing needed. Raw coverage on that package looked
+   low (3.7%) until digging into *why*: 1656 of 1826 "unresolved" files
+   were `.ini` config/locale files alone (90%), plus `.pak`/`.effect` data
+   files - none of them third-party components. Added all three as new
+   `ExclusionRules.psd1` categories (`config-file`/`resource-pack-file`/
+   `shader-effect-file`), which moved that package's honest coverage number
+   to **53.0%** - much closer to the range that would make this concept
+   worth pursuing, and a good demonstration of why "excluded, but
+   transparently" matters: the fix was a legitimate exclusion, not hiding
+   anything, since config/data files were never real candidates.
+
+   Real gaps this run surfaced, left as-is rather than guessed at: a
+   handful of genuine third-party libraries (`lua51.dll`, `librist.dll`,
+   `srt.dll`, `datachannel.dll`) have neither a Win32 version resource nor
+   a matching `string-signatures.psd1` pattern - expanding the pattern set
+   further would mean guessing at byte content I can't inspect directly,
+   so this stays an honest "unresolved," not a fabricated match.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

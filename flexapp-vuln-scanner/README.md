@@ -11,7 +11,7 @@ this project makes about FlexApp internals.
 
 | Stage | Status |
 |---|---|
-| Stage 1 — extraction & inventory (PowerShell 7) | **Built.** Mount/extract, XML metadata, file walk/hash, exclusion filtering, identity resolution. See below for what's validated vs. still needing a real Windows host. |
+| Stage 1 — extraction & inventory (PowerShell 7) | **Built and live-validated** against a real OBS Studio package on a real Windows host (2026-08-13) — both classic VHDX and FlexApp One, byte-identical results, zero crashes. See below for the one bug it caught and fixed. |
 | Stage 2 — resolution & vulnerability matching (Python) | **Built — the full pipeline exists.** OSV.dev + NVD/CPE matching, plus `sbom.cdx.json`/`coverage-report.md`/`findings.md` reporting. See below for what's validated vs. still needing live network access. |
 
 ## What it does
@@ -51,6 +51,25 @@ flags, and a description of every step it performs. Quick version:
 
 Each package produces one `<package-basename>.inventory.json` in
 `-OutputDir`.
+
+### Live validation (2026-08-13)
+
+Run against a real OBS Studio package on a real Windows host, both as
+classic VHDX and FlexApp One — **byte-identical results, 2170 files, zero
+crashes, zero read errors**, confirming FlexApp One's unwrap reconstructs
+exactly the same package as its classic-VHDX counterpart. Real Win32
+version resources resolved with real, usable vendor/product/version
+strings (FFmpeg, `libcurl.dll`, and `libcef.dll` — whose own version
+resource already embeds its Chromium version). Raw coverage looked low
+(3.7%) until the "unresolved" files turned out to be 90% `.ini`
+config/locale files plus `.pak`/`.effect` data files — not components at
+all. Adding those as exclusion categories moved the honest coverage number
+to **53.0%**. Full writeup in `PLAN.md`'s resolved assumption 1.
+
+This run also caught one real bug: `Mount-ClassicFlexApp.ps1` was waiting
+for Windows to auto-assign a drive letter, which it never did on this host
+(the disk and partition came online healthy, just letter-less). Fixed by
+mounting to a scratch folder via `Add-PartitionAccessPath` instead.
 
 ## Running Stage 2
 
@@ -96,26 +115,27 @@ from `resolve`; without it, it says so plainly.
 - **Exclusion is a path/name heuristic**, not a hash comparison against a
   known-good clean-Windows-install set (that's a stated stretch goal in
   `PLAN.md`, not implemented).
-- **`Mount-ClassicFlexApp.ps1` and `Expand-FlexAppOne.ps1` are unverified
-  against a real Windows host.** This project has been developed and
-  functionally tested inside a Linux environment with PowerShell 7
-  installed for that purpose — every module that doesn't require
-  Windows-only APIs (XML metadata parsing, the file walk/hash, exclusion
-  rules, and PE/.NET/Java/Node/Python/string-signature identity resolution)
-  has been syntax-checked and smoke-tested against real artifacts (real
-  `.package.xml` samples, real jars built with the JDK's own `jar` tool,
-  a real `app.asar` built with the `asar` npm package), with hashes
-  cross-checked against `sha256sum` and full inventory output validated
-  against `schemas/inventory.schema.json`. Only the two functions that call
-  `Mount-DiskImage`/`Dismount-DiskImage` and invoke a real FlexApp One
-  package executable have not been run for real — that needs a Windows host
-  and an actual package, which this development environment doesn't have.
+- **`Mount-ClassicFlexApp.ps1` and `Expand-FlexAppOne.ps1` are now
+  live-validated** against a real Windows host and a real package — see
+  "Live validation" above. Everything else was already syntax-checked and
+  smoke-tested inside a Linux dev environment (real `.package.xml` samples,
+  real jars built with the JDK's `jar` tool, a real `app.asar` built with
+  the `asar` npm package), with hashes cross-checked against `sha256sum`.
+- **`string-signatures.psd1`'s pattern set is narrower than a real package
+  needs.** The live OBS Studio test found real third-party libraries
+  (`lua51.dll`, `librist.dll`, `srt.dll`, `datachannel.dll`) with neither a
+  Win32 version resource nor a matching banner pattern. Left as an honest
+  "unresolved" rather than guessing at byte patterns for libraries not
+  inspected directly — expanding coverage further needs either real
+  samples of those binaries or vendor-supplied SBOM data, which is exactly
+  the kind of finding `PLAN.md`'s "Goal" anticipated.
 - **flexappone.exe assumptions** — the FlexApp One CLI reference used here
   came from documentation pasted into this project's development
   conversation, not fetched independently (the doc site is blocked by this
-  environment's network policy), plus one confirmed real test
-  (`OBS-Studio.exe --extract C:\FA1`). Exit code / stderr behavior on a
-  failed extraction is still undocumented — see `PLAN.md`'s resolved
+  environment's network policy), plus a confirmed real test
+  (`OBS-Studio.exe --extract C:\FA1`, later exercised through the full
+  pipeline too — see "Live validation" above). Exit code / stderr behavior
+  on a failed extraction is still undocumented — see `PLAN.md`'s resolved
   assumption 3 for how Stage 1 handles that.
 
 ## Non-goals (this PoC)

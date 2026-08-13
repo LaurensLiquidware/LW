@@ -23,7 +23,15 @@
         @{ Reason = 'font-file';        Extensions = @('.ttf', '.otf', '.woff', '.woff2', '.fon') },
         @{ Reason = 'image-icon-file';  Extensions = @('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.svg') },
         @{ Reason = 'media-file';       Extensions = @('.mp3', '.wav', '.mp4', '.avi') },
-        @{ Reason = 'help-content';     Extensions = @('.pdf') }
+        @{ Reason = 'help-content';     Extensions = @('.pdf') },
+        # Added 2026-08-13 from a real OBS Studio scan: 1656 of 1826
+        # "unresolved" files in that package were .ini config/locale files
+        # alone (90%), with .pak/.effect adding more - none of these are
+        # third-party components, they're app settings/data. Excluding them
+        # moved that package's honest coverage number from 3.7% to 53.0%.
+        @{ Reason = 'config-file';       Extensions = @('.ini') },
+        @{ Reason = 'resource-pack-file'; Extensions = @('.pak') },
+        @{ Reason = 'shader-effect-file'; Extensions = @('.effect') }
     )
 
     # Satellite localization assemblies live in culture-code subfolders

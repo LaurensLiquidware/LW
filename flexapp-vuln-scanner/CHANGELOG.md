@@ -9,7 +9,26 @@ end-to-end run against a real package justifies cutting a version.
 
 ## [Unreleased]
 
+### Fixed
+
+- `Mount-ClassicFlexApp.ps1`: was waiting on a retry loop for Windows to
+  auto-assign a drive letter to the mounted VHDX volume - confirmed via a
+  live test against a real package on a real Windows 11 host that Windows
+  does not reliably do this (the disk/partition come online healthy, just
+  without a letter, no matter how long you wait). Now mounts to a scratch
+  folder via `Add-PartitionAccessPath` instead, which is deterministic and
+  also avoids drive-letter exhaustion on a host scanning many packages.
+  `Dismount-ClassicFlexApp`/`Invoke-FlexAppInventory.ps1` updated to clean
+  up the access path and scratch folder accordingly.
+
 ### Added
+
+- `ExclusionRules.psd1`: added `.ini`/`.pak`/`.effect` as noise categories
+  (`config-file`/`resource-pack-file`/`shader-effect-file`), found by a live
+  test against a real OBS Studio package - 90% of that package's
+  "unresolved" files were `.ini` config/locale files alone, none of them
+  third-party components. Moved that package's honest resolution coverage
+  from 3.7% to 53.0%.
 
 - `PLAN.md`: design specification for the two-stage pipeline (PowerShell
   extraction/inventory, Python resolution/matching), the Stage 1 → Stage 2
@@ -147,7 +166,9 @@ end-to-end run against a real package justifies cutting a version.
   neither host - confirmed with a real, fully-offline end-to-end run
   producing all three outputs. Live end-to-end validation of `resolve`
   against the real APIs still needs an environment where they're reachable.
-- **All five build-order steps from PLAN.md are now complete.** What
-  remains is real-world validation this environment can't do: a Windows
-  host for Stage 1's VHDX-mounting functions, and network access for live
-  OSV.dev/NVD queries.
+- **All five build-order steps from PLAN.md are now complete, and Stage 1
+  has been live-validated** against a real OBS Studio package on a real
+  Windows host - both classic VHDX and FlexApp One, byte-identical results,
+  zero crashes. See the "Fixed" and "Added" entries above for what that run
+  caught. What remains is network access for live OSV.dev/NVD queries in
+  the `resolve` command, which this dev environment still can't provide.
