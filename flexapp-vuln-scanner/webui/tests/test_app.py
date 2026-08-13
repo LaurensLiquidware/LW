@@ -92,6 +92,18 @@ def test_scan_poll_unknown_job_404():
     assert resp.status_code == 404
 
 
+def test_scan_poll_reports_progress_fields():
+    job = jobs.REGISTRY.create("fake.vhdx", "/tmp/out")
+    job.set_progress("nvd", 4, 10)
+
+    resp = client().get(f"/scan/{job.id}/poll")
+    data = resp.get_json()
+
+    assert data["progress_phase"] == "nvd"
+    assert data["progress_done"] == 4
+    assert data["progress_total"] == 10
+
+
 def test_open_directory_missing_dir_returns_400(tmp_path):
     resp = client().post("/open", data={"dir_path": str(tmp_path / "nope")})
     assert resp.status_code == 400

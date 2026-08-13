@@ -62,6 +62,24 @@ def test_resolve_vuln_matches_builds_purls_and_matches(tmp_path):
     assert unresolved["vulnerabilities"] == []
 
 
+def test_resolve_vuln_matches_reports_nvd_progress(tmp_path):
+    inventory = load_inventory(FIXTURE)
+
+    with patch("flexapp_vuln.cli.OSVClient") as mock_osv_cls, patch("flexapp_vuln.cli.NVDClient") as mock_nvd_cls:
+        mock_osv_cls.return_value.resolve.return_value = {}
+        mock_nvd_cls.return_value.query_cpe.return_value = {"fake": "response"}
+        mock_nvd_cls.extract_cves.return_value = []
+
+        calls = []
+        resolve_vuln_matches(
+            inventory, cache_dir=tmp_path, cpe_mappings=_TEST_MAPPINGS,
+            on_progress=lambda phase, done, total: calls.append((phase, done, total)),
+        )
+
+    # 1 CPE-eligible candidate (the OpenSSL string-signature identity) in the fixture.
+    assert ("nvd", 1, 1) in calls
+
+
 def test_resolve_vuln_matches_with_nothing_expressible_skips_both_clients(tmp_path):
     inventory = {
         "schemaVersion": "1.0",

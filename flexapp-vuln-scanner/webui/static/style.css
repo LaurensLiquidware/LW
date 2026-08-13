@@ -308,6 +308,34 @@ table.stats td:first-child { font-weight: 600; width: 60%; }
 .status-error { background: var(--status-error); }
 .status-stage1, .status-stage2, .status-queued { background: var(--status-progress); }
 
+.progress-label {
+  font-size: 0.857rem;
+  color: var(--muted);
+  margin: 0.75rem 0 0.35rem;
+}
+.progress-bar {
+  width: 100%;
+  height: 0.75rem;
+  background: var(--p-surface-200, var(--border));
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--p-primary-500);
+  border-radius: var(--radius-sm);
+  transition: width 0.4s ease;
+}
+.progress-bar-fill.indeterminate {
+  width: 35% !important;
+  animation: progress-indeterminate 1.2s ease-in-out infinite;
+}
+.progress-bar-fill.is-error { background: var(--status-error); }
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(285%); }
+}
+
 .sev { font-weight: 700; }
 .sev-critical { color: var(--sev-critical); }
 .sev-high { color: var(--sev-high); }

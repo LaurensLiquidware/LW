@@ -36,6 +36,35 @@ def test_run_refresh_job_skips_stage1_and_writes_reports(tmp_path):
     assert any("Stage 1 not re-run" in line for line in fake_job.log)
 
 
+def test_run_stage2_wires_job_set_progress_as_on_progress_callback(tmp_path):
+    inventory_path = tmp_path / "sample.inventory.json"
+    shutil.copy(FIXTURE, inventory_path)
+    fake_job = jobs.ScanJob(id="x", package_path="whatever", output_dir=str(tmp_path))
+
+    def fake_resolve(inventory, *, cache_dir, cpe_mappings, nvd_api_key, on_progress):
+        on_progress("nvd", 1, 3)
+        on_progress("nvd", 3, 3)
+        return {"generatedUtc": "2026-08-13T00:00:00Z", "package": {}, "components": []}
+
+    with patch.object(jobs, "resolve_vuln_matches", side_effect=fake_resolve):
+        jobs._run_stage2(fake_job, inventory_path, None)
+
+    assert fake_job.progress_phase == "nvd"
+    assert fake_job.progress_done == 3
+    assert fake_job.progress_total == 3
+
+
+def test_scan_job_set_progress_updates_fields():
+    job = jobs.ScanJob(id="x", package_path="p", output_dir="/tmp/out")
+    assert job.progress_phase is None
+
+    job.set_progress("osv", 2, 5)
+
+    assert job.progress_phase == "osv"
+    assert job.progress_done == 2
+    assert job.progress_total == 5
+
+
 def test_run_refresh_job_surfaces_errors(tmp_path):
     inventory_path = tmp_path / "sample.inventory.json"
     shutil.copy(FIXTURE, inventory_path)

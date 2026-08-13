@@ -19,7 +19,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import requests
 
@@ -132,17 +132,29 @@ class OSVClient:
 
     # -- combined convenience API -----------------------------------------
 
-    def resolve(self, purls: list[str]) -> dict[str, list[dict[str, Any]]]:
-        """Returns {purl: [full_vuln_dict, ...]} for every purl given."""
+    def resolve(
+        self,
+        purls: list[str],
+        on_progress: Callable[[int, int], None] | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Returns {purl: [full_vuln_dict, ...]} for every purl given.
+
+        on_progress(done, total), if given, is called after each of the
+        per-ID detail fetches below (the sequential, potentially-slow part
+        for a package with many distinct vuln IDs) - not the batch lookup,
+        which is a single request regardless of purl count.
+        """
         purl_to_ids = self.query_batch(purls)
         unique_ids = sorted({vid for ids in purl_to_ids.values() for vid in ids})
 
         vuln_by_id: dict[str, dict[str, Any]] = {}
-        for vuln_id in unique_ids:
+        for i, vuln_id in enumerate(unique_ids, start=1):
             try:
                 vuln_by_id[vuln_id] = self.get_vulnerability(vuln_id)
             except requests.HTTPError as exc:
                 logger.warning("Failed to fetch vulnerability details for %s: %s", vuln_id, exc)
+            if on_progress:
+                on_progress(i, len(unique_ids))
 
         return {
             purl: [vuln_by_id[vid] for vid in ids if vid in vuln_by_id]

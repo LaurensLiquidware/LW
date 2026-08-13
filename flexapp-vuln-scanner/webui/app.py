@@ -191,6 +191,9 @@ def scan_poll(job_id: str):
         "log": job.log,
         "error": job.error,
         "done": job.status in ("done", "error"),
+        "progress_phase": job.progress_phase,
+        "progress_done": job.progress_done,
+        "progress_total": job.progress_total,
     })
 
 

@@ -174,6 +174,25 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- Web UI: a real progress bar on the scan/refresh progress page, instead
+  of just a status badge and a raw log. Stage 1 (VHDX mount + inventory
+  build) and the moment Stage 2 first loads the inventory show an
+  animated indeterminate bar - there's no discrete signal to report
+  finer progress for either. Once Stage 2 starts querying OSV.dev/NVD,
+  the bar switches to a real determinate fill and a label like "Querying
+  NVD for CVE matches: 42 / 103", updated every 1.5s poll. Threaded an
+  `on_progress(phase, done, total)` callback down through
+  `resolve_vuln_matches()` into `OSVClient.resolve()`'s per-vuln-ID
+  detail loop and the per-CPE NVD query loop (the two sequential,
+  rate-limited network loops that account for nearly all of a scan's
+  20-30+ minute runtime) - `ScanJob` gained `progress_phase`/
+  `progress_done`/`progress_total` fields, set via `job.set_progress()`
+  passed as that callback, and surfaced through `/scan/<id>/poll`'s JSON.
+  6 new tests across `stage2-resolve` and `webui`; verified visually
+  with a headless browser against a running dev server, faking both a
+  Stage 1 (indeterminate) and a mid-Stage-2 (42/103, ~41% fill) job
+  state.
+
 - Web UI: "Refresh Vulnerabilities" button on the results page (both a
   fresh scan's results and an opened existing output folder). Re-runs
   just Stage 2's OSV.dev/NVD matching against the same inventory JSON the

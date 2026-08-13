@@ -48,10 +48,20 @@ class ScanJob:
     error: str | None = None
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     result: dict[str, Any] | None = None
+    # Set during stage2's OSV/NVD query loops - see resolve_vuln_matches's
+    # on_progress. phase is "osv" or "nvd"; None before stage2 starts.
+    progress_phase: str | None = None
+    progress_done: int = 0
+    progress_total: int = 0
 
     def append_log(self, line: str) -> None:
         for sub in line.splitlines() or [""]:
             self.log.append(sub)
+
+    def set_progress(self, phase: str, done: int, total: int) -> None:
+        self.progress_phase = phase
+        self.progress_done = done
+        self.progress_total = total
 
 
 class JobRegistry:
@@ -170,6 +180,7 @@ def _run_stage2(job: ScanJob, inventory_path: Path, nvd_api_key: str | None) -> 
     try:
         vuln_matches = resolve_vuln_matches(
             inventory, cache_dir=DEFAULT_CACHE_DIR, cpe_mappings=cpe_mappings, nvd_api_key=nvd_api_key,
+            on_progress=job.set_progress,
         )
     except UnreachableService as exc:
         raise RuntimeError(f"could not reach {exc.host}: {exc.original}") from exc

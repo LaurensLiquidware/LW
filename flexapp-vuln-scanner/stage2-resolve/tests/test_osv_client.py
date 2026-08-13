@@ -109,6 +109,24 @@ def test_resolve_empty_purl_list(client, session):
     session.get.assert_not_called()
 
 
+def test_resolve_reports_progress_per_vuln_id(client, session):
+    session.post.return_value = _mock_response({
+        "results": [{"vulns": [{"id": "GHSA-aaaa"}, {"id": "GHSA-bbbb"}]}],
+    })
+    session.get.return_value = _mock_response({"id": "x", "summary": "s", "severity": []})
+
+    calls = []
+    client.resolve(["pkg:npm/lodash@4.17.15"], on_progress=lambda done, total: calls.append((done, total)))
+
+    assert calls == [(1, 2), (2, 2)]
+
+
+def test_resolve_empty_purl_list_never_calls_on_progress(client, session):
+    calls = []
+    client.resolve([], on_progress=lambda done, total: calls.append((done, total)))
+    assert calls == []
+
+
 def test_cache_persists_across_client_instances(tmp_path, session):
     cache_dir = tmp_path / "cache"
     client1 = OSVClient(cache_dir=cache_dir, session=session)

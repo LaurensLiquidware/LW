@@ -1318,6 +1318,49 @@ a new pattern, not something to fix blind from this dev sandbox.
     clean error (rather than a crash) when OSV.dev is unreachable in
     this sandbox. All 110 `stage2-resolve` + 32 `webui` tests passing.
 
+13. **New, same day: real progress bar during a scan.** Requested
+    directly ("can we add a progress bar when we are scanning?"). Offered
+    two options - a cheap 3-segment stage-based bar (indeterminate
+    during Stage 2's whole 20-30+ minute OSV/NVD phase, since the
+    existing `status` field alone gives no finer signal) vs. a
+    fine-grained one showing an actual component count during that phase
+    - and the project owner chose fine-grained.
+
+    Added an `on_progress: Callable[[str, int, int], None] | None`
+    parameter to `resolve_vuln_matches()`, threaded into two places:
+    `OSVClient.resolve()`'s per-vuln-ID detail-fetch loop (phase
+    `"osv"`) and `cli.py`'s per-CPE NVD query loop, both the mirror and
+    live-API branches (phase `"nvd"`). These two loops - not the OSV
+    batch lookup, which is a single request - are where nearly all of a
+    scan's wall-clock time goes, especially the NVD loop's 5-50 req/30s
+    rate limit. Deliberately two separate phase/done/total triples rather
+    than one combined counter: OSV's total isn't known until its batch
+    call returns, by which point NVD's total (fixed from the candidate
+    list) is already set, so there's no honest single percentage to show
+    across both.
+
+    `ScanJob` gained `progress_phase`/`progress_done`/`progress_total`
+    fields and a `set_progress()` method, passed directly as
+    `resolve_vuln_matches`'s `on_progress` callback from `_run_stage2()`
+    (shared by both a fresh scan and a refresh job, so both get the bar
+    for free). `/scan/<id>/poll` now includes all three fields in its
+    JSON. `scan.html`'s progress page shows an indeterminate animated bar
+    during Stage 1 and the initial "loading inventory" moment of Stage 2
+    (no discrete signal exists for either), then switches to a real
+    determinate fill with a label like "Querying NVD for CVE matches: 42
+    / 103" once the OSV/NVD phase starts, updated on each 1.5s poll.
+
+    Verified with 6 new tests (`test_osv_client.py`: progress reported
+    per vuln ID, never called for an empty purl list; `test_cli.py`: the
+    NVD loop's on_progress calls against the fixture's one CPE-eligible
+    candidate; `webui/tests/test_jobs.py`: `_run_stage2` wires
+    `job.set_progress` as the callback, `ScanJob.set_progress` updates
+    its fields; `webui/tests/test_app.py`: `/scan/<id>/poll` surfaces the
+    fields) plus a headless-browser screenshot against a real dev server
+    with two fabricated job states - Stage 1 (indeterminate, animated
+    stripe) and mid-Stage-2 (a real 42/103 determinate fill, ~41% width,
+    correct label). All 113 `stage2-resolve` + 35 `webui` tests passing.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

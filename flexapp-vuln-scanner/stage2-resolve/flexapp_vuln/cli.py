@@ -15,7 +15,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import requests
 
@@ -60,7 +60,16 @@ def resolve_vuln_matches(
     cpe_mappings: CpeMappings | None = None,
     nvd_api_key: str | None = None,
     nvd_mirror_path: Path | None = None,
+    on_progress: Callable[[str, int, int], None] | None = None,
 ) -> dict[str, Any]:
+    """on_progress(phase, done, total), if given, is called during the two
+    sequential per-item network loops that dominate this function's runtime:
+    phase "osv" (fetching each distinct OSV vuln ID's detail) and phase
+    "nvd" (querying each candidate CPE, rate-limited to 5-50 req/30s). Both
+    report their own 1-based done/total - there's no meaningful single
+    combined count since OSV's total isn't known until its batch lookup
+    returns, after the NVD phase's total is already fixed.
+    """
     cpe_mappings = cpe_mappings or CpeMappings.load()
 
     candidates = []
@@ -86,8 +95,9 @@ def resolve_vuln_matches(
         })
 
     osv_client = OSVClient(cache_dir=cache_dir)
+    osv_on_progress = (lambda done, total: on_progress("osv", done, total)) if on_progress else None
     try:
-        osv_matches = osv_client.resolve(sorted(purl_set)) if purl_set else {}
+        osv_matches = osv_client.resolve(sorted(purl_set), on_progress=osv_on_progress) if purl_set else {}
     except requests.exceptions.RequestException as exc:
         raise UnreachableService("api.osv.dev", exc) from exc
 
@@ -96,17 +106,22 @@ def resolve_vuln_matches(
     # skips the live API's 5-50 req/30s rate limit entirely, which matters
     # once a package's resolved-component count runs into the hundreds.
     nvd_matches: dict[str, list[dict[str, Any]]] = {}
+    sorted_cpes = sorted(cpe_set)
     if nvd_mirror_path is not None:
         local_matcher = NVDLocalMatcher.from_path(nvd_mirror_path)
-        for cpe23 in sorted(cpe_set):
+        for i, cpe23 in enumerate(sorted_cpes, start=1):
             response = local_matcher.query_cpe(cpe23)
             nvd_matches[cpe23] = NVDClient.extract_cves(response)
+            if on_progress:
+                on_progress("nvd", i, len(sorted_cpes))
     else:
         nvd_client = NVDClient(cache_dir=cache_dir, api_key=nvd_api_key)
         try:
-            for cpe23 in sorted(cpe_set):
+            for i, cpe23 in enumerate(sorted_cpes, start=1):
                 response = nvd_client.query_cpe(cpe23)
                 nvd_matches[cpe23] = NVDClient.extract_cves(response)
+                if on_progress:
+                    on_progress("nvd", i, len(sorted_cpes))
         except requests.exceptions.RequestException as exc:
             raise UnreachableService("services.nvd.nist.gov", exc) from exc
 
