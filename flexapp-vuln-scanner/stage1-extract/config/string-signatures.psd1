@@ -36,9 +36,21 @@
             Pattern      = 'SQLite\s+(?:version\s+)?(\d+\.\d+\.\d+)'
             VersionGroup = 1
         },
+        # Added 2026-08-13: found live on a real Firefox scan that the bare
+        # "Chrome/X.X.X.X" pattern is a false-positive magnet - Firefox
+        # embeds a Chrome-User-Agent-spoofing string (site-compatibility
+        # overrides) inside browser\omni.ja that matched this exact
+        # pattern, wrongly attributing "Electron Chromium 67.0.3396.87" (and
+        # a decade of real Chrome CVEs going back to 2012) to an app that
+        # doesn't use Chromium at all - Firefox is Gecko-based. A genuine
+        # Electron app's own default User-Agent always carries an adjacent
+        # "Electron/<version>" token right after the Chrome/ segment
+        # (e.g. "Chrome/91.0.4472.124 Electron/13.1.7 Safari/537.36") -
+        # requiring it distinguishes a real embedded-Chromium signal from
+        # an unrelated Chrome-shaped string appearing in unrelated content.
         @{
             Name         = 'Electron Chromium'
-            Pattern      = 'Chrome/(\d+\.\d+\.\d+\.\d+)'
+            Pattern      = 'Chrome/(\d+\.\d+\.\d+\.\d+)\s+Electron/\d+\.\d+\.\d+'
             VersionGroup = 1
             Method       = 'electron-embedded'
         },

@@ -24,6 +24,18 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Fixed
 
+- `string-signatures.psd1` (`Electron Chromium`): the bare `Chrome/X.X.X.X`
+  pattern was a false-positive magnet - found live on a real Firefox scan,
+  where a Chrome-User-Agent-spoofing string inside `browser\omni.ja`
+  (site-compatibility overrides) matched it and wrongly attributed
+  "Electron Chromium 67.0.3396.87" - and a decade of real Chrome CVEs
+  going back to 2012 - to an app that isn't Chromium-based at all
+  (Firefox is Gecko-based). A genuine Electron app's own default
+  User-Agent always carries an adjacent `Electron/<version>` token right
+  after `Chrome/` (e.g. `Chrome/91.0.4472.124 Electron/13.1.7`); tightened
+  the pattern to require it, verified this still matches a real Electron
+  UA string and correctly no longer matches Firefox's spoof string.
+
 - `reporting.py` (`render_findings`): rendered one row per
   `(component, vulnerability)` pair with no deduplication by identity,
   unlike `sbom.py` which already dedupes components by purl/CPE. Found

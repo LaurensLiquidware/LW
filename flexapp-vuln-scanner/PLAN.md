@@ -714,6 +714,31 @@ defensive regardless (never crash on a single bad file, log and continue).
    needs verifying against a real binary before writing a signature for
    it - not done here, flagged as a candidate follow-up alongside the
    `deps.json` parser above.
+
+   **Live test against a real Firefox package (2026-08-13)**: same
+   Mozilla umbrella-versioning pattern as Tor Browser (most DLLs stamped
+   with the browser's own product version, 61.3% coverage, 46/75), but
+   surfaced a more serious, distinct bug this time: `browser\omni.ja`
+   contains a Chrome-User-Agent-spoofing string
+   (`"Chrome/67.0.3396.87"`, part of Firefox's own site-compatibility
+   overrides - Firefox ships this even though it doesn't use Chromium at
+   all) that matched the `Electron Chromium` string-signature pattern,
+   wrongly resolving it as an embedded Chromium 67.0.3396.87 and pulling
+   in a decade of real Chrome CVEs (back to 2012) that have nothing to do
+   with this package. This was the first live trigger of the
+   `electron-embedded` method ever (previous packages' Electron
+   detection needs were already satisfied by a real PE version resource,
+   per point 2's Electron note) - and it fired wrong the very first time.
+   Fixed by requiring the `Electron/<version>` token real Electron apps
+   always carry adjacent to `Chrome/` in their own default User-Agent
+   string, which Firefox's spoofed string doesn't have. Verified against
+   both the real false-positive text and a genuine synthetic Electron UA
+   string that the fix discriminates correctly.
+
+   Also noted, not fixed: `onnxruntime.dll`'s embedded `ProductVersion`/
+   `FileVersion` are literally the unsubstituted build macro
+   `"ORT_VERSION"` - a real upstream Microsoft build defect, honestly
+   reflected by this pipeline rather than guessed around.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this
