@@ -956,6 +956,43 @@ directly from this environment), before moving to the next stage.
    recognize); a genuine NSS signature is a separate, still-open follow-up
    that needs real binary access to do honestly.
 
+**Live test against a real Nextcloud Client package (2026-08-13, after the
+inventory schema fix above)**: 19.2% coverage (148/772) at first, but the
+FFmpeg/zlib/Qt curated mappings from the earlier round validated hard on
+current, real CVEs - bundled FFmpeg 8.0.1 matched 20+ real 2023/2025/2026
+CVEs (several HIGH) via `mapped-cpe`, plus 2 zlib 1.3.1 CVEs. Zero
+low-confidence noise in the findings.
+
+Two clear noise patterns accounted for 568 of the 624 unresolved files
+(91%): 507 were Qt Quick QML files (`.qml` UI-component declarations and
+`.qmltypes` compiled type-metadata sidecars, part of Qt's own bundled QML
+module tree - QtQuick, several Controls style variants, Qt5Compat, ...) and
+their `qmldir` module-manifest files (plain text, no extension); 61 were
+under `\ProgramData\Package Cache\{GUID}...\` - Windows Installer's shared
+bootstrapper cache, where WiX/Burn-based installers (VC++ Redistributable,
+.NET/.NET Desktop/ASP.NET Core Runtime prerequisites, versions 5.0.17
+through 8.0.14 seen live) stash their `.msi`/`.exe`/`.cab` payloads,
+keyed by installer GUID rather than app name - never part of the scanned
+app. Added `qml-ui-file` (`.qml`/`.qmltypes` extensions) +
+`qml-module-manifest` (`qmldir` filename) + `windows-installer-package-cache`
+(`\Package Cache\` path) to `ExclusionRules.psd1`. Verified locally (pwsh
+against the real relative paths from this scan) that all three correctly
+exclude the noise and leave real app content (`nextcloudcmd.exe`, a
+synthetic `ffmpeg.dll` path) untouched.
+
+The remaining ~56 unresolved files are a genuine identity-resolution gap,
+not noise: real, non-trivial native libraries (`brotlicommon.dll`/
+`brotlidec.dll`, `bz2.dll`, `harfbuzz.dll`, KDE's `KF6Archive.dll`,
+`libpng16.dll`, Qt's own `libsqlite.dll`/`qt6keychain.dll`, Nextcloud's own
+sync-engine DLLs) - all sizeable (100KB-5MB), no read errors, valid
+`pe-native` componentType, but no PE version resource and no
+string-signature match. Notably `libsqlite.dll` is literally SQLite but
+doesn't match the existing SQLite signature pattern, meaning this build
+either has no embedded version banner or a different format than what's
+already known. Left unresolved rather than guessed at - same principle as
+the NSS follow-up above, this needs a real binary to inspect before writing
+a new pattern, not something to fix blind from this dev sandbox.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

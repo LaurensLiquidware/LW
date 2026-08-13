@@ -85,7 +85,17 @@
         # filename or folder-name match) so a real app's own "data" folder
         # elsewhere in the tree (e.g. OBS Studio's own
         # "obs-studio\data\obs-studio\...") is never touched.
-        @{ Reason = 'flexapp-capture-scaffolding'; Contains = @('\Data\appinstall.cap', '\Data\printers.bak', '\Data\DisableShortPaths', '\Data\Suppress.ACL') }
+        @{ Reason = 'flexapp-capture-scaffolding'; Contains = @('\Data\appinstall.cap', '\Data\printers.bak', '\Data\DisableShortPaths', '\Data\Suppress.ACL') },
+        # Added 2026-08-13 from a real Nextcloud Client scan: 61 unresolved
+        # files lived under "\ProgramData\Package Cache\{GUID}...\" -
+        # Windows Installer's shared bootstrapper cache, where WiX/Burn-based
+        # installers (Visual C++ Redistributable, .NET/.NET Desktop/ASP.NET
+        # Core Runtime installers seen live: versions 5.0.17/6.0.36/7.0.20/
+        # 8.0.14) stash their prerequisite .msi/.exe/.cab payloads on the
+        # capture machine. Never part of the scanned app itself - it's a
+        # shared, machine-wide cache any installer-based app's bootstrapper
+        # can populate, keyed by installer GUID, not app name.
+        @{ Reason = 'windows-installer-package-cache'; Contains = @('\Package Cache\') }
     )
 
     NamePatternRules = @(
@@ -130,7 +140,13 @@
         # (Install/Uninstall/BeforeModify/...) and "chocolatey" as a
         # script-name prefix is unambiguous, never a coincidental real
         # app script name.
-        @{ Reason = 'package-manager-file'; Patterns = @('*.nuspec', '*.nupkg', 'chocolatey*.ps1', '*.ignore') }
+        @{ Reason = 'package-manager-file'; Patterns = @('*.nuspec', '*.nupkg', 'chocolatey*.ps1', '*.ignore') },
+        # Added 2026-08-13, same Nextcloud Client scan: "qmldir" is Qt
+        # Quick's module-manifest filename, a plain-text listing of a QML
+        # module's types/version - never a component, and has no extension
+        # for the rule below to catch. The ".qml"/".qmltypes" extension rule
+        # covers the actual UI-declaration/type-metadata files themselves.
+        @{ Reason = 'qml-module-manifest'; Patterns = @('qmldir') }
     )
 
     ExtensionRules = @(
@@ -163,7 +179,14 @@
         # (PaintDotNet.Strings.3.<culture>.resources) - ~40 of that
         # package's 130 unresolved files.
         @{ Reason = 'dotnet-resource-data'; Extensions = @('.resources', '.resx') },
-        @{ Reason = 'shell-shortcut';    Extensions = @('.lnk') }
+        @{ Reason = 'shell-shortcut';    Extensions = @('.lnk') },
+        # Added 2026-08-13 from a real Nextcloud Client scan: 507 of 624
+        # unresolved files (81%) were Qt Quick QML files - plain-text UI
+        # component declarations (.qml) and their compiled type-metadata
+        # sidecars (.qmltypes), part of Qt's own bundled QML module tree
+        # (QtQuick, QtQuick.Controls variants, Qt5Compat, ...), never a
+        # versioned third-party component in their own right.
+        @{ Reason = 'qml-ui-file'; Extensions = @('.qml', '.qmltypes') }
     )
 
     # Satellite localization assemblies live in culture-code subfolders

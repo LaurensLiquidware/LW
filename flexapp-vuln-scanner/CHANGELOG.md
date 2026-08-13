@@ -52,6 +52,14 @@ end-to-end run against a real package justifies cutting a version.
   a genuinely unresolved identity (not excluded; it's real content, just
   not identifiable this way) before string-signature scanning ever runs.
 
+- `schemas/inventory.schema.json`: caught live on a real Paint.NET re-run -
+  the `.deps.json` parser's `componentType`/`method` values
+  (`dotnet-package`/`dotnet-deps-json`) were never added to the shared
+  schema, so Stage 2 rejected the entire inventory with a
+  `jsonschema.ValidationError` the moment it hit a `.deps.json` entry.
+  Added both enum values; verified locally against a synthetic inventory
+  fixture that a `dotnet-package`/`dotnet-deps-json` entry now validates.
+
 - `reporting.py` (`render_findings`): rendered one row per
   `(component, vulnerability)` pair with no deduplication by identity,
   unlike `sbom.py` which already dedupes components by purl/CPE. Found
@@ -442,6 +450,33 @@ end-to-end run against a real package justifies cutting a version.
   - `tests/`: 61 tests total (16 new this round), no network required.
   - `stage2-resolve/README.md` and top-level `README.md`/`CHANGELOG.md`
     updated for the full three-command pipeline.
+
+- `ExclusionRules.psd1`: added `qml-ui-file` (`.qml`/`.qmltypes`
+  extensions), `qml-module-manifest` (`qmldir` filename - Qt Quick's
+  plain-text module manifest, no extension for the rule above to catch),
+  and `windows-installer-package-cache` (`\Package Cache\` path) after a
+  real Nextcloud Client scan showed these two patterns accounted for 568
+  of 624 unresolved files (91%): 507 Qt Quick QML UI-declaration/
+  type-metadata files across Qt's bundled QML module tree (QtQuick,
+  several Controls style variants, Qt5Compat, ...), and 61 files under
+  Windows Installer's shared bootstrapper cache (`\ProgramData\Package
+  Cache\{GUID}...\`, where WiX/Burn-based installers - VC++
+  Redistributable, .NET/.NET Desktop/ASP.NET Core Runtime prerequisites -
+  stash their `.msi`/`.exe`/`.cab` payloads, keyed by installer GUID, not
+  app name). Verified locally against the real relative paths from this
+  scan that both rules exclude exactly the intended files and leave real
+  app content untouched.
+
+  The remaining ~56 unresolved files in that package are a genuine
+  identity-resolution gap, not noise: real native libraries (brotli,
+  bzip2, harfbuzz, KDE's KF6Archive, libpng, Qt's own bundled
+  `libsqlite.dll`/`qt6keychain.dll`, Nextcloud's own sync-engine DLLs)
+  with no PE version resource and no string-signature match - notably
+  `libsqlite.dll` is literally SQLite but doesn't match the existing
+  SQLite signature, meaning this build has no embedded banner in the
+  known format. Left unresolved rather than guessed at; would need a real
+  binary to inspect before writing a new pattern, same principle as the
+  NSS follow-up above.
 
 ### Notes
 
