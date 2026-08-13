@@ -636,6 +636,21 @@ defensive regardless (never crash on a single bad file, log and continue).
    inventory JSON that none of the newly-excluded files had a resolved
    identity - moved that package's honest resolution coverage from **8.9%
    to 48.7%**.
+
+   The remaining unresolved files pointed at three more noise categories:
+   a `\Wijzigingen\` (Dutch: "changes") folder of plain-text release
+   notes (35 files), a `\Log\<module>\` runtime log-output folder (28
+   files), and Oracle's own JRE usage-telemetry files
+   (`\.oracle_jre_usage\`, 2 files - not part of the app at all, an
+   artifact of any machine that has ever run a JRE). Added all three;
+   verified none had a resolved identity - moved that package's coverage
+   from 48.7% to **73.1%**. Also noticed `appinstall.cap`/`printers.bak`
+   recurring for the third package in a row now, always in a top-level
+   `\Data\` folder that sits alongside `\Volumes\C\...` rather than inside
+   it - increasingly looks like FlexApp/ProfileUnity's own capture
+   scaffolding rather than app content, but scoping a rule precisely
+   (without also catching a real app-internal folder that happens to be
+   named "Data") needs more evidence - held off adding a rule for it.
 3. **Done.** OSV.dev matching (purl-based) + confidence tagging + on-disk
    cache. Purls built for `jar-pom-properties`/`node-package-json`/
    `python-dist-info` only (the three OSV-supported ecosystems this

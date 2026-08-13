@@ -35,7 +35,20 @@
         # *.jasper* name pattern below catches the report files themselves
         # regardless of folder; this folder rule is needed for the sidecar
         # .properties files, which aren't identifiable by extension alone.
-        @{ Reason = 'report-design-folder'; Contains = @('\TClickRapporten\') }
+        @{ Reason = 'report-design-folder'; Contains = @('\TClickRapporten\') },
+        # Added 2026-08-13, same Remix-H1-DROOG scan: two more noise
+        # categories from the same package's remaining unresolved files -
+        # a "\Wijzigingen\" (Dutch: "changes") folder of plain-text
+        # release notes/changelogs (35 files), and a "\Log\<module>\"
+        # runtime log-output folder (28 files). Neither is a component.
+        @{ Reason = 'changelog-folder'; Contains = @('\Wijzigingen\') },
+        @{ Reason = 'log-folder'; Contains = @('\Log\') },
+        # Same scan: Oracle's own JRE usage-telemetry files
+        # ("$env:LOCALAPPDATA\Oracle\Java\.oracle_jre_usage\<hash>.timestamp")
+        # - not part of the packaged app, just an artifact of any machine
+        # that has ever run a JRE. Only 2 occurrences in this package, but
+        # unambiguous and likely to recur on any Java app's capture.
+        @{ Reason = 'jre-telemetry'; Contains = @('\.oracle_jre_usage\') }
     )
 
     NamePatternRules = @(

@@ -144,6 +144,15 @@ end-to-end run against a real package justifies cutting a version.
   against the real inventory JSON that none of the 868 newly-excluded
   files had a resolved identity - moved that package's honest resolution
   coverage from 8.9% to **48.7%**.
+- `ExclusionRules.psd1`: added three more categories from the same
+  Remix-H1-DROOG package's remaining unresolved files: `changelog-folder`
+  (`\Wijzigingen\` - Dutch for "changes", plain-text release notes, 35
+  files), `log-folder` (`\Log\<module>\`, runtime log output, 28 files),
+  and `jre-telemetry` (`\.oracle_jre_usage\`, Oracle's own JRE
+  usage-tracking files - not part of the packaged app at all, an artifact
+  of any machine that's ever run a JRE, 2 files). Verified against the
+  real inventory JSON that none had a resolved identity - moved that
+  package's honest resolution coverage from 48.7% to **73.1%**.
 - `ExclusionRules.psd1`: added `.ini`/`.pak`/`.effect` as noise categories
   (`config-file`/`resource-pack-file`/`shader-effect-file`), found by a live
   test against a real OBS Studio package - 90% of that package's
