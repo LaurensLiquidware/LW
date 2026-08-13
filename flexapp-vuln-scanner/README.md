@@ -241,7 +241,7 @@ no SE has completed the checklist's attestation. `FlexAppOneDownloadMonitor`
 (a sibling project in this repo) has been through that full process; see
 its `SPARKS-AUDIT.md` for what that looks like.
 
-## Non-goals (this PoC)
+## Non-goals
 
 No database, no authentication/multi-user support, no ProfileUnity console
 integration, no Stratusphere correlation, no remediation/repackaging
