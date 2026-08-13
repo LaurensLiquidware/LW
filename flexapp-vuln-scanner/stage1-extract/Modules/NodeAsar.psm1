@@ -29,6 +29,20 @@
     'electron-embedded'), run against the main executable, not the archive.
 #>
 
+function ConvertTo-NullableString {
+    # package.json is supposed to use string name/version fields, but real
+    # packages (found via a live test: some of OBS Studio's internal
+    # plugin package.json files) use a bare numeric version like
+    # `"version": 9` instead of `"9"`. ConvertFrom-Json happily returns that
+    # as a PowerShell int, which then violates the inventory schema's
+    # "version is string|null" contract. Cast explicitly rather than assume
+    # JSON-typed-as-expected; guard $null separately since [string]$null
+    # becomes "" in PowerShell, not $null.
+    param($Value)
+    if ($null -eq $Value) { return $null }
+    return [string]$Value
+}
+
 function Get-NodePackageIdentity {
     [CmdletBinding()]
     param(
@@ -45,12 +59,15 @@ function Get-NodePackageIdentity {
 
     if (-not $json.name -and -not $json.version) { return $null }
 
+    $name = ConvertTo-NullableString -Value $json.name
+    $version = ConvertTo-NullableString -Value $json.version
+
     [PSCustomObject]@{
         method  = 'node-package-json'
         vendor  = $null
-        product = $json.name
-        version = $json.version
-        raw     = @{ name = $json.name; version = $json.version; sourceFile = [System.IO.Path]::GetFileName($Path) }
+        product = $name
+        version = $version
+        raw     = @{ name = $name; version = $version; sourceFile = [System.IO.Path]::GetFileName($Path) }
     }
 }
 
@@ -157,15 +174,18 @@ function Get-AsarPackageIdentities {
             $json = [System.Text.Encoding]::UTF8.GetString($buffer, 0, $totalRead) | ConvertFrom-Json -ErrorAction Stop
             if (-not $json.name -and -not $json.version) { continue }
 
+            $name = ConvertTo-NullableString -Value $json.name
+            $version = ConvertTo-NullableString -Value $json.version
+
             $results.Add([PSCustomObject]@{
                 entryPath = "$archiveLabel!/$($entry.Path)"
                 sizeBytes = $entry.Size
                 identity  = [PSCustomObject]@{
                     method  = 'node-package-json'
                     vendor  = $null
-                    product = $json.name
-                    version = $json.version
-                    raw     = @{ name = $json.name; version = $json.version; asarPath = $entry.Path }
+                    product = $name
+                    version = $version
+                    raw     = @{ name = $name; version = $version; asarPath = $entry.Path }
                 }
             }) | Out-Null
         }
