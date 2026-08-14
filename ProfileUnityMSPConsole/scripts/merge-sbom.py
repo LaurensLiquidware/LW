@@ -11,6 +11,25 @@ import sys
 import uuid
 
 
+def normalize_purl(purl: str) -> str:
+    """cyclonedx-gomod builds a purl's query qualifiers from a Go map, whose
+    iteration order is randomized per-process -- so two runs over an
+    unchanged dependency tree can emit "type=module&goos=linux&goarch=amd64"
+    one time and "goarch=amd64&goos=linux&type=module" the next. That's
+    non-determinism in a string CI diffs byte-for-byte, not a real change.
+    Sort the qualifiers so the same component always serializes the same way.
+    """
+    if not purl or "?" not in purl:
+        return purl
+    base, _, rest = purl.partition("?")
+    query, _, fragment = rest.partition("#")
+    qualifiers = sorted(q for q in query.split("&") if q)
+    normalized = base + "?" + "&".join(qualifiers)
+    if fragment:
+        normalized += "#" + fragment
+    return normalized
+
+
 def main() -> None:
     if len(sys.argv) != 5:
         print(f"usage: {sys.argv[0]} <go-sbom.json> <npm-sbom.json> <version> <output.json>", file=sys.stderr)
@@ -43,6 +62,8 @@ def main() -> None:
     seen = set()
     for src in (go_sbom, npm_sbom):
         for c in src.get("components", []):
+            if "purl" in c:
+                c["purl"] = normalize_purl(c["purl"])
             key = (c.get("name"), c.get("version"), c.get("purl"))
             if key in seen:
                 continue
