@@ -32,5 +32,62 @@
     "licenseLink": "Sparks Tool License and Disclaimer (Spark_License.pdf)",
     "sbomLink": "Software Bill of Materials (bom.cdx.json)",
     "sbomDescription": "A CycloneDX 1.6 inventory of third-party components, provided so your security team can review it against your own policy."
+  },
+  "tenants": {
+    "addTenant": "Add Tenant",
+    "editTenant": "Edit Tenant",
+    "displayName": "Display Name",
+    "hostname": "Hostname",
+    "port": "Port",
+    "username": "Username",
+    "password": "Password",
+    "passwordUnchangedHint": "leave blank to keep the stored password",
+    "tlsSkipVerify": "Skip TLS Certificate Verification",
+    "tlsSkipVerifyWarning": "Only disable certificate verification for consoles you trust on a private network. This is a deliberate compromise, not a default.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "tags": "Tags",
+    "tagsHint": "comma-separated",
+    "notes": "Notes",
+    "testConnection": "Test Connection",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete Tenant",
+    "deleteConfirmMessage": "Delete {{displayName}}? This also deletes its collection history. This cannot be undone.",
+    "noTenants": "No Tenants Registered Yet",
+    "saveError": "Could Not Save Tenant"
+  },
+  "dashboard": {
+    "search": "Search Tenants",
+    "usage": "Usage",
+    "utilization": "Utilization",
+    "expiry": "Expiry",
+    "runway": "Days Left",
+    "data": "Data",
+    "licenseMode": "License Mode",
+    "consoleVersion": "Console Version",
+    "lastSuccess": "Last Successful Collection",
+    "noTenants": "No Tenants Registered Yet"
+  },
+  "status": {
+    "usage": {
+      "good": "Good",
+      "fair": "Fair",
+      "poor": "Poor",
+      "unknown": "Unknown"
+    },
+    "expiry": {
+      "ok": "OK",
+      "expiring_soon": "Expiring Soon",
+      "expired": "Expired",
+      "unknown": "Unknown"
+    },
+    "data": {
+      "ok": "Current",
+      "stale": "Stale",
+      "failing": "Collection Failing",
+      "never_collected": "Never Collected"
+    }
   }
 }

@@ -144,3 +144,36 @@ Phase 4 (Frontend shell) of the build plan:
 
 Tenant CRUD still has no HTTP API or screen — that's Phase 5 alongside
 the dashboard.
+
+Phase 5 (Dashboard and tenant management) of the build plan:
+
+- `internal/dashboard`: pure `Compute`/`BuildAll` functions deriving
+  usage (good/fair/poor), expiry (ok/expiring soon/expired), and data
+  (ok/stale/failing/never collected) status per tenant from its
+  registration plus its latest and latest-successful snapshots — decoupled
+  from HTTP/UI so a future report export reuses the exact same logic.
+- `internal/snapshot`: added `GetLatest`, `GetLatestSuccess`,
+  `LatestForAllTenants`, `LatestSuccessForAllTenants` (two queries total
+  for the whole dashboard, not one per tenant).
+- `internal/collector`: added `TestConnection` — one attempt, no
+  retries, classifying the outcome precisely (unauthenticated/
+  authenticated success, TLS failure, timeout, auth rejected/required,
+  malformed response, unreachable) for the tenant form's "Test
+  Connection" button.
+- `internal/httpapi`: tenant CRUD (`/api/tenants[/{id}]`), connectivity
+  test (`/api/tenants/test`), and dashboard (`/api/dashboard`) endpoints,
+  all session-gated; mutating routes and the test endpoint are also
+  CSRF-gated, since test-connection makes outbound requests to whatever
+  host:port is in the request body and must never be reachable
+  anonymously.
+- `web/frontend`: real Tenants (CRUD table, add/edit dialog, Test
+  Connection, delete confirmation) and Dashboard (sortable/filterable
+  table, `StatusBadgeComponent`) screens replacing their "Coming Soon"
+  stubs. Data-trust states are deliberately never rendered with the
+  Good/Fair/Poor palette — distinct neutral gray + icon, so a console
+  that's unreachable never looks merely "poor".
+- Visually verified end to end (Playwright) with seeded tenants covering
+  every state: healthy, near-limit + expiring-soon, at-limit + expired +
+  stale, collection-failing-with-an-older-success, and never-collected.
+
+History and Reports still show "Coming Soon" — Phases 6 and 7.

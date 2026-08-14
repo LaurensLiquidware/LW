@@ -18,13 +18,11 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
-        loadComponent: () => import('./features/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { titleKey: 'nav.dashboard' },
+        loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
         path: 'tenants',
-        loadComponent: () => import('./features/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { titleKey: 'nav.tenants' },
+        loadComponent: () => import('./features/tenants/tenants.component').then((m) => m.TenantsComponent),
       },
       {
         path: 'history',

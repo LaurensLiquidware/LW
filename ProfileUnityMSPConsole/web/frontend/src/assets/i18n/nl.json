@@ -32,5 +32,62 @@
     "licenseLink": "Sparks Tool-licentie en disclaimer (Spark_License.pdf)",
     "sbomLink": "Software Bill of Materials (bom.cdx.json)",
     "sbomDescription": "Een CycloneDX 1.6-inventarisatie van componenten van derden, zodat uw beveiligingsteam dit tegen uw eigen beleid kan toetsen."
+  },
+  "tenants": {
+    "addTenant": "Klant Toevoegen",
+    "editTenant": "Klant Bewerken",
+    "displayName": "Weergavenaam",
+    "hostname": "Hostnaam",
+    "port": "Poort",
+    "username": "Gebruikersnaam",
+    "password": "Wachtwoord",
+    "passwordUnchangedHint": "leeg laten om het opgeslagen wachtwoord te behouden",
+    "tlsSkipVerify": "TLS-certificaatverificatie Overslaan",
+    "tlsSkipVerifyWarning": "Schakel certificaatverificatie alleen uit voor consoles die u vertrouwt op een privénetwerk. Dit is een bewust compromis, geen standaardinstelling.",
+    "enabled": "Ingeschakeld",
+    "disabled": "Uitgeschakeld",
+    "tags": "Labels",
+    "tagsHint": "kommagescheiden",
+    "notes": "Notities",
+    "testConnection": "Verbinding Testen",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "deleteConfirmTitle": "Klant Verwijderen",
+    "deleteConfirmMessage": "{{displayName}} verwijderen? Dit verwijdert ook de verzamelgeschiedenis. Dit kan niet ongedaan worden gemaakt.",
+    "noTenants": "Nog Geen Klanten Geregistreerd",
+    "saveError": "Klant Opslaan Mislukt"
+  },
+  "dashboard": {
+    "search": "Klanten Zoeken",
+    "usage": "Gebruik",
+    "utilization": "Bezetting",
+    "expiry": "Vervaldatum",
+    "runway": "Dagen Resterend",
+    "data": "Gegevens",
+    "licenseMode": "Licentiemodus",
+    "consoleVersion": "Consoleversie",
+    "lastSuccess": "Laatste Succesvolle Verzameling",
+    "noTenants": "Nog Geen Klanten Geregistreerd"
+  },
+  "status": {
+    "usage": {
+      "good": "Goed",
+      "fair": "Matig",
+      "poor": "Slecht",
+      "unknown": "Onbekend"
+    },
+    "expiry": {
+      "ok": "OK",
+      "expiring_soon": "Verloopt Binnenkort",
+      "expired": "Verlopen",
+      "unknown": "Onbekend"
+    },
+    "data": {
+      "ok": "Actueel",
+      "stale": "Verouderd",
+      "failing": "Verzameling Mislukt",
+      "never_collected": "Nog Niet Verzameld"
+    }
   }
 }

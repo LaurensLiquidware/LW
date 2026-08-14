@@ -134,6 +134,102 @@ func TestRepo_GetByTenantAndDate_NotFound(t *testing.T) {
 	}
 }
 
+func TestRepo_GetLatest_ReturnsMostRecentRegardlessOfStatus(t *testing.T) {
+	repo, tenantID := newTestDB(t)
+	ctx := context.Background()
+
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantID, CollectionDate: "2026-08-10", CollectedAtUTC: time.Now().UTC(), Status: StatusSuccess, TotalLicenses: intPtr(5), UsedLicenses: intPtr(1)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantID, CollectionDate: "2026-08-14", CollectedAtUTC: time.Now().UTC(), Status: StatusUnreachable}); err != nil {
+		t.Fatal(err)
+	}
+
+	latest, err := repo.GetLatest(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latest == nil || latest.CollectionDate != "2026-08-14" || latest.Status != StatusUnreachable {
+		t.Errorf("GetLatest = %+v, want the 08-14 unreachable row", latest)
+	}
+
+	latestSuccess, err := repo.GetLatestSuccess(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latestSuccess == nil || latestSuccess.CollectionDate != "2026-08-10" {
+		t.Errorf("GetLatestSuccess = %+v, want the 08-10 success row", latestSuccess)
+	}
+}
+
+func TestRepo_GetLatest_NilWhenNeverCollected(t *testing.T) {
+	repo, tenantID := newTestDB(t)
+	ctx := context.Background()
+
+	latest, err := repo.GetLatest(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latest != nil {
+		t.Errorf("GetLatest = %+v, want nil", latest)
+	}
+
+	latestSuccess, err := repo.GetLatestSuccess(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latestSuccess != nil {
+		t.Errorf("GetLatestSuccess = %+v, want nil", latestSuccess)
+	}
+}
+
+func TestRepo_LatestForAllTenants(t *testing.T) {
+	repo, tenantA := newTestDB(t)
+	ctx := context.Background()
+
+	// A second tenant sharing the same underlying DB.
+	tenantRepo := tenant.NewRepo(repo.db, nil)
+	tenantB, err := tenantRepo.Create(ctx, tenant.CreateInput{DisplayName: "y", Hostname: "h2", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantA, CollectionDate: "2026-08-10", CollectedAtUTC: time.Now().UTC(), Status: StatusSuccess, TotalLicenses: intPtr(5), UsedLicenses: intPtr(1)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantA, CollectionDate: "2026-08-14", CollectedAtUTC: time.Now().UTC(), Status: StatusUnreachable}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantB.ID, CollectionDate: "2026-08-12", CollectedAtUTC: time.Now().UTC(), Status: StatusSuccess, TotalLicenses: intPtr(10), UsedLicenses: intPtr(3)}); err != nil {
+		t.Fatal(err)
+	}
+
+	latest, err := repo.LatestForAllTenants(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(latest) != 2 {
+		t.Fatalf("got %d entries, want 2", len(latest))
+	}
+	if latest[tenantA].CollectionDate != "2026-08-14" {
+		t.Errorf("tenantA latest = %+v, want 08-14", latest[tenantA])
+	}
+	if latest[tenantB.ID].CollectionDate != "2026-08-12" {
+		t.Errorf("tenantB latest = %+v, want 08-12", latest[tenantB.ID])
+	}
+
+	latestSuccess, err := repo.LatestSuccessForAllTenants(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(latestSuccess) != 2 {
+		t.Fatalf("got %d success entries, want 2", len(latestSuccess))
+	}
+	if latestSuccess[tenantA].CollectionDate != "2026-08-10" {
+		t.Errorf("tenantA latest success = %+v, want 08-10", latestSuccess[tenantA])
+	}
+}
+
 func TestRepo_BooleanFieldsRoundTrip(t *testing.T) {
 	repo, tenantID := newTestDB(t)
 	ctx := context.Background()

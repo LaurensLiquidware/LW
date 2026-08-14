@@ -25,7 +25,7 @@ consoles, track it over time, and produce monthly reports. See the project
 brief for the full functional and compliance spec; this README tracks
 build-phase status and the things a reader needs before touching the code.
 
-## Status: Phase 4 — Frontend shell
+## Status: Phase 5 — Dashboard and tenant management
 
 Phases 1–3 (skeleton, the ProfileUnity API client, and the
 tenant/snapshot/collector/scheduler backend) are done — see git history
@@ -60,9 +60,41 @@ console's own authentication:
   interceptor that echoes the CSRF cookie back as a header on every
   mutating request.
 
-Tenant CRUD still has no HTTP API or screen — that's Phase 5 alongside
-the dashboard. For now, exercising the collector/scheduler still means
-calling `internal/tenant`'s Go API directly.
+Phase 5 adds tenant management and the dashboard itself:
+
+- **`internal/dashboard`**: pure functions (`Compute`) deriving a
+  tenant's `UsageStatus` (good/fair/poor, from utilization vs.
+  `NearLimitThreshold`), `ExpiryStatus` (ok/expiring soon/expired, from
+  `SupportEnds` vs. `ExpiringSoonDays`), and `DataStatus`
+  (ok/stale/failing/never collected, from the most recent collection
+  attempt vs. `StaleAfterDays`) — decoupled from HTTP/UI so a future PDF
+  or spreadsheet export (§7.5) computes identical numbers. `BuildAll`
+  aggregates every tenant in two queries total, not one per tenant.
+- **Tenant CRUD API** (`GET/POST/PUT/DELETE /api/tenants[/{id}]`) and a
+  **connectivity test** endpoint (`POST /api/tenants/test`) that reports
+  precisely what happened — unauthenticated success, authenticated
+  success, TLS failure, timeout, auth rejected/required, malformed
+  response, or unreachable — never a boolean (project brief §7.1). Both
+  require a session; the mutating routes and the test endpoint also
+  require CSRF, since an unauthenticated test-connection call would
+  otherwise be an open SSRF/port-scanning proxy through this server.
+- **`GET /api/dashboard`**: every tenant's computed status, for the
+  frontend's at-a-glance view.
+- **Frontend**: a real Tenants screen (table, add/edit dialog covering
+  every §7.1 field, Test Connection with the precise outcome displayed
+  inline, delete confirmation) and a real Dashboard screen (sortable/
+  filterable table, a shared `StatusBadgeComponent` rendering the
+  Good/Fair/Poor language for usage/expiry — but data-trust states
+  (stale/failing/never collected) always render in a neutral gray with a
+  distinct icon, never GFP red/yellow/green, so an unreachable console
+  can never look merely "poor" — see project brief §10).
+
+Visually verified end to end with seeded data covering every state
+(healthy, near-limit, at-limit-and-expired-and-stale, collection-failing-
+with-an-older-success, and never-collected) — screenshots taken during
+development, not committed.
+
+History and Reports still show "Coming Soon" — those are Phases 6 and 7.
 
 **Known CVEs carried by this phase, to resolve in Phase 8:** `npm audit`
 on `web/frontend` reports several real high-severity Angular XSS

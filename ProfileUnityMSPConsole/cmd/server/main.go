@@ -15,6 +15,7 @@ import (
 
 	"profileunity-msp-console/internal/auth"
 	"profileunity-msp-console/internal/config"
+	"profileunity-msp-console/internal/dashboard"
 	"profileunity-msp-console/internal/db"
 	"profileunity-msp-console/internal/httpapi"
 	"profileunity-msp-console/internal/scheduler"
@@ -74,9 +75,14 @@ func run() error {
 	go sched.Run(ctx)
 
 	authDeps := httpapi.AuthDeps{Users: userRepo, Sessions: sessionRepo, Secure: true}
+	tenantDeps := httpapi.TenantDeps{Tenants: tenantRepo}
+	dashboardDeps := httpapi.DashboardDeps{
+		Repos:    dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo},
+		Location: cfg.CollectionLocation,
+	}
 	router, err := httpapi.NewRouter(func() httpapi.SchedulerStatus {
 		return schedulerStatusFor(sched.Status())
-	}, authDeps)
+	}, authDeps, tenantDeps, dashboardDeps)
 	if err != nil {
 		return fmt.Errorf("build router: %w", err)
 	}

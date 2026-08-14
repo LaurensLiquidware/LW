@@ -88,6 +88,72 @@ func (r *Repo) GetByTenantAndDate(ctx context.Context, tenantID, collectionDate 
 	return s, nil
 }
 
+// GetLatest returns the most recent collection attempt for tenantID,
+// regardless of outcome, or (nil, nil) if this tenant has never been
+// collected.
+func (r *Repo) GetLatest(ctx context.Context, tenantID string) (*Snapshot, error) {
+	row := r.db.QueryRowContext(ctx, selectColumns+` FROM snapshots WHERE tenant_id = ? ORDER BY collection_date DESC LIMIT 1`, tenantID)
+	return scanOptional(row)
+}
+
+// GetLatestSuccess returns the most recent successful collection for
+// tenantID, which may be older than GetLatest's result, or (nil, nil) if
+// there has never been a success.
+func (r *Repo) GetLatestSuccess(ctx context.Context, tenantID string) (*Snapshot, error) {
+	row := r.db.QueryRowContext(ctx, selectColumns+` FROM snapshots WHERE tenant_id = ? AND status = ? ORDER BY collection_date DESC LIMIT 1`, tenantID, string(StatusSuccess))
+	return scanOptional(row)
+}
+
+// LatestForAllTenants returns each tenant's most recent collection
+// attempt, keyed by tenant ID, for tenants that have at least one. This
+// is one query rather than one-per-tenant, for the dashboard's sake.
+func (r *Repo) LatestForAllTenants(ctx context.Context) (map[string]Snapshot, error) {
+	return r.queryLatestMap(ctx, selectColumns+`
+		FROM snapshots
+		WHERE (tenant_id, collection_date) IN (
+			SELECT tenant_id, MAX(collection_date) FROM snapshots GROUP BY tenant_id
+		)`)
+}
+
+// LatestSuccessForAllTenants is LatestForAllTenants restricted to
+// successful collections.
+func (r *Repo) LatestSuccessForAllTenants(ctx context.Context) (map[string]Snapshot, error) {
+	return r.queryLatestMap(ctx, selectColumns+`
+		FROM snapshots
+		WHERE status = ? AND (tenant_id, collection_date) IN (
+			SELECT tenant_id, MAX(collection_date) FROM snapshots WHERE status = ? GROUP BY tenant_id
+		)`, string(StatusSuccess), string(StatusSuccess))
+}
+
+func (r *Repo) queryLatestMap(ctx context.Context, query string, args ...any) (map[string]Snapshot, error) {
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("snapshot: query latest: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]Snapshot)
+	for rows.Next() {
+		s, err := scanSnapshot(rows)
+		if err != nil {
+			return nil, fmt.Errorf("snapshot: scan: %w", err)
+		}
+		result[s.TenantID] = s
+	}
+	return result, rows.Err()
+}
+
+func scanOptional(row rowScanner) (*Snapshot, error) {
+	s, err := scanSnapshot(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("snapshot: get: %w", err)
+	}
+	return &s, nil
+}
+
 // ListByTenant returns every snapshot for tenantID, oldest first.
 func (r *Repo) ListByTenant(ctx context.Context, tenantID string) ([]Snapshot, error) {
 	rows, err := r.db.QueryContext(ctx, selectColumns+` FROM snapshots WHERE tenant_id = ? ORDER BY collection_date`, tenantID)

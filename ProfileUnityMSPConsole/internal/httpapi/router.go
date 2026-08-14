@@ -21,7 +21,7 @@ import (
 // schedulerStatus reports live scheduler state; pass a func that always
 // returns SchedulerStatus{Status: "not_implemented"} where no scheduler
 // exists yet.
-func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps) (http.Handler, error) {
+func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", HealthHandler(schedulerStatus))
@@ -31,6 +31,21 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps) (http.
 	mux.Handle("/api/auth/login", auth.RequireCSRF(LoginHandler(authDeps)))
 	mux.Handle("/api/auth/logout", auth.RequireCSRF(RequireSession(authDeps.Sessions, LogoutHandler(authDeps))))
 	mux.Handle("/api/auth/me", RequireSession(authDeps.Sessions, MeHandler(authDeps)))
+
+	// Tenant management (project brief §7.1). All of it requires a
+	// session; the mutating routes additionally require CSRF. Test
+	// Connection makes outbound requests to whatever host:port is in the
+	// request body, so it must never be reachable anonymously — an
+	// unauthenticated version of this endpoint would be an open SSRF/
+	// port-scanning proxy through this server.
+	mux.Handle("GET /api/tenants", RequireSession(authDeps.Sessions, ListTenantsHandler(tenantDeps)))
+	mux.Handle("GET /api/tenants/{id}", RequireSession(authDeps.Sessions, GetTenantHandler(tenantDeps)))
+	mux.Handle("POST /api/tenants", RequireSession(authDeps.Sessions, auth.RequireCSRF(CreateTenantHandler(tenantDeps))))
+	mux.Handle("PUT /api/tenants/{id}", RequireSession(authDeps.Sessions, auth.RequireCSRF(UpdateTenantHandler(tenantDeps))))
+	mux.Handle("DELETE /api/tenants/{id}", RequireSession(authDeps.Sessions, auth.RequireCSRF(DeleteTenantHandler(tenantDeps))))
+	mux.Handle("POST /api/tenants/test", RequireSession(authDeps.Sessions, auth.RequireCSRF(TestConnectionHandler())))
+
+	mux.Handle("GET /api/dashboard", RequireSession(authDeps.Sessions, DashboardHandler(dashboardDeps)))
 
 	// Legal packaging (project brief §11.7): the license PDF and SBOM
 	// ship inside the binary and are reachable at fixed top-level paths
