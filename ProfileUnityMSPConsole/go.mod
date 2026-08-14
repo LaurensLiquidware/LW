@@ -1,6 +1,8 @@
 module profileunity-msp-console
 
-go 1.25.13
+go 1.25.0
+
+toolchain go1.25.13
 
 require (
 	github.com/go-pdf/fpdf v0.9.0
