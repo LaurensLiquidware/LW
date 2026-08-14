@@ -1,0 +1,61 @@
+<div
+  class="flex min-h-screen flex-col items-center justify-center gap-6 p-4"
+  style="background-color: var(--p-primary-950);"
+>
+  <img
+    src="assets/images/logo-primary-light.svg"
+    alt="Liquidware"
+    class="h-10"
+  />
+
+  <p-card
+    [style]="{ width: '26rem', borderRadius: 'var(--radius-2xl)' }"
+    styleClass="shadow-lg"
+  >
+    <h1 class="lwl-card-title mb-4 text-center" style="font-size: var(--text-lg);">
+      {{ 'login.heading' | transloco }}
+    </h1>
+
+    @if (expired()) {
+      <p-message severity="warn" [text]="'login.sessionExpired' | transloco" styleClass="w-full mb-3" />
+    }
+    @if (errorKey()) {
+      <p-message severity="error" [text]="errorKey()! | transloco" styleClass="w-full mb-3" />
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-3">
+      <label class="flex flex-col gap-1">
+        <span class="lwl-micro">{{ 'login.username' | transloco }}</span>
+        <input pInputText formControlName="username" autocomplete="username" />
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="lwl-micro">{{ 'login.password' | transloco }}</span>
+        <p-password
+          formControlName="password"
+          [feedback]="false"
+          [toggleMask]="true"
+          autocomplete="current-password"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </label>
+
+      <button
+        pButton
+        type="submit"
+        [label]="'login.submit' | transloco"
+        [loading]="submitting()"
+        [disabled]="form.invalid"
+        class="mt-2"
+      ></button>
+    </form>
+  </p-card>
+
+  <div class="flex items-center gap-4">
+    <app-language-switcher />
+    <a routerLink="/about" class="lwl-micro" style="color: var(--p-surface-300);">
+      {{ 'nav.about' | transloco }}
+    </a>
+  </div>
+</div>

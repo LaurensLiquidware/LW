@@ -11,10 +11,10 @@ This tool also ships `bom.cdx.json` — a **CycloneDX 1.6** JSON inventory of
 every third-party component it uses, so your security team can review it
 against your own policy. It sits next to the license PDF for that reason;
 see `THIRD-PARTY-NOTICES.txt` for the accompanying license texts. **Both
-files are still placeholders** — real dependencies exist already (SQLite,
-`google/uuid`), but per the project brief §11.8 the SBOM is only ever
-regenerated for real as part of the compliance pass in Phase 8, after CVE
-remediation, so it describes exactly what ships rather than an
+files are still placeholders** — a real, growing set of Go and npm
+dependencies exists already, but per the project brief §11.8 the SBOM is
+only ever regenerated for real as part of the compliance pass in Phase 8,
+after CVE remediation, so it describes exactly what ships rather than an
 intermediate state. See "Compliance" below.
 
 ## What this is
@@ -25,40 +25,70 @@ consoles, track it over time, and produce monthly reports. See the project
 brief for the full functional and compliance spec; this README tracks
 build-phase status and the things a reader needs before touching the code.
 
-## Status: Phase 3 — Collector and scheduler
+## Status: Phase 4 — Frontend shell
 
-Phase 1 (repo layout, config, migrations, health endpoint, version
-single-source-of-truth) and Phase 2 (the `internal/profileunity` API
-client — §3's wire contract, `Type`-not-status checks, the `/Date(ms)/`
-format, explicit US-date parsing, the unauthenticated/authenticated
-fallback) are done.
+Phases 1–3 (skeleton, the ProfileUnity API client, and the
+tenant/snapshot/collector/scheduler backend) are done — see git history
+and CHANGELOG.md for what each added. Phase 4 adds a real UI and the
+console's own authentication:
 
-Phase 3 wires that client into a running server:
+- **Backend auth** (`internal/auth`, `internal/tlscert`): bcrypt-hashed
+  operator/viewer accounts, server-side sessions with idle and absolute
+  timeouts, a CSRF double-submit token required on every mutating
+  request, and a self-signed TLS certificate generated at first startup
+  (the server only ever serves HTTPS). The first operator account is
+  bootstrapped from `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` if none
+  exist yet.
+- **`internal/legal`**: embeds `Spark_License.pdf`, `bom.cdx.json`, and
+  `THIRD-PARTY-NOTICES.txt` into the binary (synced from the repo root by
+  `scripts/sync-legal.sh`, same pattern as the version file) and serves
+  them at fixed top-level paths, so the About screen can link to them
+  directly regardless of the process's working directory.
+- **Angular frontend** (`web/frontend/`): standalone components, PrimeNG
+  (Aura preset, re-themed with the Liquidware tokens in
+  `src/app/theme/liquidware-preset.ts` — see "Design system" below),
+  Tailwind for layout/spacing only, and Transloco i18n (English + Dutch,
+  runtime-switchable, no reload). A login screen, an authenticated shell
+  (header, nav, language switcher, sign-out), an About screen (version +
+  license/SBOM links + the required disclaimer text), and "Coming Soon"
+  stubs for Dashboard/Tenants/History/Reports, which land in later
+  phases. The Angular router owns client-side routes; the Go server
+  falls back to `index.html` for any path that isn't a real static file.
+- Session handling mirrors the reference project's pattern: a
+  root-provided `SessionService`, an HTTP interceptor that resets state
+  and redirects to `/login?expired=1` on any unexpected 401, and a CSRF
+  interceptor that echoes the CSRF cookie back as a header on every
+  mutating request.
 
-- `internal/tenant`: registered-console CRUD. Credentials are encrypted
-  at rest (AES-256-GCM, key held outside the database per §9) and never
-  travel through the `Tenant` type once saved — only a collector-only
-  `GetCredentials` call ever produces a plaintext password.
-- `internal/snapshot`: one row per tenant per collection day, upserted —
-  re-running collection the same day updates that row instead of
-  duplicating it. A failed poll stores nil license figures, never a zero.
-- `internal/collector`: runs one tenant's poll, retries transient
-  failures (unreachable, timeout) with backoff, and classifies every
-  other outcome (TLS failure, auth rejected/required, malformed
-  response) into a distinct stored status. The raw response body is
-  retained alongside the parsed fields.
-- `internal/scheduler`: an in-process ticker (no external cron
-  dependency) that polls every enabled tenant concurrently, capped, with
-  a per-tenant timeout so one dead tenant can never stall the run. Manual
-  "Collect Now" is the same code path the ticker uses. `/healthz` reports
-  live scheduler state — running/idle, last run's outcome, tenant/success
-  counts.
+Tenant CRUD still has no HTTP API or screen — that's Phase 5 alongside
+the dashboard. For now, exercising the collector/scheduler still means
+calling `internal/tenant`'s Go API directly.
 
-There is still no HTTP API or UI for registering tenants or viewing
-results — that is Phase 4 (frontend shell) and Phase 5 (dashboard). Tenant
-registration for now happens only by calling `internal/tenant`'s Go API
-directly (e.g. from a short-lived script), which is enough to exercise
-the collector and scheduler end to end.
+**Known CVEs carried by this phase, to resolve in Phase 8:** `npm audit`
+on `web/frontend` reports several real high-severity Angular XSS
+advisories (e.g. GHSA-g93w-mfhg-p222, GHSA-rgjc-h3x7-9mwg) affecting
+Angular ≤18.2.x, fixed only in later Angular majors. Angular 18 was
+chosen here because it's the last major both PrimeNG 18 (Aura preset,
+matching the project brief's stack) and this build support without
+further compatibility work. Upgrading is deferred to the Phase 8
+compliance pass, where the SBOM/Grype ordering in §11.8 applies anyway —
+noting it here per the working agreement to flag known CVEs immediately
+rather than waiting.
+
+**PrimeNG licensing note:** the supplied commercial PrimeNG license key
+(§10) does not match the format PrimeNG's own `-lts` package variant
+expects (that variant verifies an AES-GCM-encrypted PrimeNG-specific
+token; the supplied key decodes to an unrelated `{product: "primeui",
+tier: "commercial"}` JWT-shaped claim, likely for a different Prime
+offering such as premium templates). Using the `-lts` package without a
+matching key displays a customer-visible "invalid license" banner, which
+is unacceptable for a Sparks Tool — so this build uses the plain
+(non-`-lts`), MIT-licensed `primeng`/`@primeng/themes` releases instead,
+which need no key at all. The key was not consumed anywhere in the build.
+Flagging both open questions from §10 for the reviewer, unresolved:
+whether the key is meant for something this project doesn't currently
+use, and — if a licensed dependency is ever added — the dev-tier/SBOM
+questions §10 already calls out.
 
 ## Critical constraint: this app owns the time series
 
@@ -92,14 +122,31 @@ tool depends on:
 - **`LastKnownRunningLocal` semantics** are unconfirmed; the collector
   prefers the UTC heartbeat field.
 
+## Design system
+
+`web/frontend/src/styles/tokens.css` and `fonts.css` are the Liquidware
+design tokens and fonts, copied verbatim from the style-guide bundle (see
+"Design system reference" below) — colors and type sizes are not invented
+or approximated. `web/frontend/src/app/theme/liquidware-preset.ts`
+re-themes PrimeNG's Aura preset with the same primary/surface values, so
+PrimeNG's own generated `--p-primary-*`/`--p-surface-*` variables match
+the hand-written ones exactly. Fonts (Inter var, Material Symbols
+Rounded) are vendored into `src/assets/fonts/`; `primeicons` is the npm
+package, imported directly in `styles.scss` — neither is loaded from a
+CDN. `tailwind.config.js` disables Tailwind's preflight reset, since
+PrimeNG and the design tokens own base element styling; Tailwind is used
+utility-first for layout and spacing only.
+
 ## Design system reference
 
 `docs/design-system-reference/` holds the raw Liquidware style-guide
-bundle used to build the Phase 4 frontend. It is reference material only —
+bundle the frontend above was built from. It is reference material only —
 nothing under it is built or embedded by the shipped binary. It contains
 two known CDN references (`unpkg.com`, in `primeicons-cdn.css` and the
-preview harness `support.js`) that must **not** be carried into the
-vendored frontend; see `docs/design-system-reference/NOTE.md`.
+preview harness `support.js`) that were **not** carried into the vendored
+frontend; see `docs/design-system-reference/NOTE.md` and confirm for
+yourself with `grep -r unpkg web/dist` after a build — it should find
+nothing.
 
 ## Version
 
@@ -118,10 +165,21 @@ run the sync script first) rather than calling `go build` by hand. See
 
 ```
 scripts/sync-version.sh
+scripts/sync-legal.sh
+(cd web/frontend && npm ci && npm run build)
 go build -o profileunity-msp-console ./cmd/server
 ```
 
-or `make build`.
+or just `make build`. The frontend build is not optional: `internal/httpapi`
+and `internal/legal` embed its output and the legal files via `go:embed`,
+so `go build`/`go vet`/`go test` on those packages (and anything that
+imports them, including `cmd/server`) fail outright without it — there is
+no fallback content. `make test`/`make build`/`make run` all run the full
+sequence for you. Go commands in CI and `scripts/release.sh` target
+`./cmd/... ./internal/... ./web` rather than `./...`, because
+`web/frontend/node_modules` ships at least one vendored `.go` file (from
+an npm package) with no `go.mod` of its own to keep `./...` from trying
+to build it.
 
 ## Configuration
 
@@ -131,6 +189,13 @@ environment variables directly. There is deliberately no baked-in
 running, multi-user server, not a local single-operator tool, and it must
 be bound to an address you chose on purpose. See `.env.example` for the
 full list.
+
+The server always serves HTTPS. If `PUMC_TLS_CERT_FILE`/`PUMC_TLS_KEY_FILE`
+don't both already exist, a self-signed pair is generated there at first
+startup (browsers will warn about it — replace it with a CA-signed pair
+for anything beyond local/lab use). No operator account exists until you
+set `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` for the first run; the
+server logs a warning and stays otherwise unusable if nobody can sign in.
 
 ## Compliance
 

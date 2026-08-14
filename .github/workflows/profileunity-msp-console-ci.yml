@@ -25,19 +25,35 @@ jobs:
         with:
           go-version: "1.24"
 
-      - name: Sync version
-        run: ./scripts/sync-version.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ProfileUnityMSPConsole/web/frontend/package-lock.json
 
+      - name: Build frontend
+        working-directory: ProfileUnityMSPConsole/web/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync version and legal files
+        run: |
+          ./scripts/sync-version.sh
+          ./scripts/sync-legal.sh
+
+      # Explicit packages, not ./... — web/frontend/node_modules ships at
+      # least one vendored .go file with no go.mod to bound it out.
       - name: Vet
-        run: go vet ./...
+        run: go vet ./cmd/... ./internal/... ./web
 
       - name: Build
-        run: go build ./...
+        run: go build ./cmd/... ./internal/... ./web
 
       - name: Test
-        run: go test ./...
+        run: go test ./cmd/... ./internal/... ./web
 
   # The full release pipeline (SBOM regeneration, Grype CVE gate, notices,
-  # frontend build, version sync, packaging) is added as its own job once
-  # those pieces exist — see scripts/release.sh and project brief §11.8 for
-  # the required ordering. This job is intentionally not implemented yet.
+  # version sync, packaging) is added as its own job once those pieces
+  # exist — see scripts/release.sh and project brief §11.8 for the
+  # required ordering. This job is intentionally not implemented yet.

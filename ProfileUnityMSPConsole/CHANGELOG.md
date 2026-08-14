@@ -97,3 +97,50 @@ Phase 3 (Collector and scheduler) of the build plan:
 
 Still no HTTP API or UI for registering tenants or viewing results — that
 is Phase 4 (frontend shell) and Phase 5 (dashboard).
+
+Phase 4 (Frontend shell) of the build plan:
+
+- `internal/auth`: bcrypt-hashed operator/viewer accounts (constant-time
+  authentication regardless of whether the username exists), server-side
+  sessions with independent idle and absolute timeouts, and a CSRF
+  double-submit token required (with `X-Requested-With`) on every
+  mutating request.
+- `internal/tlscert`: generates a self-signed TLS cert/key pair at first
+  startup if none is supplied; never overwrites an existing pair. The
+  server now serves HTTPS only.
+- `internal/legal`: embeds `Spark_License.pdf`, `bom.cdx.json`, and
+  `THIRD-PARTY-NOTICES.txt` (synced from the repo root by the new
+  `scripts/sync-legal.sh`, same pattern as the version file) and serves
+  them at fixed top-level paths.
+- `cmd/server`: bootstraps the first operator account from
+  `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` if none exist; new config for
+  session timeouts, bootstrap credentials, and TLS cert/key paths.
+- `web/frontend`: a real Angular 18 standalone app — PrimeNG (Aura preset
+  re-themed with the Liquidware tokens), Tailwind for layout only,
+  Transloco i18n (English + Dutch, runtime-switchable). Login screen,
+  authenticated shell (header/nav/language-switcher/sign-out), About
+  screen (version, license/SBOM links, required disclaimer text), and
+  "Coming Soon" stubs for Dashboard/Tenants/History/Reports. The Go
+  server falls back to `index.html` for any path that isn't a real
+  static file, so the Angular router's client-side routes survive a hard
+  refresh or direct link.
+- Fonts (Inter var, Material Symbols Rounded) vendored locally;
+  `primeicons` via the npm package. Confirmed zero `unpkg.com` (or any
+  other CDN) references in the built artifact.
+- Switched from the `-lts` PrimeNG package variant to the plain
+  MIT-licensed release after discovering the `-lts` variant displays a
+  customer-visible "invalid license" banner without a matching license
+  token — the supplied commercial key's format doesn't match what that
+  variant's own license verification expects. See README.md "Status" for
+  the full note and the open questions flagged for the reviewer.
+- Known-CVE flag (not fixed this phase; see README.md "Status"): Angular
+  18.2.x carries several real, fixed-in-later-majors high-severity XSS
+  advisories. Deferred to the Phase 8 compliance pass per the required
+  SBOM/Grype ordering.
+- CI/Makefile/release script now build the frontend before any Go step
+  that touches `internal/httpapi`/`internal/legal`/`web`, and target
+  `./cmd/... ./internal/... ./web` rather than `./...` — `node_modules`
+  ships a stray vendored `.go` file with no `go.mod` to bound it out.
+
+Tenant CRUD still has no HTTP API or screen — that's Phase 5 alongside
+the dashboard.

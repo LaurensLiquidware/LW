@@ -164,3 +164,55 @@ func TestLoad_NoEncryptionKeyByDefault(t *testing.T) {
 		}
 	})
 }
+
+func TestLoad_SessionAndTLSDefaults(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:               "0.0.0.0:8443",
+		envSessionIdleTimeout:     "",
+		envSessionAbsoluteTimeout: "",
+		envTLSCertFile:            "",
+		envTLSKeyFile:             "",
+	}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.SessionIdleTimeout != 30*time.Minute {
+			t.Errorf("SessionIdleTimeout = %s, want 30m", cfg.SessionIdleTimeout)
+		}
+		if cfg.SessionAbsoluteTimeout != 12*time.Hour {
+			t.Errorf("SessionAbsoluteTimeout = %s, want 12h", cfg.SessionAbsoluteTimeout)
+		}
+		if cfg.TLSCertFile == "" || cfg.TLSKeyFile == "" {
+			t.Error("TLSCertFile/TLSKeyFile should have non-empty defaults")
+		}
+	})
+}
+
+func TestLoad_RejectsMismatchedBootstrapAdminCredentials(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:               "0.0.0.0:8443",
+		envBootstrapAdminUsername: "admin",
+		envBootstrapAdminPassword: "",
+	}, func() {
+		if _, err := Load(); err == nil {
+			t.Fatal("expected error for a username without a password")
+		}
+	})
+}
+
+func TestLoad_AcceptsMatchedBootstrapAdminCredentials(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:               "0.0.0.0:8443",
+		envBootstrapAdminUsername: "admin",
+		envBootstrapAdminPassword: "correct-horse-battery-staple",
+	}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.BootstrapAdminUsername != "admin" {
+			t.Errorf("BootstrapAdminUsername = %q", cfg.BootstrapAdminUsername)
+		}
+	})
+}

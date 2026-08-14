@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "ProfileUnity MSP Licensing Console"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tenants": "Tenants",
+    "history": "History",
+    "reports": "Reports",
+    "about": "About"
+  },
+  "login": {
+    "heading": "Sign In",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign In",
+    "invalidCredentials": "Incorrect Username or Password",
+    "genericError": "An error has occurred",
+    "sessionExpired": "Your session has expired. Sign in again."
+  },
+  "header": {
+    "signOut": "Sign Out",
+    "language": "Language"
+  },
+  "comingSoon": {
+    "message": "Coming Soon"
+  },
+  "about": {
+    "heading": "About",
+    "version": "Version",
+    "notice": "This is a Liquidware Sparks Tool — a community/field-contributed utility, not a Liquidware commercial product. It is provided outside Liquidware's standard product development lifecycle, \"AS IS\" with no warranty, support, or maintenance, and used at your own risk.",
+    "licenseLink": "Sparks Tool License and Disclaimer (Spark_License.pdf)",
+    "sbomLink": "Software Bill of Materials (bom.cdx.json)",
+    "sbomDescription": "A CycloneDX 1.6 inventory of third-party components, provided so your security team can review it against your own policy."
+  }
+}

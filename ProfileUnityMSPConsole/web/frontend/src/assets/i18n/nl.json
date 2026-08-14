@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "ProfileUnity MSP Licensing Console"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tenants": "Klanten",
+    "history": "Geschiedenis",
+    "reports": "Rapporten",
+    "about": "Over"
+  },
+  "login": {
+    "heading": "Inloggen",
+    "username": "Gebruikersnaam",
+    "password": "Wachtwoord",
+    "submit": "Inloggen",
+    "invalidCredentials": "Onjuiste gebruikersnaam of wachtwoord",
+    "genericError": "Er is een fout opgetreden",
+    "sessionExpired": "Je sessie is verlopen. Log opnieuw in."
+  },
+  "header": {
+    "signOut": "Uitloggen",
+    "language": "Taal"
+  },
+  "comingSoon": {
+    "message": "Binnenkort beschikbaar"
+  },
+  "about": {
+    "heading": "Over",
+    "version": "Versie",
+    "notice": "Dit is een Liquidware Sparks Tool — een door de community/het veld bijgedragen hulpmiddel, geen commercieel Liquidware-product. Het wordt geleverd buiten de standaard productontwikkelingscyclus van Liquidware, \"AS IS\" zonder garantie, support of onderhoud, en gebruik is op eigen risico.",
+    "licenseLink": "Sparks Tool-licentie en disclaimer (Spark_License.pdf)",
+    "sbomLink": "Software Bill of Materials (bom.cdx.json)",
+    "sbomDescription": "Een CycloneDX 1.6-inventarisatie van componenten van derden, zodat uw beveiligingsteam dit tegen uw eigen beleid kan toetsen."
+  }
+}

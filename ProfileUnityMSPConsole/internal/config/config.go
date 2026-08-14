@@ -56,6 +56,25 @@ type Config struct {
 	// without credentials; storing a credential without this key set is
 	// an error, not a silent plaintext write.
 	CredentialEncryptionKey []byte
+
+	// SessionIdleTimeout and SessionAbsoluteTimeout bound a console
+	// operator's login session (project brief §9/§6's carried-over idle
+	// timeout pattern) — idle resets on activity, absolute does not.
+	SessionIdleTimeout     time.Duration
+	SessionAbsoluteTimeout time.Duration
+
+	// BootstrapAdminUsername/Password create the first operator account
+	// at startup if the users table is empty. Both empty means "don't
+	// bootstrap" — the operator must already have another way to sign in.
+	BootstrapAdminUsername string
+	BootstrapAdminPassword string
+
+	// TLSCertFile/TLSKeyFile are used as-is if both already exist;
+	// otherwise a self-signed pair is generated there at first startup
+	// (project brief §9). Supply your own CA-signed files here to skip
+	// self-signing entirely.
+	TLSCertFile string
+	TLSKeyFile  string
 }
 
 const (
@@ -69,6 +88,12 @@ const (
 	envCollectionConcurrency   = "PUMC_COLLECTION_CONCURRENCY"
 	envCollectionTenantTimeout = "PUMC_COLLECTION_TENANT_TIMEOUT"
 	envCredentialEncryptionKey = "PUMC_CREDENTIAL_ENCRYPTION_KEY"
+	envSessionIdleTimeout      = "PUMC_SESSION_IDLE_TIMEOUT"
+	envSessionAbsoluteTimeout  = "PUMC_SESSION_ABSOLUTE_TIMEOUT"
+	envBootstrapAdminUsername  = "PUMC_BOOTSTRAP_ADMIN_USERNAME"
+	envBootstrapAdminPassword  = "PUMC_BOOTSTRAP_ADMIN_PASSWORD"
+	envTLSCertFile             = "PUMC_TLS_CERT_FILE"
+	envTLSKeyFile              = "PUMC_TLS_KEY_FILE"
 )
 
 var validDBDrivers = map[string]bool{"sqlite": true, "postgres": true}
@@ -111,6 +136,23 @@ func Load() (Config, error) {
 	}
 	cfg.CollectionLocation = loc
 
+	sessionIdle, err := parseDurationDefault(os.Getenv(envSessionIdleTimeout), 30*time.Minute)
+	if err != nil {
+		return Config{}, fmt.Errorf("%s: %w", envSessionIdleTimeout, err)
+	}
+	cfg.SessionIdleTimeout = sessionIdle
+
+	sessionAbsolute, err := parseDurationDefault(os.Getenv(envSessionAbsoluteTimeout), 12*time.Hour)
+	if err != nil {
+		return Config{}, fmt.Errorf("%s: %w", envSessionAbsoluteTimeout, err)
+	}
+	cfg.SessionAbsoluteTimeout = sessionAbsolute
+
+	cfg.BootstrapAdminUsername = strings.TrimSpace(os.Getenv(envBootstrapAdminUsername))
+	cfg.BootstrapAdminPassword = os.Getenv(envBootstrapAdminPassword)
+	cfg.TLSCertFile = firstNonEmpty(os.Getenv(envTLSCertFile), "./tls-cert.pem")
+	cfg.TLSKeyFile = firstNonEmpty(os.Getenv(envTLSKeyFile), "./tls-key.pem")
+
 	if raw := strings.TrimSpace(os.Getenv(envCredentialEncryptionKey)); raw != "" {
 		key, err := base64.StdEncoding.DecodeString(raw)
 		if err != nil {
@@ -146,6 +188,15 @@ func (c Config) validate() error {
 	}
 	if c.CollectionTenantTimeout <= 0 {
 		return fmt.Errorf("%s must be positive (got %s)", envCollectionTenantTimeout, c.CollectionTenantTimeout)
+	}
+	if c.SessionIdleTimeout <= 0 {
+		return fmt.Errorf("%s must be positive (got %s)", envSessionIdleTimeout, c.SessionIdleTimeout)
+	}
+	if c.SessionAbsoluteTimeout <= 0 {
+		return fmt.Errorf("%s must be positive (got %s)", envSessionAbsoluteTimeout, c.SessionAbsoluteTimeout)
+	}
+	if (c.BootstrapAdminUsername == "") != (c.BootstrapAdminPassword == "") {
+		return fmt.Errorf("%s and %s must be both set or both empty", envBootstrapAdminUsername, envBootstrapAdminPassword)
 	}
 	return nil
 }

@@ -1,0 +1,45 @@
+<div class="flex h-screen flex-col">
+  <header
+    class="flex items-center justify-between px-4"
+    style="height: var(--header-height); background: var(--header-bg); color: var(--p-surface-0);"
+  >
+    <div class="flex items-center gap-3">
+      <img src="assets/images/logo.svg" alt="" class="h-6 w-6" />
+      <span style="font-size: var(--header-font-size); font-weight: var(--weight-medium);">
+        {{ 'app.title' | transloco }}
+      </span>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <app-language-switcher severity="contrast" />
+      @if (session.user(); as user) {
+        <span class="lwl-micro" style="color: var(--p-surface-200);">{{ user.username }}</span>
+      }
+      <button pButton size="small" severity="secondary" [label]="'header.signOut' | transloco" (click)="signOut()"></button>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+    <nav
+      class="flex flex-col gap-1 p-3"
+      style="width: var(--nav-width); background: var(--p-content-background); border-right: 1px solid var(--frame-border-color);"
+    >
+      @for (item of navItems; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive
+          #active="routerLinkActive"
+          class="rounded-sm px-3 py-2"
+          [style.background]="active.isActive ? 'var(--highlight)' : 'transparent'"
+          [style.color]="'var(--p-text-color)'"
+        >
+          {{ item.labelKey | transloco }}
+        </a>
+      }
+    </nav>
+
+    <main class="flex-1 overflow-auto" style="background: var(--p-content-background);">
+      <router-outlet />
+    </main>
+  </div>
+</div>
