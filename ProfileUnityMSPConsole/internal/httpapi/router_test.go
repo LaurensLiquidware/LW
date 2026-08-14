@@ -21,6 +21,7 @@ type testDeps struct {
 	dashboard DashboardDeps
 	history   HistoryDeps
 	reports   ReportDeps
+	alerts    AlertDeps
 }
 
 func newTestDeps(t *testing.T) testDeps {
@@ -45,13 +46,14 @@ func newTestDeps(t *testing.T) testDeps {
 		dashboard: DashboardDeps{Repos: repos, Location: time.UTC},
 		history:   HistoryDeps{Repos: repos},
 		reports:   ReportDeps{Repos: repos},
+		alerts:    AlertDeps{Repos: repos, Location: time.UTC},
 	}
 }
 
 func newTestRouter(t *testing.T) (http.Handler, testDeps) {
 	t.Helper()
 	deps := newTestDeps(t)
-	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports)
+	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,6 +203,55 @@ func TestNewRouter_DashboardEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "never_collected") {
 		t.Errorf("expected never_collected data status, got %s", rec.Body.String())
+	}
+}
+
+func TestNewRouter_AlertsEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	// Never collected -- alertable (data_not_ok).
+	if _, err := deps.tenants.Tenants.Create(t.Context(), tenant.CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	// Healthy -- not alertable.
+	healthy, err := deps.tenants.Tenants.Create(t.Context(), tenant.CreateInput{DisplayName: "Healthy Co", Hostname: "h2", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deps.dashboard.Repos.Snapshots.Upsert(t.Context(), snapshot.Snapshot{
+		TenantID: healthy.ID, CollectionDate: time.Now().UTC().Format("2006-01-02"), CollectedAtUTC: time.Now().UTC(),
+		Status: snapshot.StatusSuccess, TotalLicenses: intPtrTest(10), UsedLicenses: intPtrTest(1),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/alerts", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Acme") {
+		t.Errorf("expected the never-collected tenant in the alerts response, got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "Healthy Co") {
+		t.Errorf("healthy tenant should not appear in alerts, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "data_not_ok") {
+		t.Errorf("expected data_not_ok reason, got %s", rec.Body.String())
+	}
+}
+
+func TestNewRouter_AlertsEndpoint_RequiresSession(t *testing.T) {
+	router, _ := newTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/alerts", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
 	}
 }
 

@@ -1,6 +1,6 @@
 <form [formGroup]="form" (ngSubmit)="save()" class="flex flex-col gap-3" style="min-width: 28rem;">
   @if (saveError()) {
-    <p-message severity="error" [text]="saveError()! | transloco" styleClass="w-full" />
+    <p-message severity="error" styleClass="w-full">{{ saveError()! | transloco }}</p-message>
   }
 
   <label class="flex flex-col gap-1">
@@ -24,7 +24,7 @@
     <span for="tlsSkipVerify">{{ 'tenants.tlsSkipVerify' | transloco }}</span>
   </label>
   @if (form.controls.tlsSkipVerify.value) {
-    <p-message severity="warn" [text]="'tenants.tlsSkipVerifyWarning' | transloco" styleClass="w-full" />
+    <p-message severity="warn" styleClass="w-full">{{ 'tenants.tlsSkipVerifyWarning' | transloco }}</p-message>
   }
 
   <label class="flex flex-col gap-1">
@@ -58,16 +58,15 @@
   </label>
 
   <div class="flex items-center gap-3">
-    <button
+    <p-button
       type="button"
-      pButton
       severity="secondary"
       [outlined]="true"
       [label]="'tenants.testConnection' | transloco"
       [loading]="testing()"
       [disabled]="!form.controls.hostname.value"
-      (click)="testConnection()"
-    ></button>
+      (onClick)="testConnection()"
+    />
     @if (testResult(); as result) {
       <span
         class="lwl-micro"
@@ -79,7 +78,7 @@
   </div>
 
   <div class="mt-2 flex justify-end gap-2">
-    <button type="button" pButton severity="secondary" [outlined]="true" [label]="'tenants.cancel' | transloco" (click)="cancelled.emit()"></button>
-    <button type="submit" pButton [label]="'tenants.save' | transloco" [loading]="saving()" [disabled]="form.invalid"></button>
+    <p-button type="button" severity="secondary" [outlined]="true" [label]="'tenants.cancel' | transloco" (onClick)="cancelled.emit()" />
+    <p-button type="submit" [label]="'tenants.save' | transloco" [loading]="saving()" [disabled]="form.invalid" />
   </div>
 </form>

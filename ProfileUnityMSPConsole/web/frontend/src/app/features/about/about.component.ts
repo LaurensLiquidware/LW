@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TranslocoModule } from '@jsverse/transloco';
 import { CardModule } from 'primeng/card';
@@ -10,10 +10,10 @@ import { CardModule } from 'primeng/card';
  * signing in, since the license should be presentable before first use.
  */
 @Component({
-  selector: 'app-about',
-  standalone: true,
-  imports: [TranslocoModule, CardModule],
-  templateUrl: './about.component.html',
+    selector: 'app-about',
+    imports: [TranslocoModule, CardModule],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './about.component.html'
 })
 export class AboutComponent {
   private readonly http = inject(HttpClient);

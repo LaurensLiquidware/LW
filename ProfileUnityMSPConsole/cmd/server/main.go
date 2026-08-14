@@ -80,9 +80,10 @@ func run() error {
 	dashboardDeps := httpapi.DashboardDeps{Repos: repos, Location: cfg.CollectionLocation}
 	historyDeps := httpapi.HistoryDeps{Repos: repos}
 	reportDeps := httpapi.ReportDeps{Repos: repos}
+	alertDeps := httpapi.AlertDeps{Repos: repos, Location: cfg.CollectionLocation}
 	router, err := httpapi.NewRouter(func() httpapi.SchedulerStatus {
 		return schedulerStatusFor(sched.Status())
-	}, authDeps, tenantDeps, dashboardDeps, historyDeps, reportDeps)
+	}, authDeps, tenantDeps, dashboardDeps, historyDeps, reportDeps, alertDeps)
 	if err != nil {
 		return fmt.Errorf("build router: %w", err)
 	}

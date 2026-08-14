@@ -13,6 +13,7 @@ internal/legal/THIRD-PARTY-NOTICES.txt
 /profileunity-msp-console
 /dist/
 /bin/
+/profileunity-msp-console-*.zip
 
 # SQLite data
 *.db

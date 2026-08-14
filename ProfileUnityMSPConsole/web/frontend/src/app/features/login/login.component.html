@@ -17,10 +17,10 @@
     </h1>
 
     @if (expired()) {
-      <p-message severity="warn" [text]="'login.sessionExpired' | transloco" styleClass="w-full mb-3" />
+      <p-message severity="warn" styleClass="w-full mb-3">{{ 'login.sessionExpired' | transloco }}</p-message>
     }
     @if (errorKey()) {
-      <p-message severity="error" [text]="errorKey()! | transloco" styleClass="w-full mb-3" />
+      <p-message severity="error" styleClass="w-full mb-3">{{ errorKey()! | transloco }}</p-message>
     }
 
     <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-3">
@@ -41,14 +41,13 @@
         />
       </label>
 
-      <button
-        pButton
+      <p-button
         type="submit"
         [label]="'login.submit' | transloco"
         [loading]="submitting()"
         [disabled]="form.invalid"
-        class="mt-2"
-      ></button>
+        styleClass="mt-2 w-full"
+      />
     </form>
   </p-card>
 

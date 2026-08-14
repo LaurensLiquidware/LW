@@ -260,5 +260,54 @@ Phase 7 (Monthly reporting) of the build plan:
   were decompressed and checked to confirm they match the on-screen
   figures exactly. Verified in Dutch as well.
 
-No further phases remain beyond Phase 8 (alerting and the full
-compliance pass).
+Phase 8 (Alerting and full compliance pass) of the build plan — the last
+phase in the build plan:
+
+- `internal/dashboard/alert.go`: pure `DetectAlerts` function flagging a
+  tenant when usage is at/over its license limit, support has expired or
+  is expiring soon, or data can't currently be trusted; a tenant can
+  carry more than one reason. `GET /api/alerts` and a header bell-icon
+  popover (`AlertBellComponent`, refetched on every navigation) surface
+  this in-app only, per the scope confirmed with the user — no email/
+  SMTP, no new outbound dependency.
+- Upgraded Angular/PrimeNG 18 → 21 (one major at a time via `ng update`)
+  to resolve every CVE flagged since Phase 5, fixing real breaking
+  changes at each step (`pButton`/`[label]` → `<p-button>`, `p-message`'s
+  `[text]` → content projection, stricter selector casing). Stopped at
+  21 rather than 22: PrimeNG 22 enforces a license-key check on the
+  previously-free base package (a customer-visible "Invalid PrimeUI
+  License" banner appeared in visual verification — the same failure
+  mode already rejected once for the `-lts` variant in Phase 4). `npm
+  audit --omit=dev` now reports zero vulnerabilities in the shipped
+  frontend tree (down from 55, 1 critical). Also found and avoided a
+  second, unrelated licensing trap: the latest `@primeuix/themes`
+  transitively pulls in `@primeui/license-manager` (revenue/developer-
+  count eligibility gate) via a newer `@primeuix/styled`; pinned
+  `@primeuix/themes@2.0.3` (matching what PrimeNG 21 itself expects)
+  avoids it entirely.
+- Unicode/i18n compliance sweep (project brief §11) found and fixed
+  three real bugs: the PDF report generator wrote raw UTF-8 through
+  fpdf's Latin-1-only default font (mojibake for non-Latin-1 tenant
+  names) — fixed by embedding DejaVu Sans via `AddUTF8FontFromBytes`
+  (confirmed with the user before adding the ~1.4MB font asset);
+  `<html lang>` never updated on a runtime language switch; Angular's
+  `number` pipe used the app's static en-US `LOCALE_ID` regardless of
+  the active language, so Dutch sessions still saw "4.5" instead of
+  "4,5" (replaced with `Intl.NumberFormat` keyed off Transloco's active
+  language). Also fixed a byte-index (not rune-index) string truncation
+  in `MalformedPayloadError.Error()` that could split a multi-byte
+  UTF-8 rune.
+- `bom.cdx.json` is now a real, generated CycloneDX 1.6 SBOM (127
+  components — 10 Go modules, 117 production npm packages — merged by
+  `scripts/merge-sbom.py`; see `scripts/generate-sbom.sh`), and
+  `THIRD-PARTY-NOTICES.txt` is generated from it (`scripts/
+  generate-notices.py`), both replacing their Phase 1 placeholders. Go
+  dependencies (`golang.org/x/crypto` and others) bumped to the newest
+  versions still compatible with the `go 1.24.7` pin. A live Grype/
+  govulncheck scan could not be completed in this build environment —
+  both fetch their vulnerability feed from hosts (`vuln.go.dev`,
+  `github.com/anchore/grype` releases) unreachable through this
+  sandbox's network policy; documented in README as a required
+  follow-up before treating this as a real release.
+
+No further phases remain beyond Phase 8.

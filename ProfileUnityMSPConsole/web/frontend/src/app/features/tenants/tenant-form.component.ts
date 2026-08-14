@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TranslocoModule } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
@@ -19,19 +19,19 @@ import { TenantsService } from '../../core/tenants.service';
  * exists (existingHasPassword).
  */
 @Component({
-  selector: 'app-tenant-form',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    TranslocoModule,
-    ButtonModule,
-    InputTextModule,
-    InputNumberModule,
-    PasswordModule,
-    CheckboxModule,
-    MessageModule,
-  ],
-  templateUrl: './tenant-form.component.html',
+    selector: 'app-tenant-form',
+    imports: [
+        ReactiveFormsModule,
+        TranslocoModule,
+        ButtonModule,
+        InputTextModule,
+        InputNumberModule,
+        PasswordModule,
+        CheckboxModule,
+        MessageModule,
+    ],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './tenant-form.component.html'
 })
 export class TenantFormComponent implements OnChanges {
   private readonly fb = inject(FormBuilder);

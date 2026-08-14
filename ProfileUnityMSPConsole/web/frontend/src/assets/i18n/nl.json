@@ -82,6 +82,16 @@
     "totalEntitled": "Totaal Toegekend",
     "entitlementChanges": "Wijzigingen In Toewijzing"
   },
+  "alerts": {
+    "title": "Meldingen",
+    "none": "Momenteel geen meldingen.",
+    "reason": {
+      "usage_poor": "Op of over de licentielimiet",
+      "expiry_expired": "Support verlopen",
+      "expiry_expiring_soon": "Support verloopt binnenkort",
+      "data_not_ok": "Gegevens niet betrouwbaar"
+    }
+  },
   "reports": {
     "perTenant": "Per Klant",
     "portfolio": "Portfolio",

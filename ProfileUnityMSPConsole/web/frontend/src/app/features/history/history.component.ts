@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ChartModule } from 'primeng/chart';
@@ -24,10 +24,10 @@ type Mode = 'tenant' | 'portfolio';
  * than hidden, so it is never drawn without real dimensions.
  */
 @Component({
-  selector: 'app-history',
-  standalone: true,
-  imports: [FormsModule, TranslocoModule, ChartModule, SelectModule, SelectButtonModule, PrimeTemplate],
-  templateUrl: './history.component.html',
+    selector: 'app-history',
+    imports: [FormsModule, TranslocoModule, ChartModule, SelectModule, SelectButtonModule, PrimeTemplate],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './history.component.html'
 })
 export class HistoryComponent implements OnInit {
   private readonly tenantsService = inject(TenantsService);
@@ -35,9 +35,9 @@ export class HistoryComponent implements OnInit {
   private readonly transloco = inject(TranslocoService);
 
   // Labels are rendered in the template via the `transloco` pipe (see the
-  // item template on p-selectButton) rather than computed here: a getter
+  // item template on p-selectbutton) rather than computed here: a getter
   // returning a fresh array on every change-detection pass gave
-  // p-selectButton a new [options] reference each cycle, which triggered
+  // p-selectbutton a new [options] reference each cycle, which triggered
   // its internal state update -> markForCheck -> another CD pass,
   // forever -- an infinite loop that hung the page. `labelKey` just carries
   // the translation key, a stable string, so [options] stays referentially

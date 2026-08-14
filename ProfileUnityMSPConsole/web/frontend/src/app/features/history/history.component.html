@@ -1,11 +1,11 @@
 <div class="flex flex-col gap-4 p-6">
   <div class="flex items-center justify-between">
     <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'nav.history' | transloco }}</h1>
-    <p-selectButton [options]="modes" [ngModel]="mode()" (ngModelChange)="setMode($event)" optionLabel="labelKey" optionValue="value">
+    <p-selectbutton [options]="modes" [ngModel]="mode()" (ngModelChange)="setMode($event)" optionLabel="labelKey" optionValue="value">
       <ng-template pTemplate="item" let-option>
         {{ option.labelKey | transloco }}
       </ng-template>
-    </p-selectButton>
+    </p-selectbutton>
   </div>
 
   @if (mode() === 'tenant') {

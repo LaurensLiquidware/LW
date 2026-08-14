@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { TranslocoModule } from '@jsverse/transloco';
 import { TableModule, Table } from 'primeng/table';
@@ -15,10 +15,10 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
  * no bespoke sort/filter logic to keep in sync with the table markup.
  */
 @Component({
-  selector: 'app-dashboard',
-  standalone: true,
-  imports: [TranslocoModule, TableModule, InputTextModule, ButtonModule, StatusBadgeComponent, DecimalPipe],
-  templateUrl: './dashboard.component.html',
+    selector: 'app-dashboard',
+    imports: [TranslocoModule, TableModule, InputTextModule, ButtonModule, StatusBadgeComponent, DecimalPipe],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit {
   private readonly tenants = inject(TenantsService);

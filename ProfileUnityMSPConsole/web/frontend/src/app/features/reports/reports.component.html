@@ -1,11 +1,11 @@
 <div class="flex flex-col gap-4 p-6">
   <div class="flex items-center justify-between">
     <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'nav.reports' | transloco }}</h1>
-    <p-selectButton [options]="modes" [ngModel]="mode()" (ngModelChange)="setMode($event)" optionLabel="labelKey" optionValue="value">
+    <p-selectbutton [options]="modes" [ngModel]="mode()" (ngModelChange)="setMode($event)" optionLabel="labelKey" optionValue="value">
       <ng-template pTemplate="item" let-option>
         {{ option.labelKey | transloco }}
       </ng-template>
-    </p-selectButton>
+    </p-selectbutton>
   </div>
 
   <div class="flex items-end gap-4">
@@ -45,7 +45,7 @@
         </div>
         <div>
           <div class="lwl-metric-label">{{ 'reports.averageUsed' | transloco }}</div>
-          <div class="lwl-metric-value">{{ tenantReport()!.averageUsed != null ? (tenantReport()!.averageUsed | number: '1.1-1') : '—' }}</div>
+          <div class="lwl-metric-value">{{ tenantReport()!.averageUsed != null ? formatAverage(tenantReport()!.averageUsed!) : '—' }}</div>
         </div>
         <div>
           <div class="lwl-metric-label">{{ 'reports.entitledAtMonthEnd' | transloco }}</div>
@@ -81,7 +81,7 @@
         </div>
         <div>
           <div class="lwl-metric-label">{{ 'reports.averageUsed' | transloco }}</div>
-          <div class="lwl-metric-value">{{ portfolioReport()!.averageTotalUsed != null ? (portfolioReport()!.averageTotalUsed | number: '1.1-1') : '—' }}</div>
+          <div class="lwl-metric-value">{{ portfolioReport()!.averageTotalUsed != null ? formatAverage(portfolioReport()!.averageTotalUsed!) : '—' }}</div>
         </div>
         <div>
           <div class="lwl-metric-label">{{ 'reports.entitledAtMonthEnd' | transloco }}</div>

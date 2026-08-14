@@ -1,7 +1,7 @@
 <div class="flex flex-col gap-4 p-6">
   <div class="flex items-center justify-between">
     <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'nav.tenants' | transloco }}</h1>
-    <button pButton [label]="'tenants.addTenant' | transloco" icon="pi pi-plus" (click)="openCreate()"></button>
+    <p-button [label]="'tenants.addTenant' | transloco" icon="pi pi-plus" (onClick)="openCreate()" />
   </div>
 
   <p-table [value]="rows()" [loading]="loading()" dataKey="id" [rows]="20" [paginator]="rows().length > 20">
@@ -53,4 +53,4 @@
   <app-tenant-form [tenant]="editing()" (saved)="onSaved()" (cancelled)="dialogVisible.set(false)" />
 </p-dialog>
 
-<p-confirmDialog />
+<p-confirmdialog />

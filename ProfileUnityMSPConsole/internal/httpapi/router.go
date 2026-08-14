@@ -21,7 +21,7 @@ import (
 // schedulerStatus reports live scheduler state; pass a func that always
 // returns SchedulerStatus{Status: "not_implemented"} where no scheduler
 // exists yet.
-func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps, reportDeps ReportDeps) (http.Handler, error) {
+func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps, reportDeps ReportDeps, alertDeps AlertDeps) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", HealthHandler(schedulerStatus))
@@ -46,6 +46,9 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	mux.Handle("POST /api/tenants/test", RequireSession(authDeps.Sessions, auth.RequireCSRF(TestConnectionHandler())))
 
 	mux.Handle("GET /api/dashboard", RequireSession(authDeps.Sessions, DashboardHandler(dashboardDeps)))
+
+	// Alerting (project brief §7.6): in-app only, no email/SMTP.
+	mux.Handle("GET /api/alerts", RequireSession(authDeps.Sessions, AlertsHandler(alertDeps)))
 
 	// History and graphs (project brief §7.4).
 	mux.Handle("GET /api/tenants/{id}/history", RequireSession(authDeps.Sessions, TenantHistoryHandler(historyDeps)))

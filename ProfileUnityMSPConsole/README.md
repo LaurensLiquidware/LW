@@ -25,7 +25,7 @@ consoles, track it over time, and produce monthly reports. See the project
 brief for the full functional and compliance spec; this README tracks
 build-phase status and the things a reader needs before touching the code.
 
-## Status: Phase 7 — Monthly reporting
+## Status: Phase 8 — Alerting and full compliance pass
 
 Phases 1–3 (skeleton, the ProfileUnity API client, and the
 tenant/snapshot/collector/scheduler backend) are done — see git history
@@ -178,34 +178,108 @@ Phase 7 adds monthly reporting (project brief §7.5):
   portfolio, verified by decompressing their content streams) all agree
   with each other and with the seeded data. Also verified in Dutch.
 
-No further phases remain in the build plan beyond Phase 8 (alerting and
-the full compliance pass).
+Phase 8 is the last phase in the build plan: alerting, plus the full
+compliance pass §11 requires before a real release.
 
-**Known CVEs carried by this phase, to resolve in Phase 8:** `npm audit`
-on `web/frontend` reports several real high-severity Angular XSS
-advisories (e.g. GHSA-g93w-mfhg-p222, GHSA-rgjc-h3x7-9mwg) affecting
-Angular ≤18.2.x, fixed only in later Angular majors. Angular 18 was
-chosen here because it's the last major both PrimeNG 18 (Aura preset,
-matching the project brief's stack) and this build support without
-further compatibility work. Upgrading is deferred to the Phase 8
-compliance pass, where the SBOM/Grype ordering in §11.8 applies anyway —
-noting it here per the working agreement to flag known CVEs immediately
-rather than waiting.
+**Alerting** (project brief §7.6, scoped with the user before building):
+in-app only — no email/SMTP, no new outbound dependency. `internal/
+dashboard/alert.go`'s pure `DetectAlerts` function flags a tenant when
+usage is at/over its license limit, support has expired or is expiring
+soon, or its data can't currently be trusted (failing/stale/never
+collected) — a tenant can carry more than one reason at once, and all of
+them are surfaced. `GET /api/alerts` serves the list; the frontend shows
+a bell icon with a count badge in the header (`AlertBellComponent`),
+refetched on every navigation, opening a popover listing each alertable
+tenant and its reasons. `StatusBadgeComponent` gained no new visual
+language for this — alerts reuse the dashboard's existing Good/Fair/Poor
+and neutral data-trust colors, never inventing a fourth palette.
 
-**PrimeNG licensing note:** the supplied commercial PrimeNG license key
-(§10) does not match the format PrimeNG's own `-lts` package variant
-expects (that variant verifies an AES-GCM-encrypted PrimeNG-specific
-token; the supplied key decodes to an unrelated `{product: "primeui",
-tier: "commercial"}` JWT-shaped claim, likely for a different Prime
-offering such as premium templates). Using the `-lts` package without a
-matching key displays a customer-visible "invalid license" banner, which
-is unacceptable for a Sparks Tool — so this build uses the plain
-(non-`-lts`), MIT-licensed `primeng`/`@primeng/themes` releases instead,
-which need no key at all. The key was not consumed anywhere in the build.
-Flagging both open questions from §10 for the reviewer, unresolved:
-whether the key is meant for something this project doesn't currently
-use, and — if a licensed dependency is ever added — the dev-tier/SBOM
-questions §10 already calls out.
+**Angular/PrimeNG upgraded 18 → 21, resolving every previously-flagged
+CVE.** The Angular ≤18.2.x XSS/XSRF advisories flagged at the end of
+Phase 5 required a real major-version upgrade, not a patch — the fix
+ranges in the relevant GHSAs extend as high as "≤19.2.25", so Angular 19
+alone wasn't enough either. Went through `ng update` one major at a time
+(18→19→20→21), fixing real breaking changes at each step (PrimeNG's
+`pButton`/`[label]` API moved to a dedicated `<p-button>` component,
+`p-message`'s `[text]` input became content projection, several
+component selectors' casing became stricter). Stopped at Angular 21/
+PrimeNG 21.1.9 rather than continuing to 22: **PrimeNG 22 enforces a
+client-side license-key check on the previously-free base package** — a
+customer-visible "Invalid PrimeUI License" banner appeared immediately
+during visual verification, the same failure mode this project already
+rejected once for the `-lts` variant back in Phase 4. PrimeNG 21.1.9 has
+no such gate (confirmed both by absence of the license-check code in the
+installed package and by a clean visual pass) and is not itself the
+subject of any of the flagged CVEs. `npm audit --omit=dev` now reports
+**zero** vulnerabilities of any severity in the shipped frontend
+dependency tree (down from 55 findings, 1 critical, pre-upgrade); the
+handful of remaining `npm audit` findings are all `devDependencies`
+(build tooling — webpack, vite, tar — never shipped in the compiled
+bundle).
+
+**A second, unrelated PrimeNG licensing trap, found and avoided while
+upgrading:** `@primeng/themes` (used for the Aura preset since Phase 4)
+is deprecated in favor of `@primeuix/themes`; the latest `@primeuix/
+themes@3.0.0` transitively pulls in `@primeui/license-manager` via a
+newer `@primeuix/styled@1.0.0` — a package whose own LICENSE.md imposes
+revenue/developer-count/funding eligibility thresholds for free use.
+Pinning `@primeuix/themes@2.0.3` (the version PrimeNG 21 itself expects,
+via `@primeuix/styled@^0.7.4`) avoids that dependency entirely — verified
+with `npm ls @primeui/license-manager` reporting nothing installed. The
+plain `primeng` package's own license (`LICENSE.md` inside the package)
+remains plain MIT with no eligibility conditions, same as every prior
+phase's decision.
+
+**Unicode/i18n compliance sweep (§11) found and fixed three real bugs**,
+none present in earlier phases' visual verification because none of
+them involve non-Latin-1 text or a live language switch:
+- The PDF report generator wrote raw UTF-8 bytes into fpdf's default
+  Helvetica font, which only supports single-byte Latin-1 — any tenant
+  name with Cyrillic, Greek, Vietnamese, or CJK characters would render
+  as mojibake in a downloaded report, not just missing glyphs. Fixed by
+  embedding DejaVu Sans (regular + bold, Bitstream Vera-derived license,
+  ~1.4MB, confirmed with the user before adding it) via `fpdf`'s
+  `AddUTF8FontFromBytes` — correctly renders Latin Extended, Cyrillic,
+  and Greek; CJK/Arabic/Hebrew still don't render (would need a
+  much-larger CJK-capable font) and are a documented limitation.
+- `<html lang>` was hardcoded to `"en"` in `index.html` and never
+  updated on a runtime language switch — wrong for screen readers,
+  browser spell-check, and CSS `:lang()` selectors. `AppComponent` now
+  syncs `document.documentElement.lang` from Transloco's active
+  language on load and on every switch.
+- Angular's `number`/`DecimalPipe` formats using the app's static
+  `LOCALE_ID` (fixed to en-US at bootstrap), so a Dutch-language session
+  still showed "4.5" instead of "4,5" for averages on the Reports
+  screen. Replaced with an `Intl.NumberFormat` call keyed off Transloco's
+  active language (`core/locale-number.ts`), consistent with the
+  month-name formatting the History/Reports screens already used.
+- `MalformedPayloadError.Error()` (backend) truncated an API error
+  snippet with a byte-index slice, which can split a multi-byte UTF-8
+  rune in half if the ProfileUnity console's error page isn't pure
+  ASCII — fixed to truncate by rune.
+
+**SBOM and CVE gate.** `bom.cdx.json` is now a real, generated CycloneDX
+1.6 SBOM (127 components: 10 Go modules via `cyclonedx-gomod`, 117
+production npm packages via `@cyclonedx/cyclonedx-npm`, merged by
+`scripts/merge-sbom.py` — see `scripts/generate-sbom.sh`) — no longer the
+Phase 1 placeholder. `npm audit --omit=dev` reports zero vulnerabilities
+in the shipped frontend tree. On the Go side, `golang.org/x/crypto` and
+other transitive dependencies were bumped to the newest versions still
+compatible with this project's `go 1.24.7` toolchain pin. **A live Grype/
+govulncheck CVE scan could not be run in this build environment**: both
+tools fetch their vulnerability feed from `vuln.go.dev`, and Grype's
+installer fetches release binaries from `github.com/anchore/grype`'s
+releases — neither host is reachable through this sandbox's network
+policy (everything else, `proxy.golang.org` and `registry.npmjs.org`
+included, worked fine). Before treating this as a real release, run
+`govulncheck ./cmd/... ./internal/... ./web` and/or `grype bom.cdx.json`
+in an environment with normal network access and remediate anything
+Critical/High it finds — this is the one compliance item this pass
+could document and prepare for, but not complete end-to-end.
+
+`THIRD-PARTY-NOTICES.txt` is likewise now generated from `bom.cdx.json`
+(`scripts/generate-notices.py`), grouped by license rather than the
+Phase 1 placeholder text.
 
 ## Critical constraint: this app owns the time series
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
@@ -12,11 +12,11 @@ import { TenantsService } from '../../core/tenants.service';
 import { TenantFormComponent } from './tenant-form.component';
 
 @Component({
-  selector: 'app-tenants',
-  standalone: true,
-  imports: [TranslocoModule, TableModule, ButtonModule, DialogModule, TagModule, ConfirmDialogModule, TenantFormComponent],
-  providers: [ConfirmationService],
-  templateUrl: './tenants.component.html',
+    selector: 'app-tenants',
+    imports: [TranslocoModule, TableModule, ButtonModule, DialogModule, TagModule, ConfirmDialogModule, TenantFormComponent],
+    providers: [ConfirmationService],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './tenants.component.html'
 })
 export class TenantsComponent implements OnInit {
   private readonly tenants = inject(TenantsService);

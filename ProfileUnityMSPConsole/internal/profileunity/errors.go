@@ -13,12 +13,22 @@ type MalformedPayloadError struct {
 }
 
 func (e *MalformedPayloadError) Error() string {
-	const maxSnippet = 200
-	snippet := string(e.Body)
-	if len(snippet) > maxSnippet {
-		snippet = snippet[:maxSnippet] + "…"
+	const maxSnippetRunes = 200
+	// Truncate by rune, not by byte: a byte-index slice on a UTF-8 string
+	// (e.g. an HTML error page in a non-English locale) can split a
+	// multi-byte rune in half, producing invalid UTF-8 that gets mangled
+	// on its way through this error message, storage, and the JSON API.
+	snippet := []rune(string(e.Body))
+	truncated := false
+	if len(snippet) > maxSnippetRunes {
+		snippet = snippet[:maxSnippetRunes]
+		truncated = true
 	}
-	return fmt.Sprintf("profileunity: response was not a valid JSON envelope: %v (body: %q)", e.Cause, snippet)
+	result := string(snippet)
+	if truncated {
+		result += "…"
+	}
+	return fmt.Sprintf("profileunity: response was not a valid JSON envelope: %v (body: %q)", e.Cause, result)
 }
 
 func (e *MalformedPayloadError) Unwrap() error { return e.Cause }

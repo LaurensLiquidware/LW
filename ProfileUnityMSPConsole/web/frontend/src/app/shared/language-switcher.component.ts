@@ -1,4 +1,4 @@
-import { Component, Input, inject, signal } from '@angular/core';
+import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 
@@ -8,10 +8,10 @@ import { ButtonModule } from 'primeng/button';
  * runtime language switching).
  */
 @Component({
-  selector: 'app-language-switcher',
-  standalone: true,
-  imports: [ButtonModule, TranslocoModule],
-  template: `
+    selector: 'app-language-switcher',
+    imports: [ButtonModule, TranslocoModule],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    template: `
     <div class="flex gap-1" role="group" [attr.aria-label]="'header.language' | transloco">
       @for (lang of langs; track lang) {
         <button
@@ -26,7 +26,7 @@ import { ButtonModule } from 'primeng/button';
         </button>
       }
     </div>
-  `,
+  `
 })
 export class LanguageSwitcherComponent {
   private readonly transloco = inject(TranslocoService);

@@ -5,10 +5,31 @@ import (
 	"regexp"
 	"strings"
 
+	_ "embed"
+
 	"github.com/go-pdf/fpdf"
 
 	"profileunity-msp-console/internal/dashboard"
 )
+
+// A UTF-8 TrueType font, not one of fpdf's built-in core fonts (Helvetica
+// et al.): those only support single-byte Latin-1/WinAnsi text, and
+// writing raw UTF-8 tenant/report text through them corrupts anything
+// outside that range into mojibake rather than merely dropping it —
+// found during the project brief §11 Unicode/i18n compliance pass.
+// DejaVu Sans (Bitstream Vera-derived, permissively licensed — see
+// fonts/DEJAVU-LICENSE.txt) covers Latin Extended, Cyrillic, Greek, and
+// Vietnamese correctly. CJK, Arabic, and Hebrew are not covered — a
+// CJK-capable font is tens of megabytes and out of scope for a
+// self-contained single binary; this is a known, documented limitation.
+//
+//go:embed fonts/DejaVuSans.ttf
+var dejaVuSansRegular []byte
+
+//go:embed fonts/DejaVuSans-Bold.ttf
+var dejaVuSansBold []byte
+
+const reportFontFamily = "DejaVuSans"
 
 // coverageLabel renders a CoverageStatus in the plain-English wording a
 // report reader needs, not the machine-readable enum value — project
@@ -41,20 +62,22 @@ func fmtAvg(v *float64) string {
 
 func newReportPDF(title string) *fpdf.Fpdf {
 	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf.AddUTF8FontFromBytes(reportFontFamily, "", dejaVuSansRegular)
+	pdf.AddUTF8FontFromBytes(reportFontFamily, "B", dejaVuSansBold)
 	pdf.SetMargins(18, 18, 18)
 	pdf.AddPage()
-	pdf.SetFont("Helvetica", "B", 16)
+	pdf.SetFont(reportFontFamily, "B", 16)
 	pdf.CellFormat(0, 10, "ProfileUnity MSP Licensing Console", "", 1, "L", false, 0, "")
-	pdf.SetFont("Helvetica", "", 11)
+	pdf.SetFont(reportFontFamily, "", 11)
 	pdf.CellFormat(0, 7, title, "", 1, "L", false, 0, "")
 	pdf.Ln(4)
 	return pdf
 }
 
 func writeSectionHeading(pdf *fpdf.Fpdf, text string) {
-	pdf.SetFont("Helvetica", "B", 12)
+	pdf.SetFont(reportFontFamily, "B", 12)
 	pdf.CellFormat(0, 8, text, "", 1, "L", false, 0, "")
-	pdf.SetFont("Helvetica", "", 10)
+	pdf.SetFont(reportFontFamily, "", 10)
 }
 
 func writeStatLine(pdf *fpdf.Fpdf, label, value string) {
@@ -76,13 +99,11 @@ func writeTenantReportBody(pdf *fpdf.Fpdf, r dashboard.TenantMonthlyReport) {
 	pdf.Ln(2)
 
 	if len(r.EntitlementChanges) == 0 {
-		pdf.SetFont("Helvetica", "I", 10)
 		pdf.CellFormat(0, 6, "No entitlement changes this month.", "", 1, "L", false, 0, "")
-		pdf.SetFont("Helvetica", "", 10)
 	} else {
-		pdf.SetFont("Helvetica", "B", 10)
+		pdf.SetFont(reportFontFamily, "B", 10)
 		pdf.CellFormat(0, 6, "Entitlement changes:", "", 1, "L", false, 0, "")
-		pdf.SetFont("Helvetica", "", 10)
+		pdf.SetFont(reportFontFamily, "", 10)
 		for _, c := range r.EntitlementChanges {
 			pdf.CellFormat(0, 6, fmt.Sprintf("  %s: %d -> %d", c.Date, c.FromTotal, c.ToTotal), "", 1, "L", false, 0, "")
 		}

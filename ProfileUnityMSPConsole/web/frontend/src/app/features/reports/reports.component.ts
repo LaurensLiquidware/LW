@@ -1,5 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { SelectModule } from 'primeng/select';
@@ -12,6 +11,7 @@ import { TenantsService } from '../../core/tenants.service';
 import { ReportsService } from '../../core/reports.service';
 import { PortfolioMonthlyReport, TenantMonthlyReport } from '../../core/models/report';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { formatLocaleNumber } from '../../core/locale-number';
 
 type Mode = 'tenant' | 'portfolio';
 
@@ -25,10 +25,10 @@ type Mode = 'tenant' | 'portfolio';
  * status: a partially-collected month must never look merely "poor".
  */
 @Component({
-  selector: 'app-reports',
-  standalone: true,
-  imports: [FormsModule, TranslocoModule, SelectModule, SelectButtonModule, InputNumberModule, PrimeTemplate, StatusBadgeComponent, DecimalPipe],
-  templateUrl: './reports.component.html',
+    selector: 'app-reports',
+    imports: [FormsModule, TranslocoModule, SelectModule, SelectButtonModule, InputNumberModule, PrimeTemplate, StatusBadgeComponent],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './reports.component.html'
 })
 export class ReportsComponent implements OnInit {
   private readonly tenantsService = inject(TenantsService);
@@ -55,6 +55,15 @@ export class ReportsComponent implements OnInit {
   monthLabel(month: number): string {
     const date = new Date(2000, month - 1, 1);
     return new Intl.DateTimeFormat(this.transloco.getActiveLang(), { month: 'long' }).format(date);
+  }
+
+  // Not Angular's `number` pipe: that pipe formats using the app's
+  // static LOCALE_ID (fixed at bootstrap to en-US), so a Dutch-language
+  // session would still see "4.5" instead of "4,5" after switching
+  // languages at runtime. Keying off the active Transloco language
+  // directly keeps this correct without a page reload.
+  formatAverage(value: number): string {
+    return formatLocaleNumber(value, this.transloco.getActiveLang(), 1);
   }
 
   readonly tenants = signal<Tenant[]>([]);

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoModule } from '@jsverse/transloco';
 
 /**
@@ -11,10 +11,10 @@ import { TranslocoModule } from '@jsverse/transloco';
  * the same as one merely over its license limit.
  */
 @Component({
-  selector: 'app-status-badge',
-  standalone: true,
-  imports: [TranslocoModule],
-  template: `
+    selector: 'app-status-badge',
+    imports: [TranslocoModule],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    template: `
     <span
       class="inline-flex items-center gap-1 rounded-sm px-2 py-0.5"
       style="font-size: var(--text-xs); font-weight: var(--weight-semibold);"
@@ -24,7 +24,7 @@ import { TranslocoModule } from '@jsverse/transloco';
       <span class="material-icons" style="font-size: 1em;">{{ icon }}</span>
       {{ 'status.' + kind + '.' + value | transloco }}
     </span>
-  `,
+  `
 })
 export class StatusBadgeComponent {
   @Input({ required: true }) kind!: 'usage' | 'expiry' | 'data' | 'coverage';

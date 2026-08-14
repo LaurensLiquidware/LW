@@ -82,6 +82,16 @@
     "totalEntitled": "Total Entitled",
     "entitlementChanges": "Entitlement Changes"
   },
+  "alerts": {
+    "title": "Alerts",
+    "none": "No alerts right now.",
+    "reason": {
+      "usage_poor": "At/over license limit",
+      "expiry_expired": "Support expired",
+      "expiry_expiring_soon": "Support expiring soon",
+      "data_not_ok": "Data cannot be trusted"
+    }
+  },
   "reports": {
     "perTenant": "Per Tenant",
     "portfolio": "Portfolio",

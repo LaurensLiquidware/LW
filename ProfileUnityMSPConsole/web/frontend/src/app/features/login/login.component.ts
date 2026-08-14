@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -13,20 +13,20 @@ import { SessionService } from '../../core/session.service';
 import { LanguageSwitcherComponent } from '../../shared/language-switcher.component';
 
 @Component({
-  selector: 'app-login',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    RouterLink,
-    TranslocoModule,
-    ButtonModule,
-    InputTextModule,
-    PasswordModule,
-    MessageModule,
-    CardModule,
-    LanguageSwitcherComponent,
-  ],
-  templateUrl: './login.component.html',
+    selector: 'app-login',
+    imports: [
+        ReactiveFormsModule,
+        RouterLink,
+        TranslocoModule,
+        ButtonModule,
+        InputTextModule,
+        PasswordModule,
+        MessageModule,
+        CardModule,
+        LanguageSwitcherComponent,
+    ],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    templateUrl: './login.component.html'
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
