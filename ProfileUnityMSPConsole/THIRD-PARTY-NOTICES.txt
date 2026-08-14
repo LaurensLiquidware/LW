@@ -24,20 +24,19 @@ Apache-2.0 (5 components)
   ts-interface-checker 0.1.13
   typescript 5.9.3
 
-BSD-3-Clause (7 components)
+BSD-3-Clause (6 components)
 ---------------------------
   github.com/google/uuid v1.6.0
   github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
-  modernc.org/libc v1.55.3
-  modernc.org/mathutil v1.6.0
-  modernc.org/memory v1.8.0
-  modernc.org/sqlite v1.34.4
+  modernc.org/mathutil v1.7.1
+  modernc.org/memory v1.12.0
+  modernc.org/sqlite v1.56.0
   source-map-js 1.2.1
 
 BSD-Source-Code (2 components)
 ------------------------------
-  golang.org/x/crypto v0.46.0
-  golang.org/x/sys v0.41.0
+  golang.org/x/crypto v0.55.0
+  golang.org/x/sys v0.47.0
 
 CC-BY-4.0 (1 component)
 -----------------------
@@ -51,7 +50,7 @@ ISC (5 components)
   glob-parent 6.0.2
   picocolors 1.1.1
 
-MIT (104 components)
+MIT (105 components)
 --------------------
   @alloc/quick-lru 5.2.0
   @angular/animations 21.2.20
@@ -120,6 +119,7 @@ MIT (104 components)
   lines-and-columns 1.2.4
   merge2 1.4.1
   micromatch 4.0.8
+  modernc.org/libc v1.75.3
   mz 2.7.0
   nanoid 3.3.18
   node-releases 2.0.53

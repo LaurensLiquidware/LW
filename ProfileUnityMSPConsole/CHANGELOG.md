@@ -310,4 +310,23 @@ phase in the build plan:
   sandbox's network policy; documented in README as a required
   follow-up before treating this as a real release.
 
+Post-Phase-8 follow-up: CI compliance enforcement, closing out the
+deferred CVE gate.
+
+- Added a `compliance` job to CI (`.github/workflows/
+  profileunity-msp-console-ci.yml`) running `npm audit --omit=dev
+  --audit-level=high` and `govulncheck` as hard gates on every push, then
+  regenerating the SBOM/notices and diffing them against what's checked
+  in (component lists only, so the timestamp/serialNumber `generate-sbom.sh`
+  stamps fresh each run doesn't produce a false failure).
+- That job's first real run (with actual network access to
+  `vuln.go.dev`, unlike the original build sandbox) found 15 genuine
+  CVEs, all in the Go standard library, all fixed only in Go 1.25.x —
+  this project was still pinned to `go 1.24.7`. Bumped to `go 1.25.13`
+  (`go.mod` and CI's `go-version` pin) and re-ran `go get -u`/
+  `go mod tidy`, which also picked up newer dependency versions
+  (`golang.org/x/crypto`, `modernc.org/sqlite`, and others) that had
+  previously been capped at go1.24-compatible releases. Regenerated
+  `bom.cdx.json`/`THIRD-PARTY-NOTICES.txt` to match.
+
 No further phases remain beyond Phase 8.

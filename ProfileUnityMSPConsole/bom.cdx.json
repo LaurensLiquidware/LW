@@ -1,10 +1,10 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:256f6040-d7b4-4d64-aedc-ebad65acb082",
+  "serialNumber": "urn:uuid:2695e392-4000-44a0-8e78-d729d9502a2b",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-08-14T11:43:11Z",
+    "timestamp": "2026-08-14T12:00:09Z",
     "component": {
       "type": "application",
       "name": "profileunity-msp-console",
@@ -24,7 +24,7 @@
           "content": "1b392163b4f954d8449301f43d52608f3f9f5f5ae106b47ba514f79839297826"
         }
       ],
-      "purl": "pkg:golang/github.com/dustin/go-humanize@v1.0.1?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/github.com/dustin/go-humanize@v1.0.1?goarch=amd64&goos=linux&type=module",
       "externalReferences": [
         {
           "url": "https://github.com/dustin/go-humanize",
@@ -53,7 +53,7 @@
           "content": "3cfbd2694ba8d62322f4a91a027f7436e2a2f8fe20c0c79d58f1e18fc625250c"
         }
       ],
-      "purl": "pkg:golang/github.com/go-pdf/fpdf@v0.9.0?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/github.com/go-pdf/fpdf@v0.9.0?goarch=amd64&goos=linux&type=module",
       "externalReferences": [
         {
           "url": "https://github.com/go-pdf/fpdf",
@@ -82,7 +82,7 @@
           "content": "348bda24330eb231c0f27d630212d2833ac0cf2d4782bfa136b6f9edefbde05d"
         }
       ],
-      "purl": "pkg:golang/github.com/google/uuid@v1.6.0?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/github.com/google/uuid@v1.6.0?goarch=amd64&goos=linux&type=module",
       "externalReferences": [
         {
           "url": "https://github.com/google/uuid",
@@ -111,7 +111,7 @@
           "content": "5b4f4854973de2272ae0d8d8ddc95becb93c3b5a89f01741105f33d226d4d2b1"
         }
       ],
-      "purl": "pkg:golang/github.com/remyoudompheng/bigfft@v0.0.0-20230129092748-24d4a6f8daec?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/github.com/remyoudompheng/bigfft@v0.0.0-20230129092748-24d4a6f8daec?goarch=amd64&goos=linux&type=module",
       "externalReferences": [
         {
           "url": "https://github.com/remyoudompheng/bigfft",
@@ -129,18 +129,18 @@
       }
     },
     {
-      "bom-ref": "pkg:golang/golang.org/x/crypto@v0.46.0?type=module",
+      "bom-ref": "pkg:golang/golang.org/x/crypto@v0.55.0?type=module",
       "type": "library",
       "name": "golang.org/x/crypto",
-      "version": "v0.46.0",
+      "version": "v0.55.0",
       "scope": "required",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "70a456fe99add692807deb5fbbe44212f8ef66403d46298f6e1edb8458c65415"
+          "content": "f8a5878db80e68043ae9d87f625919287973f59525abad40162ac047d9ed3fc3"
         }
       ],
-      "purl": "pkg:golang/golang.org/x/crypto@v0.46.0?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/golang.org/x/crypto@v0.55.0?goarch=amd64&goos=linux&type=module",
       "evidence": {
         "licenses": [
           {
@@ -152,18 +152,18 @@
       }
     },
     {
-      "bom-ref": "pkg:golang/golang.org/x/sys@v0.41.0?type=module",
+      "bom-ref": "pkg:golang/golang.org/x/sys@v0.47.0?type=module",
       "type": "library",
       "name": "golang.org/x/sys",
-      "version": "v0.41.0",
+      "version": "v0.47.0",
       "scope": "required",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "22f8fed82a7fca5ccb88453cf508566e5627384f737abb9db7d16d79cab60ba9"
+          "content": "a3b5c63af6500800c1410e18ed536ad9d456411ec998e516f0ac71e19b0d816b"
         }
       ],
-      "purl": "pkg:golang/golang.org/x/sys@v0.41.0?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/golang.org/x/sys@v0.47.0?goarch=amd64&goos=linux&type=module",
       "evidence": {
         "licenses": [
           {
@@ -175,41 +175,41 @@
       }
     },
     {
-      "bom-ref": "pkg:golang/modernc.org/libc@v1.55.3?type=module",
+      "bom-ref": "pkg:golang/modernc.org/libc@v1.75.3?type=module",
       "type": "library",
       "name": "modernc.org/libc",
-      "version": "v1.55.3",
+      "version": "v1.75.3",
       "scope": "required",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "033716d668653cdad1b634b9b12f9e5b62120a048e2cb372173461fd5dd08ff5"
+          "content": "bc2a93e7e4748cf5cc9ef3241a8d13db35ef14db61fa5617542c795fb0825ff8"
         }
       ],
-      "purl": "pkg:golang/modernc.org/libc@v1.55.3?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/modernc.org/libc@v1.75.3?goarch=amd64&goos=linux&type=module",
       "evidence": {
         "licenses": [
           {
             "license": {
-              "id": "BSD-3-Clause"
+              "id": "MIT"
             }
           }
         ]
       }
     },
     {
-      "bom-ref": "pkg:golang/modernc.org/mathutil@v1.6.0?type=module",
+      "bom-ref": "pkg:golang/modernc.org/mathutil@v1.7.1?type=module",
       "type": "library",
       "name": "modernc.org/mathutil",
-      "version": "v1.6.0",
+      "version": "v1.7.1",
       "scope": "required",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "7d17bdf8099895a7a3fbae09b04121a16b8060190eb5088c114ee7fd781f622e"
+          "content": "18265519775a37c813a81d4c7ffbaca7563f852aa0236bc01863f88d9302c4e5"
         }
       ],
-      "purl": "pkg:golang/modernc.org/mathutil@v1.6.0?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/modernc.org/mathutil@v1.7.1?goarch=amd64&goos=linux&type=module",
       "evidence": {
         "licenses": [
           {
@@ -221,18 +221,18 @@
       }
     },
     {
-      "bom-ref": "pkg:golang/modernc.org/memory@v1.8.0?type=module",
+      "bom-ref": "pkg:golang/modernc.org/memory@v1.12.0?type=module",
       "type": "library",
       "name": "modernc.org/memory",
-      "version": "v1.8.0",
+      "version": "v1.12.0",
       "scope": "required",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "22a1932fa78531a0d9661116c1c44481e317630996f372d85bc71139962483e1"
+          "content": "b7092660d9065c2bed616ce8bb1d368ed2ba7a8be365b748d2e1c5518a7a92e5"
         }
       ],
-      "purl": "pkg:golang/modernc.org/memory@v1.8.0?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/modernc.org/memory@v1.12.0?goarch=amd64&goos=linux&type=module",
       "evidence": {
         "licenses": [
           {
@@ -244,18 +244,18 @@
       }
     },
     {
-      "bom-ref": "pkg:golang/modernc.org/sqlite@v1.34.4?type=module",
+      "bom-ref": "pkg:golang/modernc.org/sqlite@v1.56.0?type=module",
       "type": "library",
       "name": "modernc.org/sqlite",
-      "version": "v1.34.4",
+      "version": "v1.56.0",
       "scope": "required",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "b23740468cdc2f928906f610bcb95912672d4605bdc6a2197369dc37b3d4d0ff"
+          "content": "fc3f1ed917c5aa8cbf65ce8fb82efa536f33170988fec631d4a8e6e32127f5ed"
         }
       ],
-      "purl": "pkg:golang/modernc.org/sqlite@v1.34.4?type=module&goos=linux&goarch=amd64",
+      "purl": "pkg:golang/modernc.org/sqlite@v1.56.0?goarch=amd64&goos=linux&type=module",
       "evidence": {
         "licenses": [
           {

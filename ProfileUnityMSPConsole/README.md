@@ -266,24 +266,37 @@ them involve non-Latin-1 text or a live language switch:
 1.6 SBOM (127 components: 10 Go modules via `cyclonedx-gomod`, 117
 production npm packages via `@cyclonedx/cyclonedx-npm`, merged by
 `scripts/merge-sbom.py` — see `scripts/generate-sbom.sh`) — no longer the
-Phase 1 placeholder. `npm audit --omit=dev` reports zero vulnerabilities
-in the shipped frontend tree. On the Go side, `golang.org/x/crypto` and
-other transitive dependencies were bumped to the newest versions still
-compatible with this project's `go 1.24.7` toolchain pin. **A live Grype/
-govulncheck CVE scan could not be run in this build environment**: both
-tools fetch their vulnerability feed from `vuln.go.dev`, and Grype's
-installer fetches release binaries from `github.com/anchore/grype`'s
-releases — neither host is reachable through this sandbox's network
-policy (everything else, `proxy.golang.org` and `registry.npmjs.org`
-included, worked fine). Before treating this as a real release, run
-`govulncheck ./cmd/... ./internal/... ./web` and/or `grype bom.cdx.json`
-in an environment with normal network access and remediate anything
-Critical/High it finds — this is the one compliance item this pass
-could document and prepare for, but not complete end-to-end.
+Phase 1 placeholder, and `THIRD-PARTY-NOTICES.txt` is likewise generated
+from it (`scripts/generate-notices.py`). `npm audit --omit=dev` reports
+zero vulnerabilities in the shipped frontend tree.
 
-`THIRD-PARTY-NOTICES.txt` is likewise now generated from `bom.cdx.json`
-(`scripts/generate-notices.py`), grouped by license rather than the
-Phase 1 placeholder text.
+A live Grype/govulncheck CVE scan could not be run inside the sandbox
+this project was originally built in — both tools fetch their
+vulnerability feed from `vuln.go.dev`, which that sandbox's network
+policy didn't allow (everything else, `proxy.golang.org` and
+`registry.npmjs.org` included, worked fine). CI's new `compliance` job
+(see below) runs `govulncheck` for real on every push, and its first run
+found something real: **15 known CVEs, all in the Go standard library
+itself** (`crypto/tls`, `crypto/x509`, `net/http`, `net/url`, `net`,
+`os`, `encoding/asn1`, `net/textproto`), every one fixed only in Go
+1.25.x — this project was pinned to `go 1.24.7` at the time. Bumped the
+toolchain to `go 1.25.13` (`go.mod`'s `go` directive, plus CI's
+`go-version` pin) and re-ran `go get -u`/`go mod tidy` now that the newer
+Go unblocks dependency versions that previously required it (`golang.org/
+x/crypto` v0.46.0 → v0.55.0, `modernc.org/sqlite` v1.34.4 → v1.56.0,
+among others) — closing out every one of those 15 findings along with
+whatever the dependency bumps themselves fixed.
+
+**CI now enforces all of this on every push**, not just documents it: a
+second `compliance` job runs `npm audit --omit=dev --audit-level=high`
+and `govulncheck` as hard gates, then regenerates the SBOM and notices
+and diffs them against what's checked in — so `bom.cdx.json` can never
+silently drift from the actual dependency tree without CI catching it.
+Grype itself is still not wired into CI: its installer fetches release
+binaries from GitHub releases rather than a package registry, which
+didn't work from the original sandbox and wasn't re-attempted once
+`govulncheck` (functionally equivalent for this project's purposes) was
+confirmed working on GitHub-hosted runners.
 
 ## Critical constraint: this app owns the time series
 

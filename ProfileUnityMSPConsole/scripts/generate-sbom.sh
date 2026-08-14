@@ -3,7 +3,7 @@
 # frontend's production npm dependency tree, merged into one CycloneDX
 # 1.6 document (see project brief §11.8 stage 4/scripts/release.sh).
 #
-# Requires cyclonedx-gomod (go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0)
+# Requires cyclonedx-gomod (go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0)
 # on PATH; cyclonedx-npm is fetched on demand via npx.
 set -euo pipefail
 
@@ -11,7 +11,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 if ! command -v cyclonedx-gomod >/dev/null 2>&1; then
-  echo "generate-sbom: cyclonedx-gomod not found on PATH -- go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0" >&2
+  echo "generate-sbom: cyclonedx-gomod not found on PATH -- go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0" >&2
   exit 1
 fi
 
