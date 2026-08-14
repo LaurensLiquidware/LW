@@ -53,7 +53,58 @@ jobs:
       - name: Test
         run: go test ./cmd/... ./internal/... ./web
 
-  # The full release pipeline (SBOM regeneration, Grype CVE gate, notices,
-  # version sync, packaging) is added as its own job once those pieces
-  # exist — see scripts/release.sh and project brief §11.8 for the
-  # required ordering. This job is intentionally not implemented yet.
+  # Enforces project brief §11.8: SBOM stays current, and both dependency
+  # trees are CVE-clean. Unlike scripts/release.sh's local/offline mode
+  # (which warns instead of failing when govulncheck can't reach
+  # vuln.go.dev — some sandboxes block that host), GitHub-hosted runners
+  # have normal internet access, so this job hard-fails on any finding.
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ProfileUnityMSPConsole/web/frontend/package-lock.json
+
+      - name: Install SBOM/CVE tooling
+        run: |
+          go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install frontend dependencies
+        working-directory: ProfileUnityMSPConsole/web/frontend
+        run: npm ci
+
+      - name: npm audit (production dependencies only)
+        working-directory: ProfileUnityMSPConsole/web/frontend
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: govulncheck (Go dependencies)
+        run: govulncheck ./cmd/... ./internal/... ./web
+
+      - name: Regenerate SBOM and notices
+        run: |
+          ./scripts/generate-sbom.sh
+          python3 ./scripts/generate-notices.py bom.cdx.json THIRD-PARTY-NOTICES.txt
+
+      - name: Verify checked-in SBOM/notices are current
+        run: |
+          # generate-sbom.sh stamps a fresh serialNumber/timestamp every run,
+          # which would make this diff fail even with an unchanged dependency
+          # tree — compare component lists only, not the whole file.
+          diff <(jq -S '.components' bom.cdx.json) <(git show HEAD:ProfileUnityMSPConsole/bom.cdx.json | jq -S '.components') || {
+            echo "::error::bom.cdx.json's component list is out of date. Run ./scripts/generate-sbom.sh and ./scripts/generate-notices.py and commit the result." >&2
+            exit 1
+          }
+          diff THIRD-PARTY-NOTICES.txt <(git show HEAD:ProfileUnityMSPConsole/THIRD-PARTY-NOTICES.txt) || {
+            echo "::error::THIRD-PARTY-NOTICES.txt is out of date. Run ./scripts/generate-notices.py and commit the result." >&2
+            exit 1
+          }
