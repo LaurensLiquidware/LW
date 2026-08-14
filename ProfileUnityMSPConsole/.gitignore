@@ -1,0 +1,23 @@
+# Generated at build time — see scripts/sync-version.sh
+internal/version/VERSION_EMBED
+
+# Local secrets / config
+.env
+
+# Build output
+/profileunity-msp-console
+/dist/
+/bin/
+
+# SQLite data
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Frontend (added in Phase 4)
+web/frontend/node_modules/
+web/frontend/dist/
+
+# Editor / OS
+.DS_Store

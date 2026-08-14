@@ -1,0 +1,5 @@
+/* PrimeIcons loaded from CDN — the codebase ships the CSS classes but not the
+   .woff2 binary, so previews/UI kits pull the font from unpkg. Class names
+   (.pi .pi-*) match the product exactly. Drop primeicons.woff2 into fonts/ and
+   swap to fonts/primeicons.css to go fully offline. */
+@import url('https://unpkg.com/primeicons@7.0.0/primeicons.css');

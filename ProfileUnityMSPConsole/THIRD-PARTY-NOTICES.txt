@@ -1,0 +1,11 @@
+ProfileUnity MSP Licensing Console — Third-Party Notices
+==========================================================
+
+This file will list the license text and required attribution notices for
+every third-party component this tool ships with, once dependencies are
+added in later build phases.
+
+Status: no third-party components are bundled into a shipping artifact yet
+(Phase 1 — Skeleton). This file, and bom.cdx.json, are regenerated together
+as dependencies are added, and finalized only after the CVE remediation
+pass required before release (see README, "Compliance").

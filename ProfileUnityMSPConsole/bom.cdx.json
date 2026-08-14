@@ -1,0 +1,15 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:1796b70b-9d34-4416-ba1e-7d28176df48c",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-14T00:00:00Z",
+    "component": {
+      "type": "application",
+      "name": "ProfileUnityMSPConsole",
+      "version": "0.1.0"
+    }
+  },
+  "components": []
+}
