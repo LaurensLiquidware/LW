@@ -30,8 +30,7 @@ export const routes: Routes = [
       },
       {
         path: 'reports',
-        loadComponent: () => import('./features/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { titleKey: 'nav.reports' },
+        loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent),
       },
       {
         path: 'about',

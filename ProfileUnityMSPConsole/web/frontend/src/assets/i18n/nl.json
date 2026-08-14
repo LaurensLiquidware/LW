@@ -82,6 +82,26 @@
     "totalEntitled": "Totaal Toegekend",
     "entitlementChanges": "Wijzigingen In Toewijzing"
   },
+  "reports": {
+    "perTenant": "Per Klant",
+    "portfolio": "Portfolio",
+    "selectTenant": "Selecteer Een Klant",
+    "selectMonth": "Selecteer Een Maand",
+    "loading": "Laden…",
+    "noData": "Geen Gegevens Voor Deze Maand",
+    "downloadPdf": "PDF Downloaden",
+    "coverage": "Gegevensdekking",
+    "daysCollected": "Dagen Verzameld",
+    "daysFailed": "Dagen Mislukt",
+    "daysNeverAttempted": "Dagen Nooit Geprobeerd",
+    "peakUsed": "Piekgebruik",
+    "averageUsed": "Gemiddeld Gebruik",
+    "entitledAtMonthEnd": "Toegekend Aan Einde Maand",
+    "entitlementChanges": "Wijzigingen In Toewijzing",
+    "noEntitlementChanges": "Geen wijzigingen in toewijzing deze maand.",
+    "tenantsRegistered": "Klanten Geregistreerd",
+    "perTenantDetail": "Detail Per Klant"
+  },
   "status": {
     "usage": {
       "good": "Goed",
@@ -100,6 +120,11 @@
       "stale": "Verouderd",
       "failing": "Verzameling Mislukt",
       "never_collected": "Nog Niet Verzameld"
+    },
+    "coverage": {
+      "complete": "Volledig",
+      "partial": "Gedeeltelijk",
+      "none": "Geen Gegevens"
     }
   }
 }

@@ -195,6 +195,49 @@ func (r *Repo) ListAllSuccess(ctx context.Context) ([]Snapshot, error) {
 	return result, rows.Err()
 }
 
+// ListByTenantInRange returns every snapshot for tenantID with
+// collection_date in [from, to] (inclusive, both "YYYY-MM-DD"), regardless
+// of status — a monthly report needs the failed/missing days too, to
+// report data-collection completeness (project brief §7.5), not just the
+// successful ones.
+func (r *Repo) ListByTenantInRange(ctx context.Context, tenantID, from, to string) ([]Snapshot, error) {
+	rows, err := r.db.QueryContext(ctx, selectColumns+` FROM snapshots WHERE tenant_id = ? AND collection_date >= ? AND collection_date <= ? ORDER BY collection_date`, tenantID, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("snapshot: list by tenant in range: %w", err)
+	}
+	defer rows.Close()
+
+	var result []Snapshot
+	for rows.Next() {
+		s, err := scanSnapshot(rows)
+		if err != nil {
+			return nil, fmt.Errorf("snapshot: scan: %w", err)
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}
+
+// ListAllInRange is ListByTenantInRange across every tenant, regardless of
+// status — the raw material for a portfolio-wide monthly report.
+func (r *Repo) ListAllInRange(ctx context.Context, from, to string) ([]Snapshot, error) {
+	rows, err := r.db.QueryContext(ctx, selectColumns+` FROM snapshots WHERE collection_date >= ? AND collection_date <= ? ORDER BY collection_date`, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("snapshot: list all in range: %w", err)
+	}
+	defer rows.Close()
+
+	var result []Snapshot
+	for rows.Next() {
+		s, err := scanSnapshot(rows)
+		if err != nil {
+			return nil, fmt.Errorf("snapshot: scan: %w", err)
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}
+
 const selectColumns = `
 	SELECT id, tenant_id, collection_date, collected_at_utc, status, auth_path, error_message, raw_payload,
 		registered_to, license_mode, license_product, total_licenses, used_licenses, evaluation,

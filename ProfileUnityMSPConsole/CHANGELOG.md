@@ -227,3 +227,38 @@ Phase 6 (History and graphs) of the build plan:
   toggle renders correctly in both English and Dutch.
 
 Reports still shows "Coming Soon" — Phase 7.
+
+Phase 7 (Monthly reporting) of the build plan:
+
+- `internal/dashboard/report.go`: `BuildTenantMonthlyReport` and
+  `BuildPortfolioMonthlyReport` pure functions, computing peak/average
+  usage, entitlement at month end, entitlement changes (reusing
+  `DetectEntitlementChanges` from Phase 6), and an explicit
+  `CoverageStatus` (complete/partial/none) so a report says up front how
+  much of the month's data can be trusted, rather than presenting
+  numbers as if every day had been collected.
+- `internal/snapshot`: added `ListByTenantInRange`/`ListAllInRange`
+  (inclusive date-range queries across any status), the raw material a
+  report needs to count failed/missing days, not just successes.
+- `internal/httpapi`: `GET /api/tenants/{id}/reports/monthly` and
+  `GET /api/reports/portfolio/monthly` (JSON), plus `.../monthly.pdf`
+  variants rendering the same figures as a downloadable PDF via the new
+  `github.com/go-pdf/fpdf` dependency (MIT, pure Go, no CGO). Tenant
+  display names are sanitized before use in a `Content-Disposition`
+  filename.
+- `web/frontend`: a Reports screen (tenant/portfolio toggle, month/year
+  picker, on-screen summary, "Download PDF" link) replacing the
+  "Coming Soon" stub. `StatusBadgeComponent` gained a `coverage` kind,
+  rendered with the same neutral (non-GFP) styling as data-trust states
+  — a partially-collected month must never look merely "poor". The mode
+  toggle reuses the Phase 6 fix's pattern from the start (a stable
+  options array + item template + `transloco` pipe), avoiding a repeat
+  of that phase's infinite change-detection-loop bug.
+- Visually verified (Playwright) with a full seeded August across two
+  tenants covering a multi-day gap, a single failed day, a three-day
+  outage, and an entitlement change; downloaded PDFs' content streams
+  were decompressed and checked to confirm they match the on-screen
+  figures exactly. Verified in Dutch as well.
+
+No further phases remain beyond Phase 8 (alerting and the full
+compliance pass).

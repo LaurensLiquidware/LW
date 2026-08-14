@@ -25,7 +25,7 @@ consoles, track it over time, and produce monthly reports. See the project
 brief for the full functional and compliance spec; this README tracks
 build-phase status and the things a reader needs before touching the code.
 
-## Status: Phase 6 — History and graphs
+## Status: Phase 7 — Monthly reporting
 
 Phases 1–3 (skeleton, the ProfileUnity API client, and the
 tenant/snapshot/collector/scheduler backend) are done — see git history
@@ -134,7 +134,52 @@ Phase 6 adds the History screen (project brief §7.4):
   than silently assumed; revisit if portfolio history needs to explain
   "why did total entitlement drop" distinctly from "a tenant left".
 
-Reports still shows "Coming Soon" — that's Phase 7.
+Phase 7 adds monthly reporting (project brief §7.5):
+
+- **`internal/dashboard/report.go`**: `BuildTenantMonthlyReport` and
+  `BuildPortfolioMonthlyReport`, pure functions reusing
+  `DetectEntitlementChanges` from Phase 6 so a report's entitlement-change
+  list is always the same computation the History screen already showed —
+  never a second, possibly-divergent implementation. Each report carries
+  an explicit `CoverageStatus` (`complete`/`partial`/`none`) rather than
+  presenting numbers as if every day had been collected: a month with
+  gaps or failures says so up front, and — like the dashboard's
+  stale/failing/never-collected states — is deliberately never rendered
+  with the Good/Fair/Poor palette, since a partially-collected month
+  means "we don't fully know", not "bad".
+- **`internal/snapshot`**: added `ListByTenantInRange`/`ListAllInRange`
+  (inclusive date-range queries, any status) — a report needs the
+  failed/missing days too, to compute coverage, not just the successes
+  `ListAllSuccess` already covered.
+- **`GET /api/tenants/{id}/reports/monthly`** and
+  **`GET /api/reports/portfolio/monthly`** (JSON), plus
+  **`.../monthly.pdf`** variants that render the identical figures as a
+  downloadable PDF via `github.com/go-pdf/fpdf` (MIT-licensed, pure Go,
+  no CGO — a new dependency, confirmed with the user before adding it
+  per the working agreement). All four require a session; a tenant's
+  display name is sanitized before it reaches the PDF's
+  `Content-Disposition` filename, since that header value would
+  otherwise reflect attacker-controlled input straight into the
+  response.
+- **Frontend Reports screen**: a per-tenant/portfolio toggle (reusing the
+  Phase 6 fix's pattern — a referentially-stable options array with an
+  `ng-template pTemplate="item"` + the `transloco` pipe, never a getter
+  rebuilding the array every change-detection cycle) plus a month/year
+  picker, an on-screen summary using the same neutral-styled
+  `StatusBadgeComponent` the dashboard uses for data-trust states (now
+  extended with a `coverage` kind), and a plain `<a href>` "Download PDF"
+  link — the PDF endpoints need only the session cookie, so this follows
+  the same pattern the About screen already uses for
+  `Spark_License.pdf`, no blob-fetch/CSP complexity required.
+- Visually verified (Playwright) with a full seeded August across two
+  tenants — a multi-day gap, a single failed day, a three-day outage, and
+  an entitlement change — confirming the on-screen numbers, the neutral
+  "Partial" coverage badges, and the downloaded PDFs (both per-tenant and
+  portfolio, verified by decompressing their content streams) all agree
+  with each other and with the seeded data. Also verified in Dutch.
+
+No further phases remain in the build plan beyond Phase 8 (alerting and
+the full compliance pass).
 
 **Known CVEs carried by this phase, to resolve in Phase 8:** `npm audit`
 on `web/frontend` reports several real high-severity Angular XSS

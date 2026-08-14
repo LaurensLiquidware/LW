@@ -82,6 +82,26 @@
     "totalEntitled": "Total Entitled",
     "entitlementChanges": "Entitlement Changes"
   },
+  "reports": {
+    "perTenant": "Per Tenant",
+    "portfolio": "Portfolio",
+    "selectTenant": "Select a Tenant",
+    "selectMonth": "Select a Month",
+    "loading": "Loading…",
+    "noData": "No Data For This Month",
+    "downloadPdf": "Download PDF",
+    "coverage": "Data Coverage",
+    "daysCollected": "Days Collected",
+    "daysFailed": "Days Failed",
+    "daysNeverAttempted": "Days Never Attempted",
+    "peakUsed": "Peak Used",
+    "averageUsed": "Average Used",
+    "entitledAtMonthEnd": "Entitled At Month End",
+    "entitlementChanges": "Entitlement Changes",
+    "noEntitlementChanges": "No entitlement changes this month.",
+    "tenantsRegistered": "Tenants Registered",
+    "perTenantDetail": "Per-Tenant Detail"
+  },
   "status": {
     "usage": {
       "good": "Good",
@@ -100,6 +120,11 @@
       "stale": "Stale",
       "failing": "Collection Failing",
       "never_collected": "Never Collected"
+    },
+    "coverage": {
+      "complete": "Complete",
+      "partial": "Partial",
+      "none": "No Data"
     }
   }
 }

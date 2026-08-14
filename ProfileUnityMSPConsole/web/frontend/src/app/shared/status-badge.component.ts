@@ -4,10 +4,11 @@ import { TranslocoModule } from '@jsverse/transloco';
 /**
  * Renders one of the project brief §7.3 states using the Good/Fair/Poor
  * design language (§10) for usage/expiry — but "data" status (stale,
- * failing, never collected) is deliberately never GFP-colored: it means
- * we don't know, not that something is bad, and must stay visually
- * distinct from "poor" so a console going dark never looks the same as
- * one merely over its license limit.
+ * failing, never collected) and a monthly report's "coverage" (complete,
+ * partial, none — §7.5) are deliberately never GFP-colored: they mean we
+ * don't know (or don't fully know), not that something is bad, and must
+ * stay visually distinct from "poor" so a console going dark never looks
+ * the same as one merely over its license limit.
  */
 @Component({
   selector: 'app-status-badge',
@@ -26,7 +27,7 @@ import { TranslocoModule } from '@jsverse/transloco';
   `,
 })
 export class StatusBadgeComponent {
-  @Input({ required: true }) kind!: 'usage' | 'expiry' | 'data';
+  @Input({ required: true }) kind!: 'usage' | 'expiry' | 'data' | 'coverage';
   @Input({ required: true }) value!: string;
 
   private static readonly NEUTRAL_BG = 'var(--p-surface-200)';
@@ -81,6 +82,12 @@ export class StatusBadgeComponent {
         return 'sync_problem';
       case 'never_collected':
         return 'help';
+      case 'complete':
+        return 'check_circle';
+      case 'partial':
+        return 'warning';
+      case 'none':
+        return 'sync_problem';
       default:
         return 'help';
     }

@@ -264,6 +264,60 @@ func TestRepo_ListAllSuccess(t *testing.T) {
 	}
 }
 
+func TestRepo_ListByTenantInRange(t *testing.T) {
+	repo, tenantID := newTestDB(t)
+	ctx := context.Background()
+
+	for _, date := range []string{"2026-07-31", "2026-08-01", "2026-08-15", "2026-08-31", "2026-09-01"} {
+		status := StatusSuccess
+		if date == "2026-08-15" {
+			status = StatusUnreachable
+		}
+		if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantID, CollectionDate: date, CollectedAtUTC: time.Now().UTC(), Status: status, TotalLicenses: intPtr(5), UsedLicenses: intPtr(1)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	rows, err := repo.ListByTenantInRange(ctx, tenantID, "2026-08-01", "2026-08-31")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("got %d rows, want 3 (August only, including the failed day)", len(rows))
+	}
+	for _, r := range rows {
+		if r.CollectionDate < "2026-08-01" || r.CollectionDate > "2026-08-31" {
+			t.Errorf("row outside requested range: %+v", r)
+		}
+	}
+}
+
+func TestRepo_ListAllInRange(t *testing.T) {
+	repo, tenantA := newTestDB(t)
+	ctx := context.Background()
+
+	tenantRepo := tenant.NewRepo(repo.db, nil)
+	tenantB, err := tenantRepo.Create(ctx, tenant.CreateInput{DisplayName: "y", Hostname: "h2", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantA, CollectionDate: "2026-08-10", CollectedAtUTC: time.Now().UTC(), Status: StatusSuccess, TotalLicenses: intPtr(5), UsedLicenses: intPtr(1)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantB.ID, CollectionDate: "2026-09-10", CollectedAtUTC: time.Now().UTC(), Status: StatusSuccess, TotalLicenses: intPtr(5), UsedLicenses: intPtr(1)}); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := repo.ListAllInRange(ctx, "2026-08-01", "2026-08-31")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want 1 (only tenantA's August row)", len(rows))
+	}
+}
+
 func TestRepo_BooleanFieldsRoundTrip(t *testing.T) {
 	repo, tenantID := newTestDB(t)
 	ctx := context.Background()

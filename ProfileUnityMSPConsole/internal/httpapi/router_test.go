@@ -20,6 +20,7 @@ type testDeps struct {
 	tenants   TenantDeps
 	dashboard DashboardDeps
 	history   HistoryDeps
+	reports   ReportDeps
 }
 
 func newTestDeps(t *testing.T) testDeps {
@@ -43,13 +44,14 @@ func newTestDeps(t *testing.T) testDeps {
 		tenants:   TenantDeps{Tenants: tenantRepo},
 		dashboard: DashboardDeps{Repos: repos, Location: time.UTC},
 		history:   HistoryDeps{Repos: repos},
+		reports:   ReportDeps{Repos: repos},
 	}
 }
 
 func newTestRouter(t *testing.T) (http.Handler, testDeps) {
 	t.Helper()
 	deps := newTestDeps(t)
-	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history)
+	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,6 +268,155 @@ func TestNewRouter_PortfolioHistoryEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "\"totalUsed\":1") {
 		t.Errorf("expected totalUsed=1 in the response, got %s", rec.Body.String())
+	}
+}
+
+func TestNewRouter_TenantMonthlyReportEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	tn, err := deps.tenants.Tenants.Create(t.Context(), tenant.CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deps.dashboard.Repos.Snapshots.Upsert(t.Context(), snapshot.Snapshot{
+		TenantID: tn.ID, CollectionDate: "2026-08-14", CollectedAtUTC: time.Now().UTC(),
+		Status: snapshot.StatusSuccess, TotalLicenses: intPtrTest(5), UsedLicenses: intPtrTest(1),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tenants/"+tn.ID+"/reports/monthly?year=2026&month=8", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"daysCollected":1`) {
+		t.Errorf("expected daysCollected=1 in the response, got %s", rec.Body.String())
+	}
+}
+
+func TestNewRouter_TenantMonthlyReportEndpoint_UnknownTenant(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tenants/does-not-exist/reports/monthly?year=2026&month=8", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestNewRouter_TenantMonthlyReportEndpoint_MissingMonth(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	tn, err := deps.tenants.Tenants.Create(t.Context(), tenant.CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tenants/"+tn.ID+"/reports/monthly?year=2026", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestNewRouter_TenantMonthlyReportPDFEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	tn, err := deps.tenants.Tenants.Create(t.Context(), tenant.CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deps.dashboard.Repos.Snapshots.Upsert(t.Context(), snapshot.Snapshot{
+		TenantID: tn.ID, CollectionDate: "2026-08-14", CollectedAtUTC: time.Now().UTC(),
+		Status: snapshot.StatusSuccess, TotalLicenses: intPtrTest(5), UsedLicenses: intPtrTest(1),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tenants/"+tn.ID+"/reports/monthly.pdf?year=2026&month=8", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/pdf" {
+		t.Errorf("Content-Type = %q, want application/pdf", ct)
+	}
+	if !strings.HasPrefix(rec.Body.String(), "%PDF-") {
+		t.Errorf("body does not start with a PDF header")
+	}
+}
+
+func TestNewRouter_PortfolioMonthlyReportEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	tn, err := deps.tenants.Tenants.Create(t.Context(), tenant.CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deps.dashboard.Repos.Snapshots.Upsert(t.Context(), snapshot.Snapshot{
+		TenantID: tn.ID, CollectionDate: "2026-08-14", CollectedAtUTC: time.Now().UTC(),
+		Status: snapshot.StatusSuccess, TotalLicenses: intPtrTest(5), UsedLicenses: intPtrTest(1),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/reports/portfolio/monthly?year=2026&month=8", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"tenantsRegistered":1`) {
+		t.Errorf("expected tenantsRegistered=1 in the response, got %s", rec.Body.String())
+	}
+}
+
+func TestNewRouter_PortfolioMonthlyReportPDFEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/reports/portfolio/monthly.pdf?year=2026&month=8", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.HasPrefix(rec.Body.String(), "%PDF-") {
+		t.Errorf("body does not start with a PDF header")
+	}
+}
+
+func TestNewRouter_ReportEndpoints_RequireSession(t *testing.T) {
+	router, _ := newTestRouter(t)
+
+	for _, path := range []string{
+		"/api/tenants/x/reports/monthly?year=2026&month=8",
+		"/api/tenants/x/reports/monthly.pdf?year=2026&month=8",
+		"/api/reports/portfolio/monthly?year=2026&month=8",
+		"/api/reports/portfolio/monthly.pdf?year=2026&month=8",
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s: status = %d, want 401", path, rec.Code)
+		}
 	}
 }
 
