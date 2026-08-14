@@ -427,10 +427,12 @@ platform (`-linux-amd64`, `-windows-amd64`) — each containing that
 platform's binary, `docs/MANUAL.md` rendered to `MANUAL.pdf` (via
 `scripts/render-manual-pdf.sh` — pandoc to a self-contained HTML file,
 then a headless Chromium prints that to PDF, avoiding a full LaTeX
-toolchain for one document), `CHANGELOG.md`, `bom.cdx.json`,
-`THIRD-PARTY-NOTICES.txt`, and `Spark_License.pdf` — everything an
-operator or a compliance reviewer needs, without also needing this
-repository's build-status README.
+toolchain for one document), `.env.example` (see "Configuration" above —
+the binary reads `.env` from its own working directory, so this is what
+an operator actually edits to get running), `CHANGELOG.md`,
+`bom.cdx.json`, `THIRD-PARTY-NOTICES.txt`, and `Spark_License.pdf` —
+everything an operator or a compliance reviewer needs, without also
+needing this repository's build-status README.
 
 The Windows binary is built by `scripts/build-windows.sh`
 (`GOOS=windows GOARCH=amd64`, no cgo needed since `modernc.org/sqlite`

@@ -395,5 +395,8 @@ Post-Phase-8 follow-up: the server now actually reads `.env`.
   empty environment) and only a `.env` file present, and it came up
   correctly; then repeated it with one real environment variable set
   alongside a conflicting `.env` entry and confirmed the real one won.
+- `scripts/release.sh`'s zips now include `.env.example` alongside the
+  binary — the `.env` feature above is only actually usable out of the
+  box if the release bundle ships the template to copy and fill in.
 
 No further phases remain beyond Phase 8.
