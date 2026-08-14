@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -23,6 +24,7 @@ import (
 	"profileunity-msp-console/internal/reportemail"
 	"profileunity-msp-console/internal/reportmail"
 	"profileunity-msp-console/internal/scheduler"
+	"profileunity-msp-console/internal/settings"
 	"profileunity-msp-console/internal/snapshot"
 	"profileunity-msp-console/internal/tenant"
 	"profileunity-msp-console/internal/tlscert"
@@ -58,27 +60,69 @@ func run() error {
 	}
 	defer sqlDB.Close()
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// The Settings screen's runtime settings (SMTP, collection tunables,
+	// session timeouts, the active TLS certificate) live in the database
+	// from here on, seeded once from PUMC_* on a fresh install — see
+	// internal/settings' package doc for why this is split from Config.
+	settingsStore := settings.NewStore(sqlDB)
+	current, err := settingsStore.EnsureSeeded(ctx, settings.FromConfig(cfg))
+	if err != nil {
+		return fmt.Errorf("load runtime settings: %w", err)
+	}
+	collectionLocation, err := current.Location()
+	if err != nil {
+		return fmt.Errorf("runtime settings: %w", err)
+	}
+
 	tenantRepo := tenant.NewRepo(sqlDB, cfg.CredentialEncryptionKey)
 	snapshotRepo := snapshot.NewRepo(sqlDB)
-	sched := scheduler.New(tenantRepo, snapshotRepo, cfg.CollectionInterval, cfg.CollectionLocation, cfg.CollectionConcurrency, cfg.CollectionTenantTimeout)
+	sched := scheduler.New(tenantRepo, snapshotRepo, current.CollectionInterval, collectionLocation, current.CollectionConcurrency, current.CollectionTenantTimeout)
 
 	userRepo := auth.NewUserRepo(sqlDB)
-	sessionRepo := auth.NewSessionRepo(sqlDB, cfg.SessionIdleTimeout, cfg.SessionAbsoluteTimeout)
+	sessionRepo := auth.NewSessionRepo(sqlDB, current.SessionIdleTimeout, current.SessionAbsoluteTimeout)
 	if err := bootstrapAdmin(userRepo, cfg); err != nil {
 		return fmt.Errorf("bootstrap admin user: %w", err)
 	}
 
-	hosts := tlsHosts(cfg.HTTPAddr)
-	generated, err := tlscert.EnsureSelfSigned(cfg.TLSCertFile, cfg.TLSKeyFile, hosts)
-	if err != nil {
-		return fmt.Errorf("ensure TLS certificate: %w", err)
+	// The active TLS certificate is hot-swappable at runtime (see
+	// internal/tlscert.Holder) so an operator can upload a real one from
+	// the Settings screen with zero downtime. On a fresh install there's
+	// nothing in the database yet, so fall back to the file-based
+	// self-signed generator this project has always used, then copy the
+	// result into settings so it's the database's problem from now on.
+	certHolder := tlscert.NewHolder()
+	if current.TLSCertPEM != "" && current.TLSKeyPEM != "" {
+		if err := certHolder.Set([]byte(current.TLSCertPEM), []byte(current.TLSKeyPEM)); err != nil {
+			return fmt.Errorf("load stored TLS certificate: %w", err)
+		}
+	} else {
+		hosts := tlsHosts(cfg.HTTPAddr)
+		generated, err := tlscert.EnsureSelfSigned(cfg.TLSCertFile, cfg.TLSKeyFile, hosts)
+		if err != nil {
+			return fmt.Errorf("ensure TLS certificate: %w", err)
+		}
+		if generated {
+			log.Printf("generated a self-signed TLS certificate at %s (hosts: %v) — replace it with a CA-signed certificate for production use, from the Settings screen or by replacing these files", cfg.TLSCertFile, hosts)
+		}
+		certPEM, err := os.ReadFile(cfg.TLSCertFile)
+		if err != nil {
+			return fmt.Errorf("read TLS certificate: %w", err)
+		}
+		keyPEM, err := os.ReadFile(cfg.TLSKeyFile)
+		if err != nil {
+			return fmt.Errorf("read TLS key: %w", err)
+		}
+		if err := certHolder.Set(certPEM, keyPEM); err != nil {
+			return fmt.Errorf("load generated TLS certificate: %w", err)
+		}
+		current.TLSCertPEM, current.TLSKeyPEM = string(certPEM), string(keyPEM)
+		if err := settingsStore.UpdateTLSCert(ctx, current.TLSCertPEM, current.TLSKeyPEM); err != nil {
+			return fmt.Errorf("persist generated TLS certificate: %w", err)
+		}
 	}
-	if generated {
-		log.Printf("generated a self-signed TLS certificate at %s (hosts: %v) — replace it with a CA-signed certificate for production use", cfg.TLSCertFile, hosts)
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	go sched.Run(ctx)
 
@@ -86,39 +130,54 @@ func run() error {
 	tenantDeps := httpapi.TenantDeps{Tenants: tenantRepo}
 	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo}
 
-	if cfg.ReportEmailEnabled() {
-		smtpCfg := mailer.Config{
-			Host:     cfg.SMTPHost,
-			Port:     cfg.SMTPPort,
-			Username: cfg.SMTPUsername,
-			Password: cfg.SMTPPassword,
-			From:     cfg.SMTPFrom,
-			Security: cfg.SMTPSecurity,
-		}
-		reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), smtpCfg, cfg.ReportRecipients, cfg.ReportEmailDay, cfg.CollectionLocation)
-		go reportMailSched.Run(ctx)
-		log.Printf("monthly portfolio report emailing enabled: day %d of each month, to %v", cfg.ReportEmailDay, cfg.ReportRecipients)
-	} else {
-		log.Print("PUMC_SMTP_HOST is not set — monthly portfolio report emailing is disabled")
+	// The report-mail scheduler always runs, regardless of whether SMTP
+	// is configured yet -- it no-ops on every check until an operator
+	// sets PUMC_SMTP_HOST (or the equivalent Settings screen fields),
+	// which then takes effect on the very next check with no restart.
+	reportMailSmtp := mailer.Config{
+		Host:     current.SMTPHost,
+		Port:     current.SMTPPort,
+		Username: current.SMTPUsername,
+		Password: current.SMTPPassword,
+		From:     current.SMTPFrom,
+		Security: current.SMTPSecurity,
 	}
-	dashboardDeps := httpapi.DashboardDeps{Repos: repos, Location: cfg.CollectionLocation}
+	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), reportMailSmtp, current.ReportRecipients, current.ReportEmailDay, collectionLocation)
+	go reportMailSched.Run(ctx)
+	if current.ReportEmailEnabled() {
+		log.Printf("monthly portfolio report emailing enabled: day %d of each month, to %v", current.ReportEmailDay, current.ReportRecipients)
+	} else {
+		log.Print("SMTP is not configured — monthly portfolio report emailing is disabled (set it up from the Settings screen)")
+	}
+
+	dashboardDeps := httpapi.DashboardDeps{Repos: repos, Location: collectionLocation}
 	historyDeps := httpapi.HistoryDeps{Repos: repos}
 	reportDeps := httpapi.ReportDeps{Repos: repos}
-	alertDeps := httpapi.AlertDeps{Repos: repos, Location: cfg.CollectionLocation}
+	alertDeps := httpapi.AlertDeps{Repos: repos, Location: collectionLocation}
 	schedulerStatus := func() httpapi.SchedulerStatus {
 		return schedulerStatusFor(sched.Status())
 	}
 	collectionDeps := httpapi.CollectionDeps{Scheduler: sched, Status: schedulerStatus}
-	router, err := httpapi.NewRouter(schedulerStatus, authDeps, tenantDeps, dashboardDeps, historyDeps, reportDeps, alertDeps, collectionDeps)
+	settingsDeps := httpapi.SettingsDeps{
+		Store:      settingsStore,
+		Sessions:   sessionRepo,
+		Scheduler:  sched,
+		ReportMail: reportMailSched,
+		TLSCert:    certHolder,
+	}
+	router, err := httpapi.NewRouter(schedulerStatus, authDeps, tenantDeps, dashboardDeps, historyDeps, reportDeps, alertDeps, collectionDeps, settingsDeps)
 	if err != nil {
 		return fmt.Errorf("build router: %w", err)
 	}
 
-	server := &http.Server{Addr: cfg.HTTPAddr, Handler: router}
+	// TLSConfig.GetCertificate (rather than passing file paths to
+	// ListenAndServeTLS) is what makes certHolder.Set take effect on the
+	// very next handshake without restarting this listener.
+	server := &http.Server{Addr: cfg.HTTPAddr, Handler: router, TLSConfig: &tls.Config{GetCertificate: certHolder.GetCertificate}}
 	serveErr := make(chan error, 1)
 	go func() {
 		log.Printf("listening on https://%s", cfg.HTTPAddr)
-		if err := server.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serveErr <- err
 			return
 		}

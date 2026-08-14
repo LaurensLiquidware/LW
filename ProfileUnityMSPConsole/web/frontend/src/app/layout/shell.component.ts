@@ -48,6 +48,7 @@ export class ShellComponent implements OnInit {
     { path: '/tenants', labelKey: 'nav.tenants', icon: 'pi pi-building' },
     { path: '/history', labelKey: 'nav.history', icon: 'pi pi-chart-line' },
     { path: '/reports', labelKey: 'nav.reports', icon: 'pi pi-file' },
+    { path: '/settings', labelKey: 'nav.settings', icon: 'pi pi-cog' },
   ];
 
   async ngOnInit(): Promise<void> {

@@ -1,8 +1,9 @@
 // Package reportmail automatically emails the MSP-wide portfolio PDF
 // report once a month, on an in-process ticker (the same "no external
 // cron dependency" approach internal/scheduler uses for collection).
-// Whether the feature runs at all is a single on/off switch:
-// config.Config.ReportEmailEnabled().
+// Whether the feature runs at all is a single on/off switch — an empty
+// SMTP host — checked on every tick via SetConfig's current value, so
+// enabling/disabling it from the Settings screen needs no restart.
 package reportmail
 
 import (
@@ -11,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"profileunity-msp-console/internal/dashboard"
@@ -29,41 +31,65 @@ const checkInterval = time.Hour
 type Status struct {
 	LastCheckAt time.Time
 	LastSendAt  time.Time
-	LastOutcome string // "sent", "already_sent", "not_due", "no_recipients", or "error"
+	LastOutcome string // "sent", "already_sent", "not_due", "no_recipients", "disabled", or "error"
 	LastError   string
 	LastYear    int
 	LastMonth   int
 }
 
-// Scheduler checks once per checkInterval tick whether it's the
-// configured day of the month (in Location) to email the previous
-// month's portfolio report, and sends it at most once per month.
-type Scheduler struct {
-	repos      dashboard.Repos
-	emails     *reportemail.Repo
+// liveConfig is everything about a Scheduler's send behavior an operator
+// can change at runtime via the Settings screen. Held behind an atomic
+// pointer (see Scheduler.cfg) rather than as plain fields, since a
+// settings-update HTTP handler and the running scheduler goroutine touch
+// these concurrently.
+type liveConfig struct {
 	smtp       mailer.Config
 	recipients []string
+	day        int
+	location   *time.Location
+}
 
-	Day      int
-	Location *time.Location
+// enabled mirrors config.Config.ReportEmailEnabled/settings.Settings.
+// ReportEmailEnabled: an empty SMTP host means the feature is off,
+// regardless of what else is configured.
+func (c *liveConfig) enabled() bool {
+	return c.smtp.Host != ""
+}
+
+// Scheduler checks once per checkInterval tick whether it's on or after
+// the configured day of the month (in its current config's location) to
+// email the previous month's portfolio report, and sends it at most
+// once per month.
+type Scheduler struct {
+	repos  dashboard.Repos
+	emails *reportemail.Repo
+
+	cfg atomic.Pointer[liveConfig]
 
 	mu     sync.Mutex
 	status Status
 }
 
-// New creates a Scheduler. Callers should only start it (via Run) when
-// cfg.ReportEmailEnabled() is true — main.go is expected to check that
-// before spawning the goroutine, the same way it already gates
-// bootstrap-admin creation on whether credentials were configured.
+// New creates a Scheduler. It always runs once started via Run,
+// regardless of whether SMTP is configured yet — checkAndSendAt no-ops
+// with outcome "disabled" whenever the current config's SMTP host is
+// empty, so enabling the feature later via SetConfig takes effect on the
+// very next check without needing to start a new goroutine.
 func New(repos dashboard.Repos, emails *reportemail.Repo, smtp mailer.Config, recipients []string, day int, location *time.Location) *Scheduler {
-	return &Scheduler{
-		repos:      repos,
-		emails:     emails,
-		smtp:       smtp,
-		recipients: recipients,
-		Day:        day,
-		Location:   location,
-	}
+	s := &Scheduler{repos: repos, emails: emails}
+	s.SetConfig(smtp, recipients, day, location)
+	return s
+}
+
+// SetConfig changes the SMTP settings, recipients, send day, and
+// timezone a running Scheduler uses, effective from its very next check
+// — no restart needed. Safe to call from any goroutine.
+func (s *Scheduler) SetConfig(smtp mailer.Config, recipients []string, day int, location *time.Location) {
+	s.cfg.Store(&liveConfig{smtp: smtp, recipients: recipients, day: day, location: location})
+}
+
+func (s *Scheduler) current() *liveConfig {
+	return s.cfg.Load()
 }
 
 // Run blocks, checking immediately and then on every tick, until ctx is
@@ -84,24 +110,29 @@ func (s *Scheduler) Run(ctx context.Context) {
 }
 
 func (s *Scheduler) checkAndSend(ctx context.Context) {
-	s.checkAndSendAt(ctx, time.Now().In(s.Location))
+	s.checkAndSendAt(ctx, time.Now().In(s.current().location))
 }
 
 // checkAndSendAt sends the previous month's portfolio report if, and
-// only if, at is on or after the configured send day of its calendar
-// month and that month's report hasn't already been sent successfully.
-// "On or after", not "exactly on", so a server that's down on the
-// configured day still sends as soon as it's back up rather than
-// silently skipping that month — AlreadySent is what prevents a
-// duplicate once it has.
+// only if, the feature is enabled, at is on or after the configured send
+// day of its calendar month, and that month's report hasn't already
+// been sent successfully. "On or after", not "exactly on", so a server
+// that's down on the configured day still sends as soon as it's back up
+// rather than silently skipping that month — AlreadySent is what
+// prevents a duplicate once it has.
 func (s *Scheduler) checkAndSendAt(ctx context.Context, now time.Time) {
+	cur := s.current()
 	s.recordCheck(now)
 
-	if now.Day() < s.Day {
+	if !cur.enabled() {
+		s.recordOutcome(now, 0, 0, "disabled", nil)
+		return
+	}
+	if now.Day() < cur.day {
 		s.recordOutcome(now, 0, 0, "not_due", nil)
 		return
 	}
-	if len(s.recipients) == 0 {
+	if len(cur.recipients) == 0 {
 		s.recordOutcome(now, 0, 0, "no_recipients", nil)
 		return
 	}
@@ -119,24 +150,24 @@ func (s *Scheduler) checkAndSendAt(ctx context.Context, now time.Time) {
 		return
 	}
 
-	if err := s.send(ctx, year, month); err != nil {
+	if err := s.send(ctx, year, month, cur); err != nil {
 		log.Printf("reportmail: send portfolio report for %04d-%02d: %v", year, month, err)
 		s.recordOutcome(now, year, month, "error", err)
 		return
 	}
 
-	if err := s.emails.MarkSent(ctx, year, month, s.recipients, time.Now()); err != nil {
+	if err := s.emails.MarkSent(ctx, year, month, cur.recipients, time.Now()); err != nil {
 		// The email itself was already sent -- failing to record that
 		// isn't something to retry by resending, only to log loudly, or
 		// next month's run risks resending this month's report too.
 		log.Printf("reportmail: sent %04d-%02d but failed to record it: %v", year, month, err)
 	}
-	log.Printf("reportmail: emailed the %04d-%02d portfolio report to %v", year, month, s.recipients)
+	log.Printf("reportmail: emailed the %04d-%02d portfolio report to %v", year, month, cur.recipients)
 	s.recordOutcome(now, year, month, "sent", nil)
 }
 
 // send builds and emails the portfolio PDF for one month.
-func (s *Scheduler) send(ctx context.Context, year, month int) error {
+func (s *Scheduler) send(ctx context.Context, year, month int, cur *liveConfig) error {
 	days, from, to := monthRange(year, month)
 
 	report, err := dashboard.LoadPortfolioMonthlyReport(ctx, s.repos, year, month, days, from, to)
@@ -158,7 +189,7 @@ func (s *Scheduler) send(ctx context.Context, year, month int) error {
 		Data:     buf.Bytes(),
 	}
 
-	return mailer.Send(s.smtp, s.recipients, subject, body, []mailer.Attachment{attachment})
+	return mailer.Send(cur.smtp, cur.recipients, subject, body, []mailer.Attachment{attachment})
 }
 
 // previousMonth returns the year/month immediately before now's calendar

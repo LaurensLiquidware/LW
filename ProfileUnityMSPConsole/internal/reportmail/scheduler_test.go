@@ -235,6 +235,51 @@ func TestCheckAndSendAt_SkipsWhenThereAreNoRecipients(t *testing.T) {
 	}
 }
 
+func TestCheckAndSendAt_DisabledWhenSMTPHostEmpty(t *testing.T) {
+	srv := startFakeSMTPServer(t)
+	s := newTestScheduler(t, srv.smtpConfig(t), 1, []string{"msp@liquidware.eu"})
+	empty := srv.smtpConfig(t)
+	empty.Host = ""
+	s.SetConfig(empty, []string{"msp@liquidware.eu"}, 1, time.UTC)
+
+	s.checkAndSendAt(context.Background(), time.Date(2026, time.August, 1, 9, 0, 0, 0, time.UTC))
+
+	select {
+	case body := <-srv.got:
+		t.Fatalf("scheduler sent a message with SMTP disabled (empty host):\n%s", body)
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	if got := s.Status().LastOutcome; got != "disabled" {
+		t.Errorf("LastOutcome = %q, want disabled", got)
+	}
+}
+
+func TestSetConfig_TakesEffectOnTheNextCheck(t *testing.T) {
+	srv := startFakeSMTPServer(t)
+	// Start disabled (empty SMTP host) -- a check now must no-op.
+	s := newTestScheduler(t, mailer.Config{}, 1, nil)
+
+	s.checkAndSendAt(context.Background(), time.Date(2026, time.August, 1, 9, 0, 0, 0, time.UTC))
+	if got := s.Status().LastOutcome; got != "disabled" {
+		t.Fatalf("LastOutcome before SetConfig = %q, want disabled", got)
+	}
+
+	// Enabling it live, the way the Settings screen would, must make the
+	// very next check send -- no restart, no re-running New.
+	s.SetConfig(srv.smtpConfig(t), []string{"msp@liquidware.eu"}, 1, time.UTC)
+	s.checkAndSendAt(context.Background(), time.Date(2026, time.August, 1, 9, 0, 0, 0, time.UTC))
+
+	select {
+	case <-srv.got:
+	case <-time.After(5 * time.Second):
+		t.Fatal("scheduler never sent after SetConfig enabled it live")
+	}
+	if got := s.Status().LastOutcome; got != "sent" {
+		t.Errorf("LastOutcome after SetConfig = %q, want sent", got)
+	}
+}
+
 func TestPreviousMonth_HandlesJanuaryRollover(t *testing.T) {
 	year, month := previousMonth(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 	if year != 2025 || month != 12 {

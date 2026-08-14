@@ -251,3 +251,61 @@ func TestSessionRepo_Validate_EnforcesAbsoluteTimeout(t *testing.T) {
 		t.Errorf("err = %v, want ErrSessionInvalid after absolute timeout", err)
 	}
 }
+
+func TestSessionRepo_SetTimeouts_IdleChangeAppliesToExistingSessionsImmediately(t *testing.T) {
+	users, sessions := newTestSessionRepo(t, time.Hour, time.Hour)
+	ctx := context.Background()
+
+	u, err := users.CreateUser(ctx, "jane", "correct-horse-battery-staple", RoleOperator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := sessions.Create(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Idle timeout is checked fresh on every Validate call (not baked in
+	// at Create time the way absolute timeout is), so shrinking it live
+	// must invalidate this already-issued session on the very next
+	// Validate -- no restart, no new session needed.
+	sessions.SetTimeouts(10*time.Millisecond, time.Hour)
+	time.Sleep(30 * time.Millisecond)
+
+	if _, err := sessions.Validate(ctx, token); err != ErrSessionInvalid {
+		t.Errorf("err = %v, want ErrSessionInvalid after SetTimeouts shrank the idle timeout live", err)
+	}
+}
+
+func TestSessionRepo_SetTimeouts_AbsoluteChangeOnlyAffectsNewSessions(t *testing.T) {
+	users, sessions := newTestSessionRepo(t, time.Hour, time.Hour)
+	ctx := context.Background()
+
+	u, err := users.CreateUser(ctx, "jane", "correct-horse-battery-staple", RoleOperator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	existingToken, err := sessions.Create(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Absolute timeout is baked into expires_at_utc at Create time, so
+	// shrinking it live must NOT retroactively expire an already-issued
+	// session -- only sessions created after the change are affected.
+	sessions.SetTimeouts(time.Hour, 10*time.Millisecond)
+	time.Sleep(30 * time.Millisecond)
+
+	if _, err := sessions.Validate(ctx, existingToken); err != nil {
+		t.Errorf("err = %v, want nil -- an already-issued session must keep its original absolute expiry", err)
+	}
+
+	newToken, err := sessions.Create(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(30 * time.Millisecond)
+	if _, err := sessions.Validate(ctx, newToken); err != ErrSessionInvalid {
+		t.Errorf("err = %v, want ErrSessionInvalid -- a session created after SetTimeouts must use the new absolute timeout", err)
+	}
+}

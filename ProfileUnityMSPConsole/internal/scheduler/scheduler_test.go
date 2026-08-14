@@ -196,3 +196,93 @@ func TestScheduler_CollectNow_RespectsConcurrencyCap(t *testing.T) {
 		t.Errorf("max concurrent requests = %d, want <= %d", got, concurrencyCap)
 	}
 }
+
+func TestScheduler_SetTunables_RaisesTheConcurrencyCapLive(t *testing.T) {
+	tenantRepo, snapshotRepo := newTestRepos(t)
+	ctx := context.Background()
+
+	var current, maxSeen int32
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&current, 1)
+		for {
+			m := atomic.LoadInt32(&maxSeen)
+			if n <= m || atomic.CompareAndSwapInt32(&maxSeen, m, n) {
+				break
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+		atomic.AddInt32(&current, -1)
+		w.Write([]byte(licenseInfoSuccessJSON))
+	}))
+	defer srv.Close()
+	host, port := hostPort(t, srv.URL)
+
+	for i := 0; i < 6; i++ {
+		_, err := tenantRepo.Create(ctx, tenant.CreateInput{
+			DisplayName: "tenant", Hostname: host, Port: port, TLSSkipVerify: true, Enabled: true,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Construct with a concurrency cap of 1, then raise it via SetTunables
+	// before ever calling CollectNow -- proving the change actually takes,
+	// not just that the constructor's original value still works.
+	sched := New(tenantRepo, snapshotRepo, time.Hour, time.UTC, 1, 5*time.Second)
+	sched.SetTunables(time.Hour, time.UTC, 6, 5*time.Second)
+	if _, err := sched.CollectNow(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := atomic.LoadInt32(&maxSeen); got <= 1 {
+		t.Errorf("max concurrent requests = %d, want > 1 (SetTunables' raised cap never took effect)", got)
+	}
+}
+
+func TestScheduler_Run_PicksUpAShorterIntervalWithoutRestart(t *testing.T) {
+	tenantRepo, snapshotRepo := newTestRepos(t)
+
+	var runs int32
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&runs, 1)
+		w.Write([]byte(licenseInfoSuccessJSON))
+	}))
+	defer srv.Close()
+	host, port := hostPort(t, srv.URL)
+
+	if _, err := tenantRepo.Create(context.Background(), tenant.CreateInput{
+		DisplayName: "tenant", Hostname: host, Port: port, TLSSkipVerify: true, Enabled: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start with a long interval that would never tick again within this
+	// test's timeout on its own, then shorten it immediately -- Run's
+	// very first extra tick beyond the initial CollectNow only happens
+	// if it re-reads the interval rather than keeping the one Run
+	// started with.
+	sched := New(tenantRepo, snapshotRepo, time.Hour, time.UTC, 1, 5*time.Second)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go sched.Run(ctx)
+
+	// Run's immediate CollectNow races with SetTunables below; either
+	// order is fine, we just need at least 2 runs total once the short
+	// interval is in effect.
+	time.Sleep(20 * time.Millisecond)
+	sched.SetTunables(20*time.Millisecond, time.UTC, 1, 5*time.Second)
+
+	deadline := time.After(3 * time.Second)
+	for {
+		if atomic.LoadInt32(&runs) >= 2 {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("only saw %d run(s) after shortening the interval live; SetTunables never took effect on the running ticker", atomic.LoadInt32(&runs))
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}

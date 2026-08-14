@@ -543,4 +543,53 @@ Post-Phase-8 follow-up: the portfolio report can now email itself.
   arrived as a real email with the report text as the body and a valid,
   correctly branded PDF attachment.
 
+Post-Phase-8 follow-up: a Settings screen for everything that isn't
+needed to boot the process in the first place.
+
+- Added a **Settings** screen (new nav entry) covering SMTP/report-email,
+  collection interval/timezone/concurrency/tenant-timeout, operator
+  session idle/absolute timeouts, and the active TLS certificate.
+  Bootstrap-only settings — listen address, DB driver/DSN, the
+  credential encryption key, the initial admin account — stay env-var
+  only, exactly as before; everything else is now editable from the UI,
+  takes effect **immediately** (no restart), and is persisted so it
+  survives one.
+- New `internal/settings` package: a `runtime_settings` singleton row
+  (migration `0005`), seeded once from the `PUMC_*` environment variables
+  on a fresh database and the sole source of truth after that. Env vars
+  for these fields are now seed values only — see the rewritten
+  `.env.example` and `docs/MANUAL.md`'s "Configuration reference" for
+  exactly which settings stay env-only versus which are seed-only.
+- Made `scheduler.Scheduler`, `reportmail.Scheduler`, and
+  `auth.SessionRepo` accept live updates via new `SetTunables`/
+  `SetConfig`/`SetTimeouts` methods instead of fixed-at-construction
+  fields. `scheduler.Scheduler.Run`'s wait loop needed a wake-up channel,
+  not just an atomic value swap, to make a shortened interval apply
+  immediately rather than only once whatever wait was already in flight
+  happened to expire — caught by a test that deliberately started with
+  an hour-long interval and asserted a second collection run within
+  seconds of calling `SetTunables`.
+- New `internal/tlscert.Holder`: an atomically-swappable
+  `tls.Config.GetCertificate` backing, so an operator-uploaded
+  certificate hot-swaps into the running HTTPS listener with zero
+  downtime — `cmd/server/main.go` now builds an explicit `tls.Config`
+  and calls `ListenAndServeTLS("", "")` instead of handing file paths to
+  the standard library. Verified with a real TLS handshake test
+  (`internal/tlscert`) that dials the listener before and after a swap
+  and confirms the presented certificate actually changed.
+- New settings endpoints: `GET`/`PUT /api/settings`,
+  `POST /api/settings/tls-cert` (validates the pair with
+  `tls.X509KeyPair` before accepting anything), and
+  `POST /api/settings/test-email` (sends using whatever's currently
+  typed into the form, not the saved settings, the same way tenant Test
+  Connection tests unsaved values).
+- Verified end to end against the real running binary: logged in,
+  shortened the collection interval via the API and watched
+  `/healthz`'s `lastRunAtUtc` advance on the new cadence, shrank the
+  session idle timeout and confirmed an already-authenticated session
+  got invalidated on its very next request, and uploaded a fresh
+  self-signed certificate and confirmed — via a real `openssl s_client`
+  handshake against the live listener — that its fingerprint changed
+  with no restart in between.
+
 No further phases remain beyond Phase 8.

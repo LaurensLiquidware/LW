@@ -21,7 +21,7 @@ import (
 // schedulerStatus reports live scheduler state; pass a func that always
 // returns SchedulerStatus{Status: "not_implemented"} where no scheduler
 // exists yet.
-func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps, reportDeps ReportDeps, alertDeps AlertDeps, collectionDeps CollectionDeps) (http.Handler, error) {
+func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps, reportDeps ReportDeps, alertDeps AlertDeps, collectionDeps CollectionDeps, settingsDeps SettingsDeps) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", HealthHandler(schedulerStatus))
@@ -65,6 +65,17 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	mux.Handle("GET /api/tenants/{id}/reports/monthly.pdf", RequireSession(authDeps.Sessions, TenantMonthlyReportPDFHandler(reportDeps)))
 	mux.Handle("GET /api/reports/portfolio/monthly", RequireSession(authDeps.Sessions, PortfolioMonthlyReportHandler(reportDeps)))
 	mux.Handle("GET /api/reports/portfolio/monthly.pdf", RequireSession(authDeps.Sessions, PortfolioMonthlyReportPDFHandler(reportDeps)))
+
+	// Settings screen: everything not required to boot the process in
+	// the first place (listen address, DB driver/DSN, the credential
+	// encryption key, and the initial admin account stay env-var-only).
+	// Changes here are pushed live into the running scheduler/report-mail/
+	// session components and hot-swapped into the TLS listener — no
+	// restart needed.
+	mux.Handle("GET /api/settings", RequireSession(authDeps.Sessions, GetSettingsHandler(settingsDeps)))
+	mux.Handle("PUT /api/settings", RequireSession(authDeps.Sessions, auth.RequireCSRF(UpdateSettingsHandler(settingsDeps))))
+	mux.Handle("POST /api/settings/tls-cert", RequireSession(authDeps.Sessions, auth.RequireCSRF(UploadTLSCertHandler(settingsDeps))))
+	mux.Handle("POST /api/settings/test-email", RequireSession(authDeps.Sessions, auth.RequireCSRF(TestEmailHandler(settingsDeps))))
 
 	// Legal packaging (project brief §11.7): the license PDF and SBOM
 	// ship inside the binary and are reachable at fixed top-level paths

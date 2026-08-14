@@ -10,6 +10,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,48 +40,83 @@ type Status struct {
 	LastRunError   string
 }
 
-// Scheduler polls every enabled tenant on Interval, capped at
-// Concurrency concurrent polls, each bounded by TenantTimeout (including
-// retries) so one dead tenant never stalls the run.
+// tunables is everything about a Scheduler's run behavior an operator
+// can change at runtime via the Settings screen. Held behind an atomic
+// pointer (see Scheduler.tunables) rather than as plain fields, since a
+// settings-update HTTP handler and the running scheduler goroutine touch
+// these concurrently.
+type tunables struct {
+	interval      time.Duration
+	location      *time.Location
+	concurrency   int
+	tenantTimeout time.Duration
+}
+
+// Scheduler polls every enabled tenant on its configured interval,
+// capped at a configured concurrency, each bounded by a per-tenant
+// timeout (including retries) so one dead tenant never stalls the run.
 type Scheduler struct {
 	tenants   *tenant.Repo
 	snapshots *snapshot.Repo
 
-	Interval      time.Duration
-	Location      *time.Location
-	Concurrency   int
-	TenantTimeout time.Duration
+	tunables atomic.Pointer[tunables]
+
+	// tunablesChanged wakes Run out of a long wait as soon as
+	// SetTunables is called, rather than only picking up the new
+	// interval once the *old*, possibly much longer, wait finally
+	// expires. Buffered 1 and drained non-blockingly so SetTunables
+	// never blocks on a Scheduler that isn't running yet.
+	tunablesChanged chan struct{}
 
 	mu     sync.Mutex
 	status Status
 }
 
 // New creates a Scheduler. Concurrency and TenantTimeout must be set to
-// sane positive values by the caller (config.Load already validates its
-// own equivalents).
+// sane positive values by the caller (config.Load/settings.Validate
+// already validate their own equivalents).
 func New(tenants *tenant.Repo, snapshots *snapshot.Repo, interval time.Duration, location *time.Location, concurrency int, tenantTimeout time.Duration) *Scheduler {
-	return &Scheduler{
-		tenants:       tenants,
-		snapshots:     snapshots,
-		Interval:      interval,
-		Location:      location,
-		Concurrency:   concurrency,
-		TenantTimeout: tenantTimeout,
+	s := &Scheduler{tenants: tenants, snapshots: snapshots, tunablesChanged: make(chan struct{}, 1)}
+	s.SetTunables(interval, location, concurrency, tenantTimeout)
+	return s
+}
+
+// SetTunables changes the interval/location/concurrency/tenant-timeout a
+// running Scheduler uses, effective immediately — including waking up a
+// Run loop that's in the middle of waiting out a now-stale interval — no
+// restart needed. Safe to call from any goroutine.
+func (s *Scheduler) SetTunables(interval time.Duration, location *time.Location, concurrency int, tenantTimeout time.Duration) {
+	s.tunables.Store(&tunables{interval: interval, location: location, concurrency: concurrency, tenantTimeout: tenantTimeout})
+	select {
+	case s.tunablesChanged <- struct{}{}:
+	default:
 	}
 }
 
+func (s *Scheduler) current() *tunables {
+	return s.tunables.Load()
+}
+
 // Run blocks, collecting once immediately and then on every tick, until
-// ctx is canceled. Call it in its own goroutine.
+// ctx is canceled. Call it in its own goroutine. The tick interval is
+// re-read from the current tunables before every wait, and a SetTunables
+// call while a wait is already in progress wakes it immediately to
+// restart the wait with the new interval — a change takes effect right
+// away, not only once whatever wait was already in flight happens to
+// expire.
 func (s *Scheduler) Run(ctx context.Context) {
 	s.CollectNow(ctx)
 
-	ticker := time.NewTicker(s.Interval)
-	defer ticker.Stop()
 	for {
+		timer := time.NewTimer(s.current().interval)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return
-		case <-ticker.C:
+		case <-s.tunablesChanged:
+			timer.Stop()
+			continue
+		case <-timer.C:
 			s.CollectNow(ctx)
 		}
 	}
@@ -96,6 +132,7 @@ func (s *Scheduler) CollectNow(ctx context.Context) (RunSummary, error) {
 
 	runID := uuid.NewString()
 	now := time.Now().UTC()
+	cur := s.current()
 
 	tenants, err := s.tenants.List(ctx)
 	if err != nil {
@@ -113,7 +150,7 @@ func (s *Scheduler) CollectNow(ctx context.Context) (RunSummary, error) {
 	counts := make(map[snapshot.Status]int)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, max(1, s.Concurrency))
+	sem := make(chan struct{}, max(1, cur.concurrency))
 
 	for _, t := range enabled {
 		t := t
@@ -122,7 +159,7 @@ func (s *Scheduler) CollectNow(ctx context.Context) (RunSummary, error) {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			status := s.collectTenant(ctx, runID, t, now)
+			status := s.collectTenant(ctx, runID, t, now, cur)
 			mu.Lock()
 			counts[status]++
 			mu.Unlock()
@@ -147,16 +184,16 @@ func (s *Scheduler) CollectNow(ctx context.Context) (RunSummary, error) {
 // the run"). Persistence always uses a fresh, un-timed-out context —
 // tenantCtx may already have expired by the time there's a result to
 // store, and a failed poll must still be recorded.
-func (s *Scheduler) collectTenant(ctx context.Context, runID string, t tenant.Tenant, now time.Time) (resultStatus snapshot.Status) {
+func (s *Scheduler) collectTenant(ctx context.Context, runID string, t tenant.Tenant, now time.Time, cur *tunables) (resultStatus snapshot.Status) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("collection run %s: tenant %s panicked: %v", runID, t.ID, r)
-			s.storeErrorSnapshot(t.ID, now, "internal error during collection")
+			s.storeErrorSnapshot(t.ID, now, "internal error during collection", cur)
 			resultStatus = snapshot.StatusError
 		}
 	}()
 
-	tenantCtx, cancel := context.WithTimeout(ctx, s.TenantTimeout)
+	tenantCtx, cancel := context.WithTimeout(ctx, cur.tenantTimeout)
 	defer cancel()
 
 	var creds *tenant.Credentials
@@ -165,22 +202,22 @@ func (s *Scheduler) collectTenant(ctx context.Context, runID string, t tenant.Te
 		creds, err = s.tenants.GetCredentials(tenantCtx, t.ID)
 		if err != nil {
 			log.Printf("collection run %s: tenant %s: load credentials: %v", runID, t.ID, err)
-			s.storeErrorSnapshot(t.ID, now, "failed to load stored credentials")
+			s.storeErrorSnapshot(t.ID, now, "failed to load stored credentials", cur)
 			return snapshot.StatusError
 		}
 	}
 
-	snap := collector.CollectOne(tenantCtx, t, creds, now, s.Location)
+	snap := collector.CollectOne(tenantCtx, t, creds, now, cur.location)
 	if _, err := s.snapshots.Upsert(context.Background(), snap); err != nil {
 		log.Printf("collection run %s: tenant %s: store snapshot: %v", runID, t.ID, err)
 	}
 	return snap.Status
 }
 
-func (s *Scheduler) storeErrorSnapshot(tenantID string, now time.Time, message string) {
+func (s *Scheduler) storeErrorSnapshot(tenantID string, now time.Time, message string, cur *tunables) {
 	snap := snapshot.Snapshot{
 		TenantID:       tenantID,
-		CollectionDate: snapshot.CollectionDateFor(now, s.Location),
+		CollectionDate: snapshot.CollectionDateFor(now, cur.location),
 		CollectedAtUTC: now,
 		Status:         snapshot.StatusError,
 		ErrorMessage:   message,

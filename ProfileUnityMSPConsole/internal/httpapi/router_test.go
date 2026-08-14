@@ -11,9 +11,14 @@ import (
 	"profileunity-msp-console/internal/auth"
 	"profileunity-msp-console/internal/dashboard"
 	"profileunity-msp-console/internal/db"
+	"profileunity-msp-console/internal/mailer"
+	"profileunity-msp-console/internal/reportemail"
+	"profileunity-msp-console/internal/reportmail"
 	"profileunity-msp-console/internal/scheduler"
+	"profileunity-msp-console/internal/settings"
 	"profileunity-msp-console/internal/snapshot"
 	"profileunity-msp-console/internal/tenant"
+	"profileunity-msp-console/internal/tlscert"
 )
 
 type testDeps struct {
@@ -24,6 +29,7 @@ type testDeps struct {
 	reports    ReportDeps
 	alerts     AlertDeps
 	collection CollectionDeps
+	settings   SettingsDeps
 }
 
 func newTestDeps(t *testing.T) testDeps {
@@ -38,11 +44,27 @@ func newTestDeps(t *testing.T) testDeps {
 	snapshotRepo := snapshot.NewRepo(sqlDB)
 	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo}
 	sched := scheduler.New(tenantRepo, snapshotRepo, time.Hour, time.UTC, 5, 30*time.Second)
+	sessions := auth.NewSessionRepo(sqlDB, 30*time.Minute, 12*time.Hour)
+
+	settingsStore := settings.NewStore(sqlDB)
+	if _, err := settingsStore.EnsureSeeded(t.Context(), settings.Settings{
+		SMTPSecurity:            "starttls",
+		ReportEmailDay:          1,
+		CollectionInterval:      time.Hour,
+		CollectionTimezone:      "UTC",
+		CollectionConcurrency:   5,
+		CollectionTenantTimeout: 30 * time.Second,
+		SessionIdleTimeout:      30 * time.Minute,
+		SessionAbsoluteTimeout:  12 * time.Hour,
+	}); err != nil {
+		t.Fatalf("seed settings: %v", err)
+	}
+	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), mailer.Config{}, nil, 1, time.UTC)
 
 	return testDeps{
 		auth: AuthDeps{
 			Users:    auth.NewUserRepo(sqlDB),
-			Sessions: auth.NewSessionRepo(sqlDB, 30*time.Minute, 12*time.Hour),
+			Sessions: sessions,
 			Secure:   false,
 		},
 		tenants:   TenantDeps{Tenants: tenantRepo},
@@ -54,13 +76,20 @@ func newTestDeps(t *testing.T) testDeps {
 			Scheduler: sched,
 			Status:    func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} },
 		},
+		settings: SettingsDeps{
+			Store:      settingsStore,
+			Sessions:   sessions,
+			Scheduler:  sched,
+			ReportMail: reportMailSched,
+			TLSCert:    tlscert.NewHolder(),
+		},
 	}
 }
 
 func newTestRouter(t *testing.T) (http.Handler, testDeps) {
 	t.Helper()
 	deps := newTestDeps(t)
-	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts, deps.collection)
+	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts, deps.collection, deps.settings)
 	if err != nil {
 		t.Fatal(err)
 	}

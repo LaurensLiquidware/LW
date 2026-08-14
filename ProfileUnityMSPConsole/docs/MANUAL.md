@@ -15,6 +15,7 @@ history of what was added, see [`CHANGELOG.md`](../CHANGELOG.md).
 - [What this does](#what-this-does)
 - [Installing and starting the server](#installing-and-starting-the-server)
 - [Configuration reference](#configuration-reference)
+- [Settings screen](#settings-screen)
 - [First sign-in](#first-sign-in)
 - [Managing tenants](#managing-tenants)
 - [Dashboard](#dashboard)
@@ -69,17 +70,19 @@ file.
      `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD`, if the users table is
      empty and those are set.
 3. Browse to `https://<host>:<port>`. Your browser will warn about the
-   self-signed certificate unless you've replaced it with a CA-signed
-   pair at the configured `PUMC_TLS_CERT_FILE`/`PUMC_TLS_KEY_FILE` paths —
-   that warning is expected on a fresh install and safe to accept for
-   internal use, but replace the certificate before exposing this beyond
-   a trusted network.
+   self-signed certificate unless you've replaced it with a real one —
+   either by uploading it from the Settings screen after signing in (no
+   restart needed), or by dropping a CA-signed pair at the configured
+   `PUMC_TLS_CERT_FILE`/`PUMC_TLS_KEY_FILE` paths before the very first
+   startup. The self-signed warning is expected on a fresh install and
+   safe to accept for internal use, but replace the certificate before
+   exposing this beyond a trusted network.
 
 ## Configuration reference
 
-All configuration is environment variables, read once at startup — there
-is no in-app settings screen (deliberately: these are operational/
-security decisions, not day-to-day preferences).
+A handful of settings are environment variables the process needs before
+it can even open its own database — these stay env-var-only, read once
+at startup, and can't be changed from the UI:
 
 | Variable | Purpose | Default |
 |---|---|---|
@@ -88,15 +91,25 @@ security decisions, not day-to-day preferences).
 | `PUMC_DB_DRIVER` | `sqlite` or `postgres` | `sqlite` |
 | `PUMC_DB_DSN` | File path (sqlite) or connection string (postgres) | `./profileunity-msp-console.db` |
 | `PUMC_LOG_LEVEL` | `debug`, `info`, `warn`, or `error` | `info` |
+| `PUMC_CREDENTIAL_ENCRYPTION_KEY` | Base64 32-byte (AES-256) key encrypting stored tenant credentials at rest. Generate with `openssl rand -base64 32`. Leave unset if no tenant will ever have credentials. | *(unset)* |
+| `PUMC_BOOTSTRAP_ADMIN_USERNAME` / `PASSWORD` | Creates the first operator account at startup, only while the users table is empty. Leave both unset once a real account exists. | *(unset)* |
+
+Everything else below is a **seed value only**: read from the
+environment the very first time the server starts against a fresh
+database, then never looked at again — from that point on the database
+is the source of truth, and the Settings screen (see below) is how you
+change any of it, live, with no restart. Setting these in `.env` after
+the first startup has no effect; use the Settings screen instead.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `PUMC_TLS_CERT_FILE` / `PUMC_TLS_KEY_FILE` | Where a self-signed certificate is generated on a completely fresh install, before there's anything in the Settings screen yet. Irrelevant after that — see "Settings screen" below. | `./tls-cert.pem` / `./tls-key.pem` |
 | `PUMC_COLLECTION_INTERVAL` | How often the scheduler checks whether it's time to collect (Go duration syntax, e.g. `1h`) | `1h` |
 | `PUMC_COLLECTION_TIMEZONE` | IANA timezone used to compute the collection-day boundary. Stored timestamps are always UTC regardless. | `UTC` |
 | `PUMC_COLLECTION_CONCURRENCY` | Max tenants polled at once | `5` |
 | `PUMC_COLLECTION_TENANT_TIMEOUT` | Per-tenant timeout including retries — one dead tenant can never stall the whole run | `30s` |
-| `PUMC_CREDENTIAL_ENCRYPTION_KEY` | Base64 32-byte (AES-256) key encrypting stored tenant credentials at rest. Generate with `openssl rand -base64 32`. Leave unset if no tenant will ever have credentials. | *(unset)* |
 | `PUMC_SESSION_IDLE_TIMEOUT` | Operator session idle timeout | `30m` |
 | `PUMC_SESSION_ABSOLUTE_TIMEOUT` | Hard cap on a session regardless of activity | `12h` |
-| `PUMC_BOOTSTRAP_ADMIN_USERNAME` / `PASSWORD` | Creates the first operator account at startup, only while the users table is empty. Leave both unset once a real account exists. | *(unset)* |
-| `PUMC_TLS_CERT_FILE` / `PUMC_TLS_KEY_FILE` | TLS certificate/key paths. If both files already exist they're used as-is (bring your own CA-signed pair); otherwise a self-signed pair is generated there on first startup. | `./tls-cert.pem` / `./tls-key.pem` |
 | `PUMC_SMTP_HOST` | SMTP server for automatic monthly report emails. Leave unset to disable the feature entirely — see "Automatic monthly report emails" below. | *(unset — disabled)* |
 | `PUMC_SMTP_PORT` | SMTP port | `587` |
 | `PUMC_SMTP_USERNAME` / `PASSWORD` | SMTP credentials. Leave both unset for a relay that doesn't require auth. | *(unset)* |
@@ -108,6 +121,29 @@ security decisions, not day-to-day preferences).
 Losing `PUMC_CREDENTIAL_ENCRYPTION_KEY` means losing the ability to
 decrypt any tenant credential already stored — keep it somewhere durable
 and separate from the database itself.
+
+## Settings screen
+
+Everything in the second table above — SMTP/report-email, collection
+tunables, and operator session timeouts — can be changed from **Settings**
+in the left nav, by anyone signed in, without editing `.env` or
+restarting the process. A save takes effect immediately: the collection
+scheduler picks up a new interval or concurrency on its very next tick,
+a changed idle timeout applies to sessions that are already logged in,
+and enabling SMTP for the first time means the very next monthly check
+can send.
+
+The Settings screen also has a **Send Test Email** button next to the
+SMTP fields — it sends using whatever is currently typed into the form,
+not what's saved, so you can confirm a relay works before committing to
+it.
+
+The **TLS Certificate** section shows the currently active certificate
+(subject, expiry, and whether it's self-signed) and lets you upload a
+real one: paste or choose a PEM certificate and a matching PEM private
+key, and it's validated, hot-swapped into the running HTTPS listener,
+and saved — no restart, and no window where the server is unreachable.
+An invalid or mismatched pair is rejected before anything changes.
 
 ## First sign-in
 
@@ -249,18 +285,20 @@ and which didn't.
 
 ### Automatic monthly report emails
 
-Set `PUMC_SMTP_HOST` (plus `PUMC_SMTP_FROM` and `PUMC_REPORT_RECIPIENTS`
-— see the configuration reference above) and the console emails the
-same portfolio PDF you'd get from the Reports screen's "Download PDF"
-link, automatically, once a month — no separate cron job or external
-scheduler needed. By default it sends on the 1st of each month, covering
-the month that just ended (`PUMC_REPORT_EMAIL_DAY` changes the day).
-Each month is sent at most once: the server tracks which months it has
-already emailed, so a restart or a missed tick never causes a duplicate
-send, and if the server is down on the send day it emails as soon as
-it's back up and notices the month is still unsent. Leaving
-`PUMC_SMTP_HOST` unset disables the feature entirely — nothing is
-scheduled or sent.
+Set the SMTP fields (host, from address, recipients — either at
+bootstrap via `PUMC_SMTP_*`/`PUMC_REPORT_RECIPIENTS`, or afterward from
+the Settings screen) and the console emails the same portfolio PDF you'd
+get from the Reports screen's "Download PDF" link, automatically, once a
+month — no separate cron job or external scheduler needed. By default it
+sends on the 1st of each month, covering the month that just ended (the
+Settings screen's "Send Day of Month" changes the day). Each month is
+sent at most once: the server tracks which months it has already
+emailed, so a restart or a missed tick never causes a duplicate send,
+and if the server is down on the send day it emails as soon as it's back
+up and notices the month is still unsent. An empty SMTP host disables
+the feature entirely — nothing is scheduled or sent — and turning it on
+from the Settings screen takes effect on the very next check, no
+restart.
 
 ## About screen
 
@@ -302,9 +340,11 @@ again.
 ## Troubleshooting
 
 **Browser warns about an untrusted certificate.** Expected until you
-replace the self-signed pair at `PUMC_TLS_CERT_FILE`/`PUMC_TLS_KEY_FILE`
-with a CA-signed one. Safe to accept for internal/trusted-network use in
-the meantime.
+replace the self-signed one with a CA-signed pair — upload it from the
+Settings screen (takes effect immediately, no restart) or drop the files
+at `PUMC_TLS_CERT_FILE`/`PUMC_TLS_KEY_FILE` before a fresh install's
+first startup. Safe to accept for internal/trusted-network use in the
+meantime.
 
 **A tenant shows "Never Collected" and never changes.** Check Test
 Connection on that tenant first — it will tell you exactly what's wrong
