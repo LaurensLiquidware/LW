@@ -81,9 +81,11 @@ func run() error {
 	historyDeps := httpapi.HistoryDeps{Repos: repos}
 	reportDeps := httpapi.ReportDeps{Repos: repos}
 	alertDeps := httpapi.AlertDeps{Repos: repos, Location: cfg.CollectionLocation}
-	router, err := httpapi.NewRouter(func() httpapi.SchedulerStatus {
+	schedulerStatus := func() httpapi.SchedulerStatus {
 		return schedulerStatusFor(sched.Status())
-	}, authDeps, tenantDeps, dashboardDeps, historyDeps, reportDeps, alertDeps)
+	}
+	collectionDeps := httpapi.CollectionDeps{Scheduler: sched, Status: schedulerStatus}
+	router, err := httpapi.NewRouter(schedulerStatus, authDeps, tenantDeps, dashboardDeps, historyDeps, reportDeps, alertDeps, collectionDeps)
 	if err != nil {
 		return fmt.Errorf("build router: %w", err)
 	}

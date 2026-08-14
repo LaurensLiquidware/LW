@@ -20,3 +20,13 @@ export interface TenantStatus {
   lastAttemptAtUtc?: string;
   lastError?: string;
 }
+
+/** Response from POST /api/collect/run — mirrors httpapi.SchedulerStatus. */
+export interface SchedulerStatus {
+  status: string;
+  running: boolean;
+  lastRunAtUtc?: string;
+  lastRunError?: string;
+  tenantCount?: number;
+  successCount?: number;
+}

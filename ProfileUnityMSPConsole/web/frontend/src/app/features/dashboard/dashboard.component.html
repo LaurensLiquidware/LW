@@ -1,12 +1,24 @@
 <div class="flex flex-col gap-4 p-6">
   <div class="flex items-center justify-between">
     <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'nav.dashboard' | transloco }}</h1>
-    <input
-      pInputText
-      [placeholder]="'dashboard.search' | transloco"
-      (input)="applyGlobalFilter($any($event.target).value)"
-    />
+    <div class="flex items-center gap-3">
+      <p-button
+        [label]="'dashboard.collectNow' | transloco"
+        icon="pi pi-refresh"
+        [loading]="collecting()"
+        (onClick)="collectNow()"
+      />
+      <input
+        pInputText
+        [placeholder]="'dashboard.search' | transloco"
+        (input)="applyGlobalFilter($any($event.target).value)"
+      />
+    </div>
   </div>
+
+  @if (collectError()) {
+    <p-message severity="error" styleClass="w-full">{{ collectError()! | transloco }}</p-message>
+  }
 
   <p-table #table [value]="rows()" [loading]="loading()" dataKey="tenant.id" [rows]="20" [paginator]="rows().length > 20"
     [globalFilterFields]="['tenant.displayName', 'tenant.hostname', 'licenseMode', 'licenseProduct']"

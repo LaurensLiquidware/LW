@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { Tenant, TenantWriteRequest, TestConnectionRequest, TestConnectionResponse } from './models/tenant';
-import { TenantStatus } from './models/dashboard';
+import { TenantStatus, SchedulerStatus } from './models/dashboard';
 
 @Injectable({ providedIn: 'root' })
 export class TenantsService {
@@ -35,5 +35,12 @@ export class TenantsService {
 
   dashboard(): Promise<TenantStatus[]> {
     return firstValueFrom(this.http.get<TenantStatus[]>('/api/dashboard'));
+  }
+
+  /** Triggers an immediate collection pass across every enabled tenant
+   * (project brief §7.2), the same code path the scheduler's own ticker
+   * uses. Blocks until the run finishes. */
+  collectNow(): Promise<SchedulerStatus> {
+    return firstValueFrom(this.http.post<SchedulerStatus>('/api/collect/run', {}));
   }
 }

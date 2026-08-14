@@ -68,7 +68,9 @@
     "licenseMode": "License Mode",
     "consoleVersion": "Console Version",
     "lastSuccess": "Last Successful Collection",
-    "noTenants": "No Tenants Registered Yet"
+    "noTenants": "No Tenants Registered Yet",
+    "collectNow": "Collect Now",
+    "collectNowError": "Collection failed to run. Check the server logs for details."
   },
   "history": {
     "perTenant": "Per Tenant",

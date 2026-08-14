@@ -68,7 +68,9 @@
     "licenseMode": "Licentiemodus",
     "consoleVersion": "Consoleversie",
     "lastSuccess": "Laatste Succesvolle Verzameling",
-    "noTenants": "Nog Geen Klanten Geregistreerd"
+    "noTenants": "Nog Geen Klanten Geregistreerd",
+    "collectNow": "Nu Verzamelen",
+    "collectNowError": "Verzameling kon niet worden uitgevoerd. Controleer de serverlogs voor details."
   },
   "history": {
     "perTenant": "Per Klant",

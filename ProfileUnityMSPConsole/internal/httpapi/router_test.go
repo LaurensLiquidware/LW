@@ -11,17 +11,19 @@ import (
 	"profileunity-msp-console/internal/auth"
 	"profileunity-msp-console/internal/dashboard"
 	"profileunity-msp-console/internal/db"
+	"profileunity-msp-console/internal/scheduler"
 	"profileunity-msp-console/internal/snapshot"
 	"profileunity-msp-console/internal/tenant"
 )
 
 type testDeps struct {
-	auth      AuthDeps
-	tenants   TenantDeps
-	dashboard DashboardDeps
-	history   HistoryDeps
-	reports   ReportDeps
-	alerts    AlertDeps
+	auth       AuthDeps
+	tenants    TenantDeps
+	dashboard  DashboardDeps
+	history    HistoryDeps
+	reports    ReportDeps
+	alerts     AlertDeps
+	collection CollectionDeps
 }
 
 func newTestDeps(t *testing.T) testDeps {
@@ -35,6 +37,7 @@ func newTestDeps(t *testing.T) testDeps {
 	tenantRepo := tenant.NewRepo(sqlDB, nil)
 	snapshotRepo := snapshot.NewRepo(sqlDB)
 	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo}
+	sched := scheduler.New(tenantRepo, snapshotRepo, time.Hour, time.UTC, 5, 30*time.Second)
 
 	return testDeps{
 		auth: AuthDeps{
@@ -47,13 +50,17 @@ func newTestDeps(t *testing.T) testDeps {
 		history:   HistoryDeps{Repos: repos},
 		reports:   ReportDeps{Repos: repos},
 		alerts:    AlertDeps{Repos: repos, Location: time.UTC},
+		collection: CollectionDeps{
+			Scheduler: sched,
+			Status:    func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} },
+		},
 	}
 }
 
 func newTestRouter(t *testing.T) (http.Handler, testDeps) {
 	t.Helper()
 	deps := newTestDeps(t)
-	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts)
+	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts, deps.collection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,6 +210,48 @@ func TestNewRouter_DashboardEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "never_collected") {
 		t.Errorf("expected never_collected data status, got %s", rec.Body.String())
+	}
+}
+
+func TestNewRouter_CollectNowEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	// No CSRF token -- rejected, same as any other mutating endpoint.
+	noCSRFReq := httptest.NewRequest(http.MethodPost, "/api/collect/run", nil)
+	noCSRFReq.AddCookie(cookie)
+	noCSRFRec := httptest.NewRecorder()
+	router.ServeHTTP(noCSRFRec, noCSRFReq)
+	if noCSRFRec.Code != http.StatusForbidden {
+		t.Fatalf("without CSRF: status = %d, want 403", noCSRFRec.Code)
+	}
+
+	// No enabled tenants, so the run completes instantly with no real
+	// network calls -- this test exercises routing/auth/CSRF, not the
+	// collector itself (covered in internal/collector and
+	// internal/scheduler).
+	req := httptest.NewRequest(http.MethodPost, "/api/collect/run", nil)
+	req.AddCookie(cookie)
+	req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: "tok"})
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	req.Header.Set(auth.CSRFHeaderName, "tok")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"status":"not_implemented"`) {
+		t.Errorf("expected the Status callback's response echoed back, got %s", rec.Body.String())
+	}
+}
+
+func TestNewRouter_CollectNowEndpoint_RequiresSession(t *testing.T) {
+	router, _ := newTestRouter(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/collect/run", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
 	}
 }
 

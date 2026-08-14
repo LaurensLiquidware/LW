@@ -363,4 +363,18 @@ branded with the Liquidware icon.
   platform's binary alongside the same manual/changelog/SBOM/notices/
   license bundle as before.
 
+Post-Phase-8 follow-up: manual "Collect Now" (project brief §7.2), closing
+out a deferred feature.
+
+- `internal/scheduler.Scheduler.CollectNow` already existed (it's the
+  same code path the ticker in `Run` uses) but was never reachable from
+  outside the process. Added `POST /api/collect/run`
+  (`internal/httpapi/collection.go`), session- and CSRF-protected like
+  every other mutating endpoint, which calls it and returns the
+  resulting scheduler status.
+- Added a **Collect Now** button to the Dashboard toolbar
+  (`TenantsService.collectNow()`), which blocks until the run finishes
+  and then refreshes the table — so a newly-added tenant doesn't have
+  to sit at **Never Collected** until the next scheduled tick.
+
 No further phases remain beyond Phase 8.

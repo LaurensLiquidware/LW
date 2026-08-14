@@ -21,7 +21,7 @@ import (
 // schedulerStatus reports live scheduler state; pass a func that always
 // returns SchedulerStatus{Status: "not_implemented"} where no scheduler
 // exists yet.
-func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps, reportDeps ReportDeps, alertDeps AlertDeps) (http.Handler, error) {
+func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps, reportDeps ReportDeps, alertDeps AlertDeps, collectionDeps CollectionDeps) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", HealthHandler(schedulerStatus))
@@ -46,6 +46,11 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	mux.Handle("POST /api/tenants/test", RequireSession(authDeps.Sessions, auth.RequireCSRF(TestConnectionHandler())))
 
 	mux.Handle("GET /api/dashboard", RequireSession(authDeps.Sessions, DashboardHandler(dashboardDeps)))
+
+	// Manual "Collect Now" (project brief §7.2): runs the same collection
+	// pass the scheduler's ticker runs, on demand, so a newly-added tenant
+	// doesn't have to wait for the next scheduled interval.
+	mux.Handle("POST /api/collect/run", RequireSession(authDeps.Sessions, auth.RequireCSRF(CollectNowHandler(collectionDeps))))
 
 	// Alerting (project brief §7.6): in-app only, no email/SMTP.
 	mux.Handle("GET /api/alerts", RequireSession(authDeps.Sessions, AlertsHandler(alertDeps)))

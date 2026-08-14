@@ -154,6 +154,14 @@ filterable, showing:
 Use the search box to filter by display name, hostname, license mode, or
 license product; click a column header to sort by it.
 
+**Collect Now.** Ordinarily the console polls every enabled tenant on a
+fixed schedule (`PUMC_COLLECTION_INTERVAL`, default hourly). Click
+**Collect Now** in the Dashboard's toolbar to trigger that same poll
+immediately instead of waiting for the next tick — useful right after
+adding a tenant, since otherwise it shows **Never Collected** until the
+schedule catches up. It polls every enabled tenant, blocks until the run
+finishes, and refreshes the table with the result.
+
 ## Alerts
 
 The bell icon in the header shows a count badge whenever at least one
