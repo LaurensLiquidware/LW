@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Scan: {{ job.package_path }}</h2>
+  <p>Status: <span id="status" class="status status-{{ job.status }}">{{ job.status }}</span></p>
+
+  <p id="progress-label" class="progress-label"></p>
+  <div class="progress-bar"><div id="progress-fill" class="progress-bar-fill indeterminate"></div></div>
+
+  <pre id="log">{{ job.log|join("\n") }}</pre>
+  <p id="error" class="error">{{ job.error or "" }}</p>
+  <p id="results-link"></p>
+</section>
+
+<script>
+const jobId = {{ job.id|tojson }};
+
+const PHASE_LABELS = {
+  osv: "Querying OSV.dev for vulnerability details",
+  nvd: "Querying NVD for CVE matches",
+};
+
+function renderProgress(data) {
+  const fill = document.getElementById("progress-fill");
+  const label = document.getElementById("progress-label");
+
+  if (data.status === "error") {
+    fill.classList.add("is-error");
+    fill.classList.remove("indeterminate");
+    return;
+  }
+  if (data.status === "done") {
+    fill.classList.remove("indeterminate", "is-error");
+    fill.style.width = "100%";
+    label.textContent = "Done";
+    return;
+  }
+  if (data.status === "stage2" && data.progress_phase && data.progress_total > 0) {
+    fill.classList.remove("indeterminate");
+    const pct = Math.round((data.progress_done / data.progress_total) * 100);
+    fill.style.width = pct + "%";
+    label.textContent = `${PHASE_LABELS[data.progress_phase] || data.progress_phase}: ${data.progress_done} / ${data.progress_total}`;
+    return;
+  }
+
+  fill.classList.add("indeterminate");
+  label.textContent = data.status === "stage1"
+    ? "Stage 1: mounting package and building inventory..."
+    : data.status === "stage2"
+    ? "Stage 2: loading inventory..."
+    : "Waiting to start...";
+}
+
+function poll() {
+  fetch(`/scan/${jobId}/poll`)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById("status").textContent = data.status;
+      document.getElementById("status").className = "status status-" + data.status;
+      document.getElementById("log").textContent = data.log.join("\n");
+      document.getElementById("error").textContent = data.error || "";
+      renderProgress(data);
+      if (data.status === "done") {
+        document.getElementById("results-link").innerHTML =
+          `<a href="/scan/${jobId}/results">View Results</a>`;
+      }
+      if (!data.done) {
+        setTimeout(poll, 1500);
+      }
+    });
+}
+poll();
+</script>
+
+{% endblock %}

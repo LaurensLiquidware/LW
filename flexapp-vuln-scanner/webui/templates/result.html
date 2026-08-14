@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>{{ result.package_name }}</h2>
+  <p class="hint">{{ result.inventory_path }}</p>
+
+  <div class="downloads">
+    <a href="{{ url_for(download_route, id=download_id, kind='pdf') }}"><span class="material-icons">picture_as_pdf</span>PDF Report</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='sbom') }}"><span class="material-icons">inventory_2</span>SBOM (CycloneDX)</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='coverage_report') }}"><span class="material-icons">summarize</span>coverage-report.md</a>
+    <a href="{{ url_for(download_route, id=download_id, kind='findings') }}"><span class="material-icons">bug_report</span>findings.md</a>
+    {% if result.files.findings_csv %}
+    <a href="{{ url_for(download_route, id=download_id, kind='findings_csv') }}"><span class="material-icons">table_chart</span>findings.csv</a>
+    {% endif %}
+  </div>
+
+  <form method="post" action="{{ url_for('refresh_scan') }}" class="refresh-form">
+    <input type="hidden" name="inventory_path" value="{{ result.inventory_path }}">
+    <input type="hidden" name="output_dir" value="{{ result.output_dir }}">
+    <span class="input-row">
+      <input type="text" name="nvd_api_key" placeholder="NVD API key (optional) - leave blank to use NVD_API_KEY env var">
+      <button type="submit"><span class="material-icons">refresh</span>Refresh Vulnerabilities</button>
+    </span>
+    <p class="hint">
+      Re-queries OSV.dev/NVD against this same inventory - no VHDX
+      re-mount needed - to pick up any CVEs published since this scan ran.
+    </p>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Resolution Coverage</h2>
+  {% set pct = result.coverage.coveragePercent %}
+  <p class="big-stat">
+    {% if pct is not none %}{{ "%.1f"|format(pct) }}%{% else %}N/A{% endif %}
+  </p>
+  <table class="stats">
+    <tr><td>Total files scanned</td><td>{{ result.coverage.totalFilesScanned }}</td></tr>
+    <tr><td>Files excluded (noise filtering)</td><td>{{ result.coverage.excludedCount }}</td></tr>
+    <tr><td>Candidate components</td><td>{{ result.coverage.candidateComponents }}</td></tr>
+    <tr><td>Components resolved</td><td>{{ result.coverage.resolvedComponents }}</td></tr>
+    <tr><td>Components unresolved</td><td>{{ result.coverage.unresolvedComponents }}</td></tr>
+  </table>
+
+  {% if result.coverage.resolvedByMethod %}
+    <h3>Resolved Components, by Method</h3>
+    <table>
+      <thead><tr><th>Method</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for method, count in result.coverage.resolvedByMethod.items() %}
+        <tr><td>{{ method }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if result.coverage.excludedByReason %}
+    <h3>Excluded Files, by Reason</h3>
+    <table>
+      <thead><tr><th>Reason</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for reason, count in result.coverage.excludedByReason.items() %}
+        <tr><td>{{ reason }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if result.coverage.unresolvedFiles %}
+    <h3>Unresolved Components ({{ result.coverage.unresolvedFiles|length }})</h3>
+    <div class="scroll-table">
+      <table>
+        <thead><tr><th>Path</th><th>Component type</th></tr></thead>
+        <tbody>
+          {% for f in result.coverage.unresolvedFiles %}
+          <tr><td>{{ f.relativePath }}</td><td>{{ f.componentType }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Vulnerability Findings</h2>
+
+  {% if not result.has_vuln_matches %}
+    <p class="hint">
+      No vulnerability-matching data was supplied for this report - this is
+      not the same thing as "no vulnerabilities found."
+    </p>
+  {% else %}
+    <h3>Confirmed Matches — exact-purl / mapped-cpe ({{ result.confirmed_rows|length }})</h3>
+    {% if result.confirmed_rows %}
+      <table class="findings">
+        <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Summary</th><th>Source</th></tr></thead>
+        <tbody>
+          {% for r in result.confirmed_rows %}
+          <tr>
+            <td><span class="sev sev-{{ (r.severityLevel or 'unknown')|lower }}">{{ r.severityLevel or "UNKNOWN" }}</span></td>
+            <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.id }}</a>{% else %}{{ r.id }}{% endif %}</td>
+            <td>{{ r.product }}</td>
+            <td>{{ r.version }}</td>
+            <td>{{ r.summary }}</td>
+            <td>{{ r.source }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>None.</p>
+    {% endif %}
+
+    <h3>Low-Confidence Matches — heuristic ({{ result.heuristic_rows|length }})</h3>
+    <p class="hint"><strong>Verify manually before treating any of these as a confirmed finding.</strong></p>
+    {% if result.heuristic_rows %}
+      <table class="findings">
+        <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Summary</th><th>Source</th></tr></thead>
+        <tbody>
+          {% for r in result.heuristic_rows %}
+          <tr>
+            <td><span class="sev sev-{{ (r.severityLevel or 'unknown')|lower }}">{{ r.severityLevel or "UNKNOWN" }}</span></td>
+            <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.id }}</a>{% else %}{{ r.id }}{% endif %}</td>
+            <td>{{ r.product }}</td>
+            <td>{{ r.version }}</td>
+            <td>{{ r.summary }}</td>
+            <td>{{ r.source }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>None.</p>
+    {% endif %}
+  {% endif %}
+</section>
+
+{% endblock %}

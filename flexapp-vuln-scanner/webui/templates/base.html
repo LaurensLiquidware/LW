@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}FlexApp Vulnerability Scanner{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/assets/logo.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <a href="{{ url_for('index') }}">
+      <img class="brand-logo" alt="Liquidware"
+           src="{{ url_for('static', filename='branding/assets/logo-primary-light.svg') }}">
+      FlexApp Vulnerability Scanner
+    </a>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    FlexApp Vulnerability Scanner v{{ tool_version }} —
+    Liquidware Sparks Tool: community/field-contributed, provided
+    "AS IS" with no warranty, support, or maintenance. See
+    <a href="{{ url_for('spark_license') }}">Spark_License.pdf</a>
+    and <a href="{{ url_for('tool_sbom') }}">bom.cdx.json</a> (this tool's own
+    third-party components).
+  </footer>
+</body>
+</html>

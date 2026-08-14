@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel">
+  <h2>Compare Two Scans</h2>
+  <p class="hint">
+    Points at two single-package scan output folders (each needs exactly
+    one <code>*.inventory.json</code> directly under it) and reports which
+    vulnerabilities are new in the second, which were resolved since the
+    first, and how many are unchanged.
+  </p>
+  {% if compare_error %}<p class="error">{{ compare_error }}</p>{% endif %}
+  <form method="post" action="{{ url_for('compare_form') }}">
+    <label>Older Scan (baseline) Output Directory
+      <span class="input-row">
+        <input type="text" name="old_dir" value="{{ prefill.old_dir }}"
+               placeholder="C:\flexapp-vuln-scanner\scan-out\example-2026-06" required>
+        <a class="browse-link" href="{{ url_for('browse_fs', target='old_dir', return_to='compare_form', **prefill) }}">
+          <span class="material-icons">folder_open</span>Browse
+        </a>
+      </span>
+    </label>
+    <label>Newer Scan Output Directory
+      <span class="input-row">
+        <input type="text" name="new_dir" value="{{ prefill.new_dir }}"
+               placeholder="C:\flexapp-vuln-scanner\scan-out\example-2026-08" required>
+        <a class="browse-link" href="{{ url_for('browse_fs', target='new_dir', return_to='compare_form', **prefill) }}">
+          <span class="material-icons">folder_open</span>Browse
+        </a>
+      </span>
+    </label>
+    <button type="submit">Compare</button>
+  </form>
+</section>
+
+{% endblock %}
