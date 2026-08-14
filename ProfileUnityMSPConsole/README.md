@@ -25,6 +25,10 @@ consoles, track it over time, and produce monthly reports. See the project
 brief for the full functional and compliance spec; this README tracks
 build-phase status and the things a reader needs before touching the code.
 
+**Looking to install and use the console rather than build it?** See
+[`docs/MANUAL.md`](docs/MANUAL.md) for the operator manual — installation,
+configuration reference, and how to use every screen.
+
 ## Status: Phase 8 — Alerting and full compliance pass
 
 Phases 1–3 (skeleton, the ProfileUnity API client, and the
