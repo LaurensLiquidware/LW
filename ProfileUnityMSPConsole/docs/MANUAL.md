@@ -211,7 +211,10 @@ The Reports screen produces a usage/entitlement summary for one
 tenant, or the whole portfolio, for a chosen month — either viewed
 on-screen or downloaded as a PDF (the "Download PDF" link; the PDF
 contains the identical figures, so the two are always consistent with
-each other).
+each other). The PDF carries the same Liquidware branding as the
+console itself — a blue header band with the logo, and a footer with
+page numbers — on every page, including multi-tenant portfolio reports
+that run to several pages.
 
 Every report leads with an explicit **coverage** badge:
 

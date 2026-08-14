@@ -416,4 +416,30 @@ page, and a developer credit.
 - Added a developer credit ("Developed by Laurens van Duijn") to the
   About content.
 
+Post-Phase-8 follow-up: branded the monthly report PDF export.
+
+- The PDF export (`internal/httpapi/report_pdf.go`, `github.com/go-pdf/
+  fpdf`) was plain black-on-white text with no logo or color — unlike
+  every other surface of the console. Added a repeating brand-blue
+  header band (matching the web console header's `--header-bg` exactly)
+  with the Liquidware wordmark, colored section headings, and a footer
+  with page numbers, via fpdf's `SetHeaderFunc`/`SetFooterFunc` so it's
+  identical on every page of a multi-page portfolio report, not just
+  the first.
+- The logo is a PNG (`internal/httpapi/images/liquidware-logo-white.png`,
+  rendered from the same `logo-primary-light.svg` the web UI uses) since
+  fpdf embeds raster images only, not SVG.
+- Fixed a real bug found while building this: fpdf's `AddPage` restores
+  the font/color active before it was called once `SetHeaderFunc`'s
+  callback returns, but not the text cursor position — without an
+  explicit reset at the end of the header callback, body content
+  started writing from wherever the header's own title text left the
+  cursor (inside the band), overlapping it, on every page.
+- Verified against real generated PDFs, not just the code: rendered a
+  single-tenant report and a 6-page portfolio report (25+ tenants) via
+  `pdftoppm`, and visually confirmed the header/footer repeat correctly
+  on an interior page reached via fpdf's automatic page-break (not a
+  manual `AddPage` call) and on the final page, with `{nb}` correctly
+  resolving to the true page count.
+
 No further phases remain beyond Phase 8.

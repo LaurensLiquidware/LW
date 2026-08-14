@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
@@ -30,6 +31,80 @@ var dejaVuSansRegular []byte
 var dejaVuSansBold []byte
 
 const reportFontFamily = "DejaVuSans"
+
+// Liquidware wordmark, white-on-transparent for use on the brand-blue
+// header band below -- fpdf embeds raster images only, so this is a PNG
+// rendered from the same assets/images/logo-primary-light.svg the web UI
+// uses, not a separate design. See docs/design-system-reference for the
+// brand colors this file's header/section styling matches (the console
+// header's --header-bg / --p-primary-600).
+//
+//go:embed images/liquidware-logo-white.png
+var liquidwareLogoWhite []byte
+
+const (
+	logoImageName             = "liquidware-logo-white"
+	logoAspectWidthOverHeight = 890.0 / 217.0
+
+	// #0061A0 -- matches the web console header's --header-bg exactly,
+	// so a printed report and the app it came from read as one product.
+	brandR, brandG, brandB = 0, 97, 160
+
+	brandHeaderHeight = 24.0
+	brandLogoHeight   = 10.0
+)
+
+// newBrandedHeaderFunc returns an fpdf header callback that paints the
+// brand-blue band, embeds the Liquidware logo, and writes the report's
+// title/subtitle in white -- run via SetHeaderFunc, so it repeats
+// identically on every page of a multi-page portfolio report, not just
+// the first.
+func newBrandedHeaderFunc(pdf *fpdf.Fpdf, title string) func() {
+	return func() {
+		pageWidth, _ := pdf.GetPageSize()
+
+		pdf.SetFillColor(brandR, brandG, brandB)
+		pdf.Rect(0, 0, pageWidth, brandHeaderHeight, "F")
+
+		logoWidth := brandLogoHeight * logoAspectWidthOverHeight
+		pdf.ImageOptions(logoImageName, 18, (brandHeaderHeight-brandLogoHeight)/2, logoWidth, brandLogoHeight, false, fpdf.ImageOptions{ImageType: "png"}, 0, "")
+
+		textX := 18 + logoWidth + 6
+		textWidth := pageWidth - textX - 18
+		pdf.SetTextColor(255, 255, 255)
+		pdf.SetXY(textX, 5.5)
+		pdf.SetFont(reportFontFamily, "B", 13)
+		pdf.CellFormat(textWidth, 6, "ProfileUnity MSP Licensing Console", "", 0, "L", false, 0, "")
+		pdf.SetXY(textX, 13)
+		pdf.SetFont(reportFontFamily, "", 10)
+		pdf.CellFormat(textWidth, 6, title, "", 0, "L", false, 0, "")
+
+		// AddPage restores the font/color active before it was called,
+		// but NOT the cursor position -- without this, body content
+		// would start writing from wherever the title text above left
+		// it (inside the band) rather than below it, on every page.
+		pdf.SetTextColor(0, 0, 0)
+		pdf.SetXY(18, brandHeaderHeight+8)
+	}
+}
+
+// newBrandedFooterFunc returns an fpdf footer callback: a thin brand-blue
+// rule and a muted page-number line, repeated on every page.
+func newBrandedFooterFunc(pdf *fpdf.Fpdf) func() {
+	return func() {
+		pageWidth, pageHeight := pdf.GetPageSize()
+		y := pageHeight - 15
+		pdf.SetDrawColor(brandR, brandG, brandB)
+		pdf.SetLineWidth(0.4)
+		pdf.Line(18, y, pageWidth-18, y)
+
+		pdf.SetTextColor(130, 130, 130)
+		pdf.SetFont(reportFontFamily, "", 8)
+		pdf.SetXY(18, y+2)
+		pdf.CellFormat(pageWidth-36, 5, fmt.Sprintf("ProfileUnity MSP Licensing Console — Page %d of {nb}", pdf.PageNo()), "", 0, "L", false, 0, "")
+		pdf.SetTextColor(0, 0, 0)
+	}
+}
 
 // coverageLabel renders a CoverageStatus in the plain-English wording a
 // report reader needs, not the machine-readable enum value — project
@@ -64,19 +139,22 @@ func newReportPDF(title string) *fpdf.Fpdf {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.AddUTF8FontFromBytes(reportFontFamily, "", dejaVuSansRegular)
 	pdf.AddUTF8FontFromBytes(reportFontFamily, "B", dejaVuSansBold)
-	pdf.SetMargins(18, 18, 18)
+	pdf.RegisterImageOptionsReader(logoImageName, fpdf.ImageOptions{ImageType: "png"}, bytes.NewReader(liquidwareLogoWhite))
+
+	pdf.SetMargins(18, brandHeaderHeight+8, 18)
+	pdf.SetAutoPageBreak(true, 22)
+	pdf.AliasNbPages("{nb}")
+	pdf.SetHeaderFunc(newBrandedHeaderFunc(pdf, title))
+	pdf.SetFooterFunc(newBrandedFooterFunc(pdf))
 	pdf.AddPage()
-	pdf.SetFont(reportFontFamily, "B", 16)
-	pdf.CellFormat(0, 10, "ProfileUnity MSP Licensing Console", "", 1, "L", false, 0, "")
-	pdf.SetFont(reportFontFamily, "", 11)
-	pdf.CellFormat(0, 7, title, "", 1, "L", false, 0, "")
-	pdf.Ln(4)
 	return pdf
 }
 
 func writeSectionHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.SetFont(reportFontFamily, "B", 12)
+	pdf.SetTextColor(brandR, brandG, brandB)
 	pdf.CellFormat(0, 8, text, "", 1, "L", false, 0, "")
+	pdf.SetTextColor(0, 0, 0)
 	pdf.SetFont(reportFontFamily, "", 10)
 }
 
