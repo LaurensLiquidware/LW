@@ -592,4 +592,32 @@ needed to boot the process in the first place.
   handshake against the live listener — that its fingerprint changed
   with no restart in between.
 
+Post-Phase-8 follow-up: fixed field overlap on Settings and a
+horizontal scrollbar on Add Tenant.
+
+- Root cause: every `<p-inputnumber>` in the app had `styleClass="w-full"`
+  (sizing the component's outer wrapper) but not `inputStyleClass="w-full"`
+  — PrimeNG's Aura `p-inputnumber` doesn't propagate that width onto its
+  own inner native `<input>`, which then rendered at its intrinsic
+  ~244px regardless of the wrapper/label around it. On the Settings
+  screen this meant the number inputs visually overran their columns
+  and overlapped neighboring fields; in the Add Tenant dialog the Port
+  field's real width (244px) inside its 8rem-wide label forced the
+  whole form 130px past the dialog's content area, producing a
+  horizontal scrollbar regardless of window size. Added the missing
+  `inputStyleClass` (matching the existing `styleClass`) to every
+  `p-inputnumber` in `settings.component.html`, `tenant-form.component.
+  html`, and `reports.component.html`.
+- Also removed the tenant form's hard `min-width: 28rem` (which could
+  itself exceed the dialog's content width after padding) and widened
+  the Add Tenant dialog from `32rem` to `36rem` for breathing room, and
+  added `flex-wrap` to the fixed-multi-column rows on both screens so
+  they degrade to stacked rows on a narrow window instead of overflowing.
+- Verified with real DOM measurements (`scrollWidth`/`clientWidth` via
+  CDP), not just a screenshot: before the fix the Add Tenant dialog's
+  content had `scrollWidth 514` vs `clientWidth 502`; after, they're
+  exactly equal (502/502, 364/364) at a realistic 1024px window width,
+  and the Settings screen's number fields no longer spill into their
+  neighbors.
+
 No further phases remain beyond Phase 8.

@@ -23,7 +23,7 @@
       <ng-template pTemplate="selectedItem" let-selected>{{ monthLabel(selected) }}</ng-template>
       <ng-template pTemplate="item" let-option>{{ monthLabel(option) }}</ng-template>
     </p-select>
-    <p-inputnumber [ngModel]="year()" (ngModelChange)="year.set($event); onMonthChange()" [useGrouping]="false" styleClass="w-24" />
+    <p-inputnumber [ngModel]="year()" (ngModelChange)="year.set($event); onMonthChange()" [useGrouping]="false" styleClass="w-24" inputStyleClass="w-full" />
   </div>
 
   @if (loading()) {

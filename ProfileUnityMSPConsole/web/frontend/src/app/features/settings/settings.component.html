@@ -14,14 +14,14 @@
 
       <p-card [header]="'settings.smtpHeading' | transloco">
         <div class="flex flex-col gap-3">
-          <div class="flex items-start gap-3">
+          <div class="flex flex-wrap items-start gap-3">
             <label class="flex flex-1 flex-col gap-1">
               <span class="lwl-micro">{{ 'settings.smtpHost' | transloco }}</span>
               <input pInputText formControlName="smtpHost" placeholder="smtp.example.com" />
             </label>
             <label class="flex flex-col gap-1" style="width: 8rem;">
               <span class="lwl-micro">{{ 'settings.smtpPort' | transloco }}</span>
-              <p-inputnumber formControlName="smtpPort" [useGrouping]="false" styleClass="w-full" />
+              <p-inputnumber formControlName="smtpPort" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
             </label>
             <label class="flex flex-col gap-1" style="width: 14rem;">
               <span class="lwl-micro">{{ 'settings.smtpSecurity' | transloco }}</span>
@@ -29,7 +29,7 @@
             </label>
           </div>
 
-          <div class="flex items-start gap-3">
+          <div class="flex flex-wrap items-start gap-3">
             <label class="flex flex-1 flex-col gap-1">
               <span class="lwl-micro">{{ 'settings.smtpUsername' | transloco }}</span>
               <input pInputText formControlName="smtpUsername" autocomplete="off" />
@@ -50,7 +50,7 @@
             <input pInputText formControlName="smtpFrom" placeholder="reports@example.com" />
           </label>
 
-          <div class="flex items-end gap-3">
+          <div class="flex flex-wrap items-end gap-3">
             <label class="flex flex-1 flex-col gap-1">
               <span class="lwl-micro">{{ 'settings.testEmailTo' | transloco }}</span>
               <input pInputText [ngModel]="testEmailTo()" (ngModelChange)="testEmailTo.set($event)" [ngModelOptions]="{ standalone: true }" placeholder="you@example.com" />
@@ -73,45 +73,45 @@
           </label>
           <label class="flex flex-col gap-1" style="width: 14rem;">
             <span class="lwl-micro">{{ 'settings.reportEmailDay' | transloco }}</span>
-            <p-inputnumber formControlName="reportEmailDay" [min]="1" [max]="28" [useGrouping]="false" styleClass="w-full" />
+            <p-inputnumber formControlName="reportEmailDay" [min]="1" [max]="28" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
           </label>
         </div>
       </p-card>
 
       <p-card [header]="'settings.collectionHeading' | transloco">
         <div class="flex flex-col gap-3">
-          <div class="flex items-start gap-3">
+          <div class="flex flex-wrap items-start gap-3">
             <label class="flex flex-col gap-1" style="width: 14rem;">
               <span class="lwl-micro">{{ 'settings.collectionInterval' | transloco }}</span>
-              <p-inputnumber formControlName="collectionIntervalMinutes" [min]="1" [useGrouping]="false" styleClass="w-full" />
+              <p-inputnumber formControlName="collectionIntervalMinutes" [min]="1" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
             </label>
             <label class="flex flex-1 flex-col gap-1">
               <span class="lwl-micro">{{ 'settings.collectionTimezone' | transloco }}</span>
               <input pInputText formControlName="collectionTimezone" placeholder="UTC" />
             </label>
           </div>
-          <div class="flex items-start gap-3">
+          <div class="flex flex-wrap items-start gap-3">
             <label class="flex flex-col gap-1" style="width: 14rem;">
               <span class="lwl-micro">{{ 'settings.collectionConcurrency' | transloco }}</span>
-              <p-inputnumber formControlName="collectionConcurrency" [min]="1" [useGrouping]="false" styleClass="w-full" />
+              <p-inputnumber formControlName="collectionConcurrency" [min]="1" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
             </label>
             <label class="flex flex-col gap-1" style="width: 14rem;">
               <span class="lwl-micro">{{ 'settings.collectionTenantTimeout' | transloco }}</span>
-              <p-inputnumber formControlName="collectionTenantTimeoutSeconds" [min]="1" [useGrouping]="false" styleClass="w-full" />
+              <p-inputnumber formControlName="collectionTenantTimeoutSeconds" [min]="1" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
             </label>
           </div>
         </div>
       </p-card>
 
       <p-card [header]="'settings.sessionHeading' | transloco">
-        <div class="flex items-start gap-3">
+        <div class="flex flex-wrap items-start gap-3">
           <label class="flex flex-col gap-1" style="width: 14rem;">
             <span class="lwl-micro">{{ 'settings.sessionIdleTimeout' | transloco }}</span>
-            <p-inputnumber formControlName="sessionIdleTimeoutMinutes" [min]="1" [useGrouping]="false" styleClass="w-full" />
+            <p-inputnumber formControlName="sessionIdleTimeoutMinutes" [min]="1" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
           </label>
           <label class="flex flex-col gap-1" style="width: 14rem;">
             <span class="lwl-micro">{{ 'settings.sessionAbsoluteTimeout' | transloco }}</span>
-            <p-inputnumber formControlName="sessionAbsoluteTimeoutHours" [min]="1" [useGrouping]="false" styleClass="w-full" />
+            <p-inputnumber formControlName="sessionAbsoluteTimeoutHours" [min]="1" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
           </label>
         </div>
       </p-card>
@@ -136,7 +136,7 @@
         @if (certUploadError()) {
           <p-message severity="error" styleClass="w-full">{{ certUploadError()! | transloco }}</p-message>
         }
-        <div class="flex items-start gap-3">
+        <div class="flex flex-wrap items-start gap-3">
           <label class="flex flex-1 flex-col gap-1">
             <span class="lwl-micro">{{ 'settings.tlsCertFile' | transloco }}</span>
             <input type="file" accept=".pem,.crt,.cer,.txt" (change)="onCertFileSelected($event)" />
