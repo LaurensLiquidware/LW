@@ -78,6 +78,61 @@ func TestUserRepo_CreateUser_RejectsShortPassword(t *testing.T) {
 	}
 }
 
+func TestUserRepo_ChangePassword(t *testing.T) {
+	repo := newTestDB(t)
+	ctx := context.Background()
+
+	u, err := repo.CreateUser(ctx, "jane", "correct-horse-battery-staple", RoleOperator)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := repo.ChangePassword(ctx, u.ID, "correct-horse-battery-staple", "new-correct-horse-battery"); err != nil {
+		t.Fatalf("ChangePassword: %v", err)
+	}
+
+	if _, err := repo.Authenticate(ctx, "jane", "correct-horse-battery-staple"); err != ErrUserNotFound {
+		t.Errorf("old password still works: err = %v, want ErrUserNotFound", err)
+	}
+	if _, err := repo.Authenticate(ctx, "jane", "new-correct-horse-battery"); err != nil {
+		t.Errorf("new password does not work: %v", err)
+	}
+}
+
+func TestUserRepo_ChangePassword_RejectsWrongCurrentPassword(t *testing.T) {
+	repo := newTestDB(t)
+	ctx := context.Background()
+
+	u, err := repo.CreateUser(ctx, "jane", "correct-horse-battery-staple", RoleOperator)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := repo.ChangePassword(ctx, u.ID, "totally-wrong-password", "new-correct-horse-battery"); err != ErrCurrentPasswordIncorrect {
+		t.Errorf("err = %v, want ErrCurrentPasswordIncorrect", err)
+	}
+	if _, err := repo.Authenticate(ctx, "jane", "correct-horse-battery-staple"); err != nil {
+		t.Errorf("password should be unchanged after a rejected attempt: %v", err)
+	}
+}
+
+func TestUserRepo_ChangePassword_RejectsShortNewPassword(t *testing.T) {
+	repo := newTestDB(t)
+	ctx := context.Background()
+
+	u, err := repo.CreateUser(ctx, "jane", "correct-horse-battery-staple", RoleOperator)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := repo.ChangePassword(ctx, u.ID, "correct-horse-battery-staple", "short"); err == nil {
+		t.Fatal("expected an error for a too-short new password")
+	}
+	if _, err := repo.Authenticate(ctx, "jane", "correct-horse-battery-staple"); err != nil {
+		t.Errorf("password should be unchanged after a rejected attempt: %v", err)
+	}
+}
+
 func TestUserRepo_PasswordNeverStoredInPlaintext(t *testing.T) {
 	repo := newTestDB(t)
 	ctx := context.Background()

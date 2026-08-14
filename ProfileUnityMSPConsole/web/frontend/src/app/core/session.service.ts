@@ -47,6 +47,10 @@ export class SessionService {
     this.checked.set(true);
   }
 
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>('/api/auth/change-password', { currentPassword, newPassword }));
+  }
+
   async logout(): Promise<void> {
     try {
       await firstValueFrom(this.http.post('/api/auth/logout', {}));

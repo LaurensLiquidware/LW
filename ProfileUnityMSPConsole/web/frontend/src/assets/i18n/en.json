@@ -20,7 +20,8 @@
   },
   "header": {
     "signOut": "Sign Out",
-    "language": "Language"
+    "language": "Language",
+    "changePassword": "Change Password"
   },
   "comingSoon": {
     "message": "Coming Soon"
@@ -139,5 +140,16 @@
       "partial": "Partial",
       "none": "No Data"
     }
+  },
+  "changePassword": {
+    "title": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password (at least 12 characters)",
+    "confirmPassword": "Confirm New Password",
+    "save": "Save",
+    "cancel": "Cancel",
+    "mismatch": "New password and confirmation do not match.",
+    "wrongCurrent": "Current password is incorrect.",
+    "error": "Could not change password. Please try again."
   }
 }

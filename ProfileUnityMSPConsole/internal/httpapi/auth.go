@@ -29,6 +29,11 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type changePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
 type userResponse struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
@@ -122,6 +127,39 @@ func MeHandler(deps AuthDeps) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, userResponse{Username: user.Username, Role: string(user.Role)})
+	}
+}
+
+// ChangePasswordHandler lets the signed-in user replace their own
+// password after proving they know the current one. RequireSession must
+// run first. Unlike LoginHandler, the error here is specific (wrong
+// current password vs. a too-short new one) since the caller is already
+// authenticated -- there's no username-enumeration risk to hide behind a
+// generic message.
+func ChangePasswordHandler(deps AuthDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := UserIDFromContext(r.Context())
+		if !ok {
+			http.Error(w, "not authenticated", http.StatusUnauthorized)
+			return
+		}
+		var req changePasswordRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		err := deps.Users.ChangePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword)
+		switch {
+		case err == nil:
+			w.WriteHeader(http.StatusNoContent)
+		case errors.Is(err, auth.ErrCurrentPasswordIncorrect):
+			http.Error(w, "current password is incorrect", http.StatusForbidden)
+		case errors.Is(err, auth.ErrUserNotFound):
+			http.Error(w, "not authenticated", http.StatusUnauthorized)
+		default:
+			http.Error(w, "new password must be at least 12 characters", http.StatusBadRequest)
+		}
 	}
 }
 

@@ -31,6 +31,7 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	mux.Handle("/api/auth/login", auth.RequireCSRF(LoginHandler(authDeps)))
 	mux.Handle("/api/auth/logout", auth.RequireCSRF(RequireSession(authDeps.Sessions, LogoutHandler(authDeps))))
 	mux.Handle("/api/auth/me", RequireSession(authDeps.Sessions, MeHandler(authDeps)))
+	mux.Handle("/api/auth/change-password", RequireSession(authDeps.Sessions, auth.RequireCSRF(ChangePasswordHandler(authDeps))))
 
 	// Tenant management (project brief §7.1). All of it requires a
 	// session; the mutating routes additionally require CSRF. Test

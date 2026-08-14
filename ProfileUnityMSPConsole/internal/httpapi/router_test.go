@@ -255,6 +255,60 @@ func TestNewRouter_CollectNowEndpoint_RequiresSession(t *testing.T) {
 	}
 }
 
+func TestNewRouter_ChangePasswordEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	// No CSRF token -- rejected, same as any other mutating endpoint.
+	noCSRFReq := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", strings.NewReader(`{"currentPassword":"correct-horse-battery-staple","newPassword":"new-correct-horse-battery"}`))
+	noCSRFReq.AddCookie(cookie)
+	noCSRFRec := httptest.NewRecorder()
+	router.ServeHTTP(noCSRFRec, noCSRFReq)
+	if noCSRFRec.Code != http.StatusForbidden {
+		t.Fatalf("without CSRF: status = %d, want 403", noCSRFRec.Code)
+	}
+
+	// Wrong current password -- rejected, and the account keeps its
+	// original password.
+	wrongReq := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", strings.NewReader(`{"currentPassword":"totally-wrong","newPassword":"new-correct-horse-battery"}`))
+	wrongReq.AddCookie(cookie)
+	wrongReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: "tok"})
+	wrongReq.Header.Set("X-Requested-With", "XMLHttpRequest")
+	wrongReq.Header.Set(auth.CSRFHeaderName, "tok")
+	wrongRec := httptest.NewRecorder()
+	router.ServeHTTP(wrongRec, wrongReq)
+	if wrongRec.Code != http.StatusForbidden {
+		t.Fatalf("wrong current password: status = %d, want 403, body = %s", wrongRec.Code, wrongRec.Body.String())
+	}
+
+	// Correct current password -- succeeds.
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", strings.NewReader(`{"currentPassword":"correct-horse-battery-staple","newPassword":"new-correct-horse-battery"}`))
+	req.AddCookie(cookie)
+	req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: "tok"})
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	req.Header.Set(auth.CSRFHeaderName, "tok")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204, body = %s", rec.Code, rec.Body.String())
+	}
+
+	// The new password now works for a fresh login.
+	if _, err := deps.auth.Users.Authenticate(t.Context(), "tester", "new-correct-horse-battery"); err != nil {
+		t.Errorf("new password does not authenticate: %v", err)
+	}
+}
+
+func TestNewRouter_ChangePasswordEndpoint_RequiresSession(t *testing.T) {
+	router, _ := newTestRouter(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", strings.NewReader(`{"currentPassword":"x","newPassword":"y"}`))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
+	}
+}
+
 func TestNewRouter_AlertsEndpoint(t *testing.T) {
 	router, deps := newTestRouter(t)
 	cookie := authenticatedSession(t, deps)

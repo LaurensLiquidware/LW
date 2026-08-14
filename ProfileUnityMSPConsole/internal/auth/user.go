@@ -31,6 +31,10 @@ var ErrUserNotFound = errors.New("auth: user not found")
 // ErrUsernameTaken is returned by CreateUser on a duplicate username.
 var ErrUsernameTaken = errors.New("auth: username already taken")
 
+// ErrCurrentPasswordIncorrect is returned by ChangePassword when
+// currentPassword doesn't match the account's stored hash.
+var ErrCurrentPasswordIncorrect = errors.New("auth: current password is incorrect")
+
 // User is a console operator/viewer account. It never carries a password
 // hash outside this package.
 type User struct {
@@ -137,6 +141,38 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (User, error) {
 		return User{}, err
 	}
 	return u, nil
+}
+
+// ChangePassword verifies currentPassword against userID's stored hash
+// before replacing it with newPassword (subject to the same minimum-
+// length rule CreateUser enforces) — an operator can only ever change
+// their own password by first proving they know the current one; there
+// is no admin-reset path.
+func (r *UserRepo) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	var hash string
+	row := r.db.QueryRowContext(ctx, `SELECT password_hash FROM users WHERE id = ?`, userID)
+	if err := row.Scan(&hash); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		return fmt.Errorf("auth: change password: %w", err)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)); err != nil {
+		return ErrCurrentPasswordIncorrect
+	}
+	if len(newPassword) < 12 {
+		return fmt.Errorf("auth: password must be at least 12 characters")
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("auth: hash password: %w", err)
+	}
+	now := time.Now().UTC().Format(isoUTC)
+	if _, err := r.db.ExecContext(ctx, `UPDATE users SET password_hash = ?, updated_at_utc = ? WHERE id = ?`, string(newHash), now, userID); err != nil {
+		return fmt.Errorf("auth: update password: %w", err)
+	}
+	return nil
 }
 
 // Count returns how many operator accounts exist, so the server can

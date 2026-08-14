@@ -20,7 +20,16 @@
       <app-alert-bell />
       <app-language-switcher severity="contrast" />
       @if (session.user(); as user) {
-        <span class="lwl-micro" style="color: var(--p-surface-200);">{{ user.username }}</span>
+        <button
+          type="button"
+          class="lwl-micro flex items-center gap-1"
+          style="color: var(--p-surface-200); background: none; border: none; cursor: pointer; font-family: inherit;"
+          [title]="'header.changePassword' | transloco"
+          (click)="changePasswordVisible.set(true)"
+        >
+          <i class="pi pi-key"></i>
+          {{ user.username }}
+        </button>
       }
       <p-button size="small" severity="secondary" [label]="'header.signOut' | transloco" (onClick)="signOut()" />
     </div>
@@ -56,4 +65,8 @@
 
 <p-dialog [(visible)]="aboutVisible" [modal]="true" [header]="'about.heading' | transloco" [style]="{ width: '32rem' }">
   <app-about [showHeading]="false" />
+</p-dialog>
+
+<p-dialog [(visible)]="changePasswordVisible" [modal]="true" [header]="'changePassword.title' | transloco" [style]="{ width: '28rem' }">
+  <app-change-password-form (saved)="changePasswordVisible.set(false)" (cancelled)="changePasswordVisible.set(false)" />
 </p-dialog>

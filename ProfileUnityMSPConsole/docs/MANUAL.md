@@ -110,6 +110,13 @@ language (English/Dutch) at any time, without reloading the page — your
 choice isn't remembered across a full page reload/reboot yet, so you'll
 land back in English if you close and reopen the browser.
 
+**Changing your password.** Click your username in the header (the key
+icon next to it) to open the Change Password dialog. You'll need your
+current password and a new one at least 12 characters long. There is no
+administrator override or password-reset flow — if you forget your
+password entirely, an administrator has to reset the account by other
+means (see the Troubleshooting section).
+
 ## Managing tenants
 
 **Tenants** is where you register each customer's ProfileUnity console.
@@ -302,3 +309,14 @@ were set — in that state, nobody can sign in until an administrator
 creates the first account by setting those and restarting, or via
 direct database access. This bootstrap only ever fires when the users
 table is empty; it will never overwrite or reset an existing account.
+
+**I forgot my password.** There is no self-service or administrator
+password reset. If you're still signed in somewhere, use Change
+Password (click your username in the header) instead of getting locked
+out. If you're already locked out and this is a test/lab instance with
+nothing worth keeping, the only way back in is to delete the SQLite
+database file (`PUMC_DB_DSN`, default `./profileunity-msp-console.db`)
+and restart — this re-triggers the bootstrap above using whatever
+`PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` are set, but it also erases
+every tenant and every collected snapshot. There is currently no way to
+reset just the password without losing that data.

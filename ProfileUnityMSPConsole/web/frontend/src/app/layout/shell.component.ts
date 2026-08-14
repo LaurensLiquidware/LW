@@ -8,6 +8,7 @@ import { SessionService } from '../core/session.service';
 import { VersionService } from '../core/version.service';
 import { LanguageSwitcherComponent } from '../shared/language-switcher.component';
 import { AlertBellComponent } from '../shared/alert-bell.component';
+import { ChangePasswordFormComponent } from '../shared/change-password-form.component';
 import { AboutComponent } from '../features/about/about.component';
 
 interface NavItem {
@@ -27,6 +28,7 @@ interface NavItem {
         DialogModule,
         LanguageSwitcherComponent,
         AlertBellComponent,
+        ChangePasswordFormComponent,
         AboutComponent,
     ],
     changeDetection: ChangeDetectionStrategy.Eager,
@@ -39,6 +41,7 @@ export class ShellComponent implements OnInit {
 
   readonly version = signal<string | null>(null);
   readonly aboutVisible = signal(false);
+  readonly changePasswordVisible = signal(false);
 
   readonly navItems: NavItem[] = [
     { path: '/dashboard', labelKey: 'nav.dashboard', icon: 'pi pi-home' },

@@ -20,7 +20,8 @@
   },
   "header": {
     "signOut": "Uitloggen",
-    "language": "Taal"
+    "language": "Taal",
+    "changePassword": "Wachtwoord Wijzigen"
   },
   "comingSoon": {
     "message": "Binnenkort beschikbaar"
@@ -139,5 +140,16 @@
       "partial": "Gedeeltelijk",
       "none": "Geen Gegevens"
     }
+  },
+  "changePassword": {
+    "title": "Wachtwoord Wijzigen",
+    "currentPassword": "Huidig Wachtwoord",
+    "newPassword": "Nieuw Wachtwoord (minimaal 12 tekens)",
+    "confirmPassword": "Bevestig Nieuw Wachtwoord",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "mismatch": "Nieuw wachtwoord en bevestiging komen niet overeen.",
+    "wrongCurrent": "Huidig wachtwoord is onjuist.",
+    "error": "Wachtwoord wijzigen is mislukt. Probeer het opnieuw."
   }
 }

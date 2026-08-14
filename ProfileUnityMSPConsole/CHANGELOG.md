@@ -442,4 +442,27 @@ Post-Phase-8 follow-up: branded the monthly report PDF export.
   manual `AddPage` call) and on the final page, with `{nb}` correctly
   resolving to the true page count.
 
+Post-Phase-8 follow-up: operators can change their own password.
+
+- There was no way to change a password after the initial
+  `PUMC_BOOTSTRAP_ADMIN_PASSWORD` short of deleting the database and
+  losing every tenant and snapshot. Added `UserRepo.ChangePassword`
+  (`internal/auth/user.go`), which verifies the current password
+  against the stored bcrypt hash before replacing it (same 12-character
+  minimum `CreateUser` enforces), and `POST /api/auth/change-password`
+  (session- and CSRF-protected like every other mutating endpoint).
+- Added a "Change Password" dialog (`shared/change-password-form.
+  component.ts`), opened by clicking the username in the header (now a
+  button with a key icon), reusing the same `p-dialog` pattern as
+  About/Collect Now.
+- Still no administrator password-reset path — an operator can only
+  ever change their own password by proving they know the current one.
+  Documented the forgot-password situation (and its only real fallback,
+  which loses all data) in `docs/MANUAL.md`'s Troubleshooting section.
+- Verified end to end against the real running app, not just unit
+  tests: logged in via curl, changed the password, confirmed the old
+  one now fails login and the new one succeeds, and confirmed the
+  dialog itself renders correctly (screenshotted the real authenticated
+  app, same cookie-injection technique used for earlier UI changes).
+
 No further phases remain beyond Phase 8.
