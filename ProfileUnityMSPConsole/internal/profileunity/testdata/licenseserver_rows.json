@@ -1,0 +1,20 @@
+{ "WebMessageType": 2, "Type": "success", "Message": "", "MessageKey": null, "Tag": {
+  "Rows": [
+    {
+      "ServerAddress": "10.0.0.5",
+      "Port": "5172",
+      "LastKnownRunningUTC": "/Date(1786690772847)/",
+      "LastKnownRunningLocal": "/Date(1786690772847)/",
+      "MachineGuid": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "Id": "60a7b1e4f1d2c3a4b5c6d7e8",
+      "DateCreated": "/Date(1786690000000)/",
+      "DateLastModified": "/Date(1786690772847)/",
+      "Disabled": "false",
+      "CreatedBy": "admin",
+      "LastModifiedBy": "admin"
+    }
+  ],
+  "TotalPages": 1,
+  "CurrentPage": 1,
+  "TotalRecords": 1
+} }

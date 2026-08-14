@@ -1,0 +1,8 @@
+{ "WebMessageType": 2, "Type": "success", "Message": "", "MessageKey": null, "Tag": {
+  "MaxUsers":      { "Name": "Maximum Users",  "Value": "5" },
+  "UsedLicensed":  { "Name": "Users Licensed", "Value": "1" },
+  "Organization":  "Liquidware Training EU",
+  "ContactName":   "Jane Admin",
+  "ContactEmail":  "jane.admin@example.com",
+  "ContactNumber": "+31 20 000 0000"
+} }

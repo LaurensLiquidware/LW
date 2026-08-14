@@ -24,13 +24,21 @@ consoles, track it over time, and produce monthly reports. See the project
 brief for the full functional and compliance spec; this README tracks
 build-phase status and the things a reader needs before touching the code.
 
-## Status: Phase 1 — Skeleton
+## Status: Phase 2 — API client
 
-This commit is infrastructure only: repo layout, config loading,
-migrations, the health endpoint, and the version single-source-of-truth
-mechanism. No tenant management, collection, dashboard, history, reporting,
-or alerting yet — those are later build phases, each of which ends in a
-checkpoint before the next begins.
+Phase 1 (repo layout, config loading, migrations, health endpoint, version
+single-source-of-truth) is done. Phase 2 adds `internal/profileunity`, the
+ProfileUnity API client described in the project brief §3: string
+coercion for the documented-as-string-but-verify-anyway fields, the
+`/Date(ms)/` legacy ASP.NET date format, `Type`-not-HTTP-status success
+checks, explicit US `M/D/YYYY`-to-ISO-8601 parsing, and the
+unauthenticated-then-authenticated fallback with the auth path recorded.
+It talks to exactly four endpoints — `/licenseinfo`, `/authenticate`,
+`/api/server/licensing`, `/api/licenseserver` — and nothing else; there is
+no generic "call any path" escape hatch. It is not wired into the server
+yet: no tenant management, collection, dashboard, history, reporting, or
+alerting. Those are later build phases, each of which ends in a checkpoint
+before the next begins.
 
 ## Critical constraint: this app owns the time series
 

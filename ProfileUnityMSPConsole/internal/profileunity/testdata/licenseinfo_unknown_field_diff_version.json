@@ -1,0 +1,15 @@
+{ "WebMessageType": 2, "Type": "success", "Message": "", "MessageKey": null, "Tag": [ {
+  "RegisteredTo":   "Future Console Customer",
+  "LicenseMode":    "NamedUser",
+  "LicenseProduct": "ProU+FlexApp",
+  "SupportEnds":    "12/31/2028",
+  "TotalLicenses":  "8",
+  "UsedLicenses":   "3",
+  "Evaluation":     "No",
+  "ConsoleVersion": "7.0.0.1234 4000000 2027-01-15",
+  "IsTrialExpired": "false",
+  "IsTrial":        "false",
+  "IsProUOnly":     "false",
+  "IsFlexOnly":     "false",
+  "NewFieldFromFutureVersion": "surprise"
+} ] }

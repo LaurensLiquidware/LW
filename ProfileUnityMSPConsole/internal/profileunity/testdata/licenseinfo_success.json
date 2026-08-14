@@ -1,0 +1,14 @@
+{ "WebMessageType": 2, "Type": "success", "Message": "", "MessageKey": null, "Tag": [ {
+  "RegisteredTo":   "Liquidware Training EU",
+  "LicenseMode":    "NamedUser",
+  "LicenseProduct": "ProU+FlexApp",
+  "SupportEnds":    "12/31/2026",
+  "TotalLicenses":  "5",
+  "UsedLicenses":   "1",
+  "Evaluation":     "Yes",
+  "ConsoleVersion": "6.9.5.9678 3038806 2026-07-01",
+  "IsTrialExpired": "false",
+  "IsTrial":        "false",
+  "IsProUOnly":     "false",
+  "IsFlexOnly":     "false"
+} ] }

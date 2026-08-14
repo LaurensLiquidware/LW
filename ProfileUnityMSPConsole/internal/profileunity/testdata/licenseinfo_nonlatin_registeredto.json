@@ -1,0 +1,14 @@
+{ "WebMessageType": 2, "Type": "success", "Message": "", "MessageKey": null, "Tag": [ {
+  "RegisteredTo":   "日本語データ 简体中文 한국어 Данные Ångström café naïve",
+  "LicenseMode":    "NamedUser",
+  "LicenseProduct": "ProU+FlexApp",
+  "SupportEnds":    "12/31/2026",
+  "TotalLicenses":  "5",
+  "UsedLicenses":   "1",
+  "Evaluation":     "Yes",
+  "ConsoleVersion": "6.9.5.9678 3038806 2026-07-01",
+  "IsTrialExpired": "false",
+  "IsTrial":        "false",
+  "IsProUOnly":     "false",
+  "IsFlexOnly":     "false"
+} ] }
