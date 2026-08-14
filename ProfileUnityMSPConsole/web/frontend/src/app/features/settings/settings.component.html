@@ -87,7 +87,7 @@
             </label>
             <label class="flex flex-1 flex-col gap-1">
               <span class="lwl-micro">{{ 'settings.collectionTimezone' | transloco }}</span>
-              <input pInputText formControlName="collectionTimezone" placeholder="UTC" />
+              <p-select formControlName="collectionTimezone" [options]="timezoneOptions" [filter]="true" filterPlaceholder="UTC" styleClass="w-full" />
             </label>
           </div>
           <div class="flex flex-wrap items-start gap-3">

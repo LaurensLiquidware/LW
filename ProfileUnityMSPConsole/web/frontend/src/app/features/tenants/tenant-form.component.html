@@ -1,4 +1,4 @@
-<form [formGroup]="form" (ngSubmit)="save()" class="flex flex-col gap-3" style="width: 26rem; max-width: 100%;">
+<form [formGroup]="form" (ngSubmit)="save()" class="flex flex-col gap-3" style="width: 100%;">
   @if (saveError()) {
     <p-message severity="error" styleClass="w-full">{{ saveError()! | transloco }}</p-message>
   }

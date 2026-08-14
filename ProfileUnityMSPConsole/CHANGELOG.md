@@ -620,4 +620,24 @@ horizontal scrollbar on Add Tenant.
   and the Settings screen's number fields no longer spill into their
   neighbors.
 
+Post-Phase-8 follow-up: tightened the Add Tenant dialog and turned
+Timezone into a real dropdown.
+
+- Reduced the Add Tenant dialog from `36rem` to `28rem` and let the
+  tenant form fill it (`width: 100%` instead of a fixed `26rem`) —
+  the dialog was comfortably wider than its content needed, leaving a
+  lot of unused space around short fields like Display Name and Port.
+- The Settings screen's Timezone field was a free-text input (just a
+  placeholder hint of "UTC") — an operator could type anything,
+  including a typo IANA name that would only surface as an error on
+  save. Replaced it with a searchable `p-select` populated from
+  `Intl.supportedValuesOf('timeZone')` (419 real IANA zones in a
+  Chromium-based browser), with a short hardcoded fallback list for
+  browsers old enough not to support that API.
+- Verified end to end: rebuilt, logged in, opened the Timezone dropdown
+  and confirmed all 419 zones list correctly with "UTC" pre-selected
+  and highlighted, and reconfirmed via real DOM measurements
+  (`scrollWidth`/`clientWidth`, exactly equal) that the smaller Add
+  Tenant dialog still has zero overflow.
+
 No further phases remain beyond Phase 8.

@@ -48,7 +48,7 @@
   [(visible)]="dialogVisible"
   [modal]="true"
   [header]="(editing() ? 'tenants.editTenant' : 'tenants.addTenant') | transloco"
-  [style]="{ width: '36rem', maxWidth: '95vw' }"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
 >
   <app-tenant-form [tenant]="editing()" (saved)="onSaved()" (cancelled)="dialogVisible.set(false)" />
 </p-dialog>

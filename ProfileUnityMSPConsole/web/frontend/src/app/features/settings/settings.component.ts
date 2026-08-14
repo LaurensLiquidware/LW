@@ -12,6 +12,31 @@ import { MessageModule } from 'primeng/message';
 import { SettingsService } from '../../core/settings.service';
 import { Settings } from '../../core/models/settings';
 
+/** A short fallback list, only used if the browser doesn't support
+ * Intl.supportedValuesOf('timeZone') (e.g. very old Safari/Firefox). */
+const FALLBACK_TIMEZONES = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'Europe/London',
+  'Europe/Amsterdam',
+  'Europe/Berlin',
+  'Europe/Paris',
+  'Asia/Tokyo',
+  'Asia/Shanghai',
+  'Asia/Kolkata',
+  'Australia/Sydney',
+];
+
+function buildTimezoneOptions(): string[] {
+  const supportedValuesOf = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf;
+  const zones = new Set(supportedValuesOf ? supportedValuesOf('timeZone') : FALLBACK_TIMEZONES);
+  zones.add('UTC');
+  return Array.from(zones).sort();
+}
+
 /**
  * Everything on this screen is optional to fill in at bootstrap time
  * (see PUMC_* in .env.example) and safe to change here afterward — SMTP/
@@ -46,6 +71,13 @@ export class SettingsComponent implements OnInit {
     { label: 'tls', value: 'tls' },
     { label: 'none', value: 'none' },
   ];
+
+  /** Every IANA timezone name the browser's ICU data knows about (~400
+   * entries), so the Timezone field is a real dropdown instead of a
+   * free-text box an operator could mistype. Falls back to a short
+   * curated list on a browser old enough not to support
+   * Intl.supportedValuesOf. */
+  readonly timezoneOptions: string[] = buildTimezoneOptions();
 
   readonly loading = signal(true);
   readonly saving = signal(false);
