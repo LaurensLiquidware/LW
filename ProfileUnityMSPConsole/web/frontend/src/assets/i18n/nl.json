@@ -70,6 +70,18 @@
     "lastSuccess": "Laatste Succesvolle Verzameling",
     "noTenants": "Nog Geen Klanten Geregistreerd"
   },
+  "history": {
+    "perTenant": "Per Klant",
+    "portfolio": "Portfolio",
+    "selectTenant": "Selecteer Een Klant",
+    "loading": "Laden…",
+    "noData": "Nog Geen Verzamelgeschiedenis",
+    "used": "Gebruikt",
+    "entitled": "Toegekend",
+    "totalUsed": "Totaal Gebruikt",
+    "totalEntitled": "Totaal Toegekend",
+    "entitlementChanges": "Wijzigingen In Toewijzing"
+  },
   "status": {
     "usage": {
       "good": "Goed",

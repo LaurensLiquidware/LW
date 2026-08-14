@@ -70,6 +70,18 @@
     "lastSuccess": "Last Successful Collection",
     "noTenants": "No Tenants Registered Yet"
   },
+  "history": {
+    "perTenant": "Per Tenant",
+    "portfolio": "Portfolio",
+    "selectTenant": "Select a Tenant",
+    "loading": "Loading…",
+    "noData": "No Collection History Yet",
+    "used": "Used",
+    "entitled": "Entitled",
+    "totalUsed": "Total Used",
+    "totalEntitled": "Total Entitled",
+    "entitlementChanges": "Entitlement Changes"
+  },
   "status": {
     "usage": {
       "good": "Good",

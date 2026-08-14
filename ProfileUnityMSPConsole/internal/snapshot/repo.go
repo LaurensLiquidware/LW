@@ -173,6 +173,28 @@ func (r *Repo) ListByTenant(ctx context.Context, tenantID string) ([]Snapshot, e
 	return result, rows.Err()
 }
 
+// ListAllSuccess returns every successful snapshot across every tenant,
+// ordered by collection date — the raw material for a portfolio-wide
+// history view (project brief §7.4's "aggregate view across all tenants"),
+// built in one query rather than one per tenant.
+func (r *Repo) ListAllSuccess(ctx context.Context) ([]Snapshot, error) {
+	rows, err := r.db.QueryContext(ctx, selectColumns+` FROM snapshots WHERE status = ? ORDER BY collection_date`, string(StatusSuccess))
+	if err != nil {
+		return nil, fmt.Errorf("snapshot: list all success: %w", err)
+	}
+	defer rows.Close()
+
+	var result []Snapshot
+	for rows.Next() {
+		s, err := scanSnapshot(rows)
+		if err != nil {
+			return nil, fmt.Errorf("snapshot: scan: %w", err)
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}
+
 const selectColumns = `
 	SELECT id, tenant_id, collection_date, collected_at_utc, status, auth_path, error_message, raw_payload,
 		registered_to, license_mode, license_product, total_licenses, used_licenses, evaluation,

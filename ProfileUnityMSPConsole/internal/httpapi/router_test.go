@@ -19,6 +19,7 @@ type testDeps struct {
 	auth      AuthDeps
 	tenants   TenantDeps
 	dashboard DashboardDeps
+	history   HistoryDeps
 }
 
 func newTestDeps(t *testing.T) testDeps {
@@ -31,6 +32,7 @@ func newTestDeps(t *testing.T) testDeps {
 
 	tenantRepo := tenant.NewRepo(sqlDB, nil)
 	snapshotRepo := snapshot.NewRepo(sqlDB)
+	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo}
 
 	return testDeps{
 		auth: AuthDeps{
@@ -38,18 +40,16 @@ func newTestDeps(t *testing.T) testDeps {
 			Sessions: auth.NewSessionRepo(sqlDB, 30*time.Minute, 12*time.Hour),
 			Secure:   false,
 		},
-		tenants: TenantDeps{Tenants: tenantRepo},
-		dashboard: DashboardDeps{
-			Repos:    dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo},
-			Location: time.UTC,
-		},
+		tenants:   TenantDeps{Tenants: tenantRepo},
+		dashboard: DashboardDeps{Repos: repos, Location: time.UTC},
+		history:   HistoryDeps{Repos: repos},
 	}
 }
 
 func newTestRouter(t *testing.T) (http.Handler, testDeps) {
 	t.Helper()
 	deps := newTestDeps(t)
-	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard)
+	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,3 +201,72 @@ func TestNewRouter_DashboardEndpoint(t *testing.T) {
 		t.Errorf("expected never_collected data status, got %s", rec.Body.String())
 	}
 }
+
+func TestNewRouter_TenantHistoryEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	tn, err := deps.tenants.Tenants.Create(t.Context(), tenant.CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deps.dashboard.Repos.Snapshots.Upsert(t.Context(), snapshot.Snapshot{
+		TenantID: tn.ID, CollectionDate: "2026-08-14", CollectedAtUTC: time.Now().UTC(),
+		Status: snapshot.StatusSuccess, TotalLicenses: intPtrTest(5), UsedLicenses: intPtrTest(1),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tenants/"+tn.ID+"/history", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "2026-08-14") {
+		t.Errorf("expected the seeded point in the response, got %s", rec.Body.String())
+	}
+}
+
+func TestNewRouter_TenantHistoryEndpoint_UnknownTenant(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/tenants/does-not-exist/history", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestNewRouter_PortfolioHistoryEndpoint(t *testing.T) {
+	router, deps := newTestRouter(t)
+	cookie := authenticatedSession(t, deps)
+
+	tn, err := deps.tenants.Tenants.Create(t.Context(), tenant.CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deps.dashboard.Repos.Snapshots.Upsert(t.Context(), snapshot.Snapshot{
+		TenantID: tn.ID, CollectionDate: "2026-08-14", CollectedAtUTC: time.Now().UTC(),
+		Status: snapshot.StatusSuccess, TotalLicenses: intPtrTest(5), UsedLicenses: intPtrTest(1),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/history/portfolio", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "\"totalUsed\":1") {
+		t.Errorf("expected totalUsed=1 in the response, got %s", rec.Body.String())
+	}
+}
+
+func intPtrTest(v int) *int { return &v }

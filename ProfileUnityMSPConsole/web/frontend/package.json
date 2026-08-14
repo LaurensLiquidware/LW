@@ -21,6 +21,7 @@
     "@jsverse/transloco": "^8.4.0",
     "@primeng/themes": "^18.0.2",
     "autoprefixer": "^10.5.4",
+    "chart.js": "^4.5.1",
     "postcss": "^8.5.26",
     "primeicons": "^7.0.0",
     "primeng": "^18.0.2",

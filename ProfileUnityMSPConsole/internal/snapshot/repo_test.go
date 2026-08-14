@@ -230,6 +230,40 @@ func TestRepo_LatestForAllTenants(t *testing.T) {
 	}
 }
 
+func TestRepo_ListAllSuccess(t *testing.T) {
+	repo, tenantA := newTestDB(t)
+	ctx := context.Background()
+
+	tenantRepo := tenant.NewRepo(repo.db, nil)
+	tenantB, err := tenantRepo.Create(ctx, tenant.CreateInput{DisplayName: "y", Hostname: "h2", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantA, CollectionDate: "2026-08-10", CollectedAtUTC: time.Now().UTC(), Status: StatusSuccess, TotalLicenses: intPtr(5), UsedLicenses: intPtr(1)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantA, CollectionDate: "2026-08-11", CollectedAtUTC: time.Now().UTC(), Status: StatusUnreachable}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Upsert(ctx, Snapshot{TenantID: tenantB.ID, CollectionDate: "2026-08-10", CollectedAtUTC: time.Now().UTC(), Status: StatusSuccess, TotalLicenses: intPtr(10), UsedLicenses: intPtr(2)}); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := repo.ListAllSuccess(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2 (the unreachable one must be excluded)", len(rows))
+	}
+	for _, r := range rows {
+		if r.Status != StatusSuccess {
+			t.Errorf("got non-success row: %+v", r)
+		}
+	}
+}
+
 func TestRepo_BooleanFieldsRoundTrip(t *testing.T) {
 	repo, tenantID := newTestDB(t)
 	ctx := context.Background()

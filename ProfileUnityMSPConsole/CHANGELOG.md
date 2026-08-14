@@ -177,3 +177,53 @@ Phase 5 (Dashboard and tenant management) of the build plan:
   stale, collection-failing-with-an-older-success, and never-collected.
 
 History and Reports still show "Coming Soon" — Phases 6 and 7.
+
+Phase 6 (History and graphs) of the build plan:
+
+- `internal/dashboard/history.go`: pure `DetectEntitlementChanges`
+  (walks a tenant's successful snapshots in date order, reporting every
+  point where `TotalLicenses` changes from the last successful reading —
+  failed/missing days never count, and the first successful point never
+  counts either) and `BuildPortfolioHistory` (groups every tenant's
+  successful snapshots by collection date, summing used/entitled across
+  the portfolio per day).
+- `internal/snapshot`: added `ListAllSuccess`, the raw material for the
+  portfolio-wide history view, fetched in one query rather than one per
+  tenant.
+- `internal/httpapi`: `GET /api/tenants/{id}/history` and
+  `GET /api/history/portfolio`, both session-gated, returning every
+  day's point (including failed/unreachable days with their status and
+  error message, not just successes) plus detected entitlement changes.
+- `web/frontend`: a History screen with a per-tenant/portfolio toggle
+  and a Chart.js line chart (`p-chart`, `chart.js@4`) with
+  `spanGaps: false` so a failed or missing collection day renders as a
+  visible break — never an interpolated line and never a drop to zero.
+  `buildContinuousSeries` (pure function) expands the sparse API
+  response into one point per calendar day, filling gaps with `null` so
+  Chart.js actually breaks the line there. The chart is only ever
+  created via `@if` once genuinely on screen, avoiding the classic
+  hidden-canvas (`display:none` → `width=0,height=0`) pitfall. Entitlement
+  changes render as a plain text list under the chart, not chart
+  annotations — a deliberate scope simplification.
+- Fixed a real bug found during visual verification: the mode toggle's
+  labels were computed once from `TranslocoService.translate()` in a
+  class field, before Transloco's async-loaded translation files
+  arrived, so they showed the raw `history.perTenant`/`history.portfolio`
+  keys instead of translated text. The first fix attempt (a getter
+  recomputing the array every change-detection cycle) traded that bug
+  for a worse one: PrimeNG's `p-selectButton` saw a new `[options]`
+  array reference on every cycle, which triggered an internal state
+  update → `markForCheck` → another cycle, forever — an infinite loop
+  that hung the page. Fixed properly by keeping `modes` a stable,
+  referentially-unchanging array of translation *keys* and rendering the
+  translated label via an `ng-template pTemplate="item"` with the
+  `transloco` pipe, the same pattern the rest of the app uses for
+  dynamic translated text.
+- Visually verified (Playwright) with 20 days of seeded snapshot data
+  covering a true multi-day gap, a failed collection day, and an
+  entitlement change — confirmed both gaps render as visible breaks (not
+  interpolated, not zero), the entitlement change shows as a visible
+  step in the "Entitled" line plus the text list below it, and the mode
+  toggle renders correctly in both English and Dutch.
+
+Reports still shows "Coming Soon" — Phase 7.

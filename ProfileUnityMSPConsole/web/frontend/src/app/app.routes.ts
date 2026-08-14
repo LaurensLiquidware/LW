@@ -26,8 +26,7 @@ export const routes: Routes = [
       },
       {
         path: 'history',
-        loadComponent: () => import('./features/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { titleKey: 'nav.history' },
+        loadComponent: () => import('./features/history/history.component').then((m) => m.HistoryComponent),
       },
       {
         path: 'reports',

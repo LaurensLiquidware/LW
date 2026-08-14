@@ -76,13 +76,12 @@ func run() error {
 
 	authDeps := httpapi.AuthDeps{Users: userRepo, Sessions: sessionRepo, Secure: true}
 	tenantDeps := httpapi.TenantDeps{Tenants: tenantRepo}
-	dashboardDeps := httpapi.DashboardDeps{
-		Repos:    dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo},
-		Location: cfg.CollectionLocation,
-	}
+	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo}
+	dashboardDeps := httpapi.DashboardDeps{Repos: repos, Location: cfg.CollectionLocation}
+	historyDeps := httpapi.HistoryDeps{Repos: repos}
 	router, err := httpapi.NewRouter(func() httpapi.SchedulerStatus {
 		return schedulerStatusFor(sched.Status())
-	}, authDeps, tenantDeps, dashboardDeps)
+	}, authDeps, tenantDeps, dashboardDeps, historyDeps)
 	if err != nil {
 		return fmt.Errorf("build router: %w", err)
 	}

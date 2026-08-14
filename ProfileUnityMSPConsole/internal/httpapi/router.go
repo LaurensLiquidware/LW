@@ -21,7 +21,7 @@ import (
 // schedulerStatus reports live scheduler state; pass a func that always
 // returns SchedulerStatus{Status: "not_implemented"} where no scheduler
 // exists yet.
-func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps) (http.Handler, error) {
+func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", HealthHandler(schedulerStatus))
@@ -46,6 +46,10 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	mux.Handle("POST /api/tenants/test", RequireSession(authDeps.Sessions, auth.RequireCSRF(TestConnectionHandler())))
 
 	mux.Handle("GET /api/dashboard", RequireSession(authDeps.Sessions, DashboardHandler(dashboardDeps)))
+
+	// History and graphs (project brief §7.4).
+	mux.Handle("GET /api/tenants/{id}/history", RequireSession(authDeps.Sessions, TenantHistoryHandler(historyDeps)))
+	mux.Handle("GET /api/history/portfolio", RequireSession(authDeps.Sessions, PortfolioHistoryHandler(historyDeps)))
 
 	// Legal packaging (project brief §11.7): the license PDF and SBOM
 	// ship inside the binary and are reachable at fixed top-level paths

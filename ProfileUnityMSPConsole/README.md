@@ -25,7 +25,7 @@ consoles, track it over time, and produce monthly reports. See the project
 brief for the full functional and compliance spec; this README tracks
 build-phase status and the things a reader needs before touching the code.
 
-## Status: Phase 5 — Dashboard and tenant management
+## Status: Phase 6 — History and graphs
 
 Phases 1–3 (skeleton, the ProfileUnity API client, and the
 tenant/snapshot/collector/scheduler backend) are done — see git history
@@ -94,7 +94,47 @@ Visually verified end to end with seeded data covering every state
 with-an-older-success, and never-collected) — screenshots taken during
 development, not committed.
 
-History and Reports still show "Coming Soon" — those are Phases 6 and 7.
+Phase 6 adds the History screen (project brief §7.4):
+
+- **`internal/dashboard/history.go`**: two more pure functions.
+  `DetectEntitlementChanges` walks a tenant's successful snapshots in
+  date order and reports every point where `TotalLicenses` differs from
+  the last successful reading — failed/missing days never count as a
+  change, and the first successful point never counts either (there is
+  nothing to compare it to). `BuildPortfolioHistory` groups every
+  tenant's successful snapshots by collection date and sums used/
+  entitled across the portfolio for each day.
+- **`GET /api/tenants/{id}/history`** and **`GET /api/history/portfolio`**:
+  return the raw per-day points (including failed/unreachable days, with
+  their status and error message, not just successes) plus the detected
+  entitlement changes, so the frontend can render gaps rather than
+  interpolate or zero-fill them.
+- **Frontend History screen**: a per-tenant/portfolio toggle, a
+  Chart.js line chart (via PrimeNG's `p-chart`) with `spanGaps: false`
+  so a failed or missing collection day renders as a visible break in
+  the line, never a flat interpolation and never a drop to zero — this
+  is the single most safety-critical rendering detail in the whole
+  screen, since the opposite (silently bridging a gap) would misrepresent
+  unknown data as known. Entitlement changes are shown as a plain text
+  list under the chart (date + from → to), not as chart annotations —
+  simpler to implement correctly and just as legible; annotation plugins
+  were not pulled in for this. The chart is only ever created via an
+  Angular `@if` once real data has arrived and the element is genuinely
+  on screen — never hidden behind `display:none` — since a canvas
+  measured while hidden gets `width=0,height=0` and Chart.js never
+  recovers from that even after the element becomes visible later.
+  `buildContinuousSeries` (a pure function, `core/history-series.ts`)
+  expands the sparse day-by-day API response into one entry per calendar
+  day between the earliest and latest date, filling missing days with
+  `null` so the gap actually renders.
+- **Scope decision**: `PortfolioPoint.tenantsRegistered` is the *current*
+  count of registered tenants, not a historical count as of that date —
+  the schema doesn't track when a tenant was added/removed, so a true
+  historical denominator isn't available yet. Documented here rather
+  than silently assumed; revisit if portfolio history needs to explain
+  "why did total entitlement drop" distinctly from "a tenant left".
+
+Reports still shows "Coming Soon" — that's Phase 7.
 
 **Known CVEs carried by this phase, to resolve in Phase 8:** `npm audit`
 on `web/frontend` reports several real high-severity Angular XSS
