@@ -1,4 +1,4 @@
-package httpapi
+package reportpdf
 
 import (
 	"bytes"
@@ -189,17 +189,17 @@ func writeTenantReportBody(pdf *fpdf.Fpdf, r dashboard.TenantMonthlyReport) {
 	pdf.Ln(4)
 }
 
-// renderTenantReportPDF renders a single tenant's monthly report.
-func renderTenantReportPDF(r dashboard.TenantMonthlyReport) *fpdf.Fpdf {
+// RenderTenantReportPDF renders a single tenant's monthly report.
+func RenderTenantReportPDF(r dashboard.TenantMonthlyReport) *fpdf.Fpdf {
 	pdf := newReportPDF(fmt.Sprintf("Monthly Report — %s", r.Tenant.DisplayName))
 	writeTenantReportBody(pdf, r)
 	return pdf
 }
 
-// renderPortfolioReportPDF renders the MSP-wide summary followed by each
-// tenant's own detail section, so a single download covers everything an
-// operator needs for the month.
-func renderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport) *fpdf.Fpdf {
+// RenderPortfolioReportPDF renders the MSP-wide summary followed by each
+// tenant's own detail section, so a single download (or emailed
+// attachment) covers everything an operator needs for the month.
+func RenderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport) *fpdf.Fpdf {
 	pdf := newReportPDF(fmt.Sprintf("Monthly Portfolio Report — %04d-%02d", r.Year, r.Month))
 
 	writeSectionHeading(pdf, "Portfolio summary")
@@ -222,12 +222,12 @@ func renderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport) *fpdf.Fpdf {
 
 var unsafeFilenameChars = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
 
-// safeFilenamePart strips anything but a conservative filename-safe
+// SafeFilenamePart strips anything but a conservative filename-safe
 // character set from a user-supplied display name before it goes into a
 // Content-Disposition header — that header value is otherwise attacker-
 // controlled input (a tenant's display name) reflected straight into an
 // HTTP response.
-func safeFilenamePart(s string) string {
+func SafeFilenamePart(s string) string {
 	cleaned := unsafeFilenameChars.ReplaceAllString(s, "-")
 	cleaned = strings.Trim(cleaned, "-")
 	if cleaned == "" {

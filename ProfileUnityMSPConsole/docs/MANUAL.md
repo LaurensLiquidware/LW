@@ -97,6 +97,13 @@ security decisions, not day-to-day preferences).
 | `PUMC_SESSION_ABSOLUTE_TIMEOUT` | Hard cap on a session regardless of activity | `12h` |
 | `PUMC_BOOTSTRAP_ADMIN_USERNAME` / `PASSWORD` | Creates the first operator account at startup, only while the users table is empty. Leave both unset once a real account exists. | *(unset)* |
 | `PUMC_TLS_CERT_FILE` / `PUMC_TLS_KEY_FILE` | TLS certificate/key paths. If both files already exist they're used as-is (bring your own CA-signed pair); otherwise a self-signed pair is generated there on first startup. | `./tls-cert.pem` / `./tls-key.pem` |
+| `PUMC_SMTP_HOST` | SMTP server for automatic monthly report emails. Leave unset to disable the feature entirely — see "Automatic monthly report emails" below. | *(unset — disabled)* |
+| `PUMC_SMTP_PORT` | SMTP port | `587` |
+| `PUMC_SMTP_USERNAME` / `PASSWORD` | SMTP credentials. Leave both unset for a relay that doesn't require auth. | *(unset)* |
+| `PUMC_SMTP_FROM` | From address on the emailed report. Required once `PUMC_SMTP_HOST` is set. | *(unset)* |
+| `PUMC_SMTP_SECURITY` | `starttls`, `tls`, or `none` | `starttls` |
+| `PUMC_REPORT_RECIPIENTS` | Comma-separated recipient list for the monthly portfolio report. Required once `PUMC_SMTP_HOST` is set. | *(unset)* |
+| `PUMC_REPORT_EMAIL_DAY` | Day of the month (1-28, in `PUMC_COLLECTION_TIMEZONE`) the previous month's report is sent | `1` |
 
 Losing `PUMC_CREDENTIAL_ENCRYPTION_KEY` means losing the ability to
 decrypt any tenant credential already stored — keep it somewhere durable
@@ -239,6 +246,21 @@ a list of any entitlement changes detected during that month. The
 portfolio view additionally breaks down coverage and figures per tenant
 in a table, so you can see at a glance which customers had a clean month
 and which didn't.
+
+### Automatic monthly report emails
+
+Set `PUMC_SMTP_HOST` (plus `PUMC_SMTP_FROM` and `PUMC_REPORT_RECIPIENTS`
+— see the configuration reference above) and the console emails the
+same portfolio PDF you'd get from the Reports screen's "Download PDF"
+link, automatically, once a month — no separate cron job or external
+scheduler needed. By default it sends on the 1st of each month, covering
+the month that just ended (`PUMC_REPORT_EMAIL_DAY` changes the day).
+Each month is sent at most once: the server tracks which months it has
+already emailed, so a restart or a missed tick never causes a duplicate
+send, and if the server is down on the send day it emails as soon as
+it's back up and notices the month is still unsent. Leaving
+`PUMC_SMTP_HOST` unset disables the feature entirely — nothing is
+scheduled or sent.
 
 ## About screen
 

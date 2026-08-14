@@ -496,4 +496,51 @@ Post-Phase-8 follow-up: login screen brought to the actual brand spec.
   existing `app.title` i18n key) under the logo, so the login screen
   identifies the app rather than showing only the Liquidware wordmark.
 
+Post-Phase-8 follow-up: the portfolio report can now email itself.
+
+- Added automatic monthly emailing of the portfolio PDF report — the
+  same PDF the Reports screen's "Download PDF" link already produces,
+  sent on a configurable day of the month (default the 1st) for the
+  month that just ended, with no external cron job or scheduler needed.
+  Off by default: setting `PUMC_SMTP_HOST` is the single switch that
+  turns it on, alongside the now-required `PUMC_SMTP_FROM` and
+  `PUMC_REPORT_RECIPIENTS` (new `internal/config` fields/env vars —
+  `PUMC_SMTP_PORT`/`USERNAME`/`PASSWORD`/`SECURITY` and
+  `PUMC_REPORT_EMAIL_DAY` round it out with sane defaults).
+- New `internal/mailer` package talks SMTP directly via the standard
+  library (`net/smtp`, `crypto/tls` — starttls/tls/none) and hand-builds
+  the multipart/mixed MIME message, rather than pulling in a third-party
+  mail dependency (this project has none beyond fpdf/uuid/x-crypto/
+  sqlite; `go.mod` didn't need to change for this).
+- New `internal/reportmail` package runs an in-process ticker (the same
+  approach `internal/scheduler` already uses for collection) that checks
+  hourly whether today is on or after the configured send day and, if
+  so, builds and emails that month's portfolio report — "on or after",
+  not "exactly on", so a server that's down on the configured day still
+  catches up once it's back, rather than silently skipping that month.
+  A new `report_emails` table (migration `0004`, `UNIQUE(year, month)`)
+  is the idempotency guard, mirroring the `snapshots` table's
+  `UNIQUE(tenant_id, collection_date)` pattern from migration `0002` —
+  only a successful send gets a row, so a failed attempt is retried on
+  the next tick instead of being permanently (and silently) suppressed.
+- Refactored the portfolio-report-loading logic that lived inline in
+  `internal/httpapi/reports.go` out into
+  `dashboard.LoadPortfolioMonthlyReport`, and moved `report_pdf.go` (plus
+  its embedded DejaVu Sans fonts and Liquidware logo PNG) out of
+  `internal/httpapi` into a new `internal/reportpdf` package with its
+  render functions exported — both the HTTP report handlers and the new
+  scheduler now share the exact same report-building and PDF-rendering
+  code, so the emailed PDF and the one you'd download from the UI can
+  never drift apart.
+- Verified end to end against the real running binary, not just unit
+  tests (which include a real fake-SMTP-server test in both
+  `internal/mailer` and `internal/reportmail`, exercising the actual
+  EHLO/MAIL/RCPT/DATA/QUIT wire protocol): ran the server with SMTP
+  pointed at a local debug mail server, confirmed it computed the
+  correct target month, attempted STARTTLS against a server that didn't
+  support it (a real connection-level failure, not a mock), then
+  re-verified with plain SMTP that the previous month's portfolio PDF
+  arrived as a real email with the report text as the body and a valid,
+  correctly branded PDF attachment.
+
 No further phases remain beyond Phase 8.

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"profileunity-msp-console/internal/dashboard"
-	"profileunity-msp-console/internal/snapshot"
+	"profileunity-msp-console/internal/reportpdf"
 	"profileunity-msp-console/internal/tenant"
 )
 
@@ -133,9 +133,9 @@ func TenantMonthlyReportPDFHandler(deps ReportDeps) http.HandlerFunc {
 			return
 		}
 
-		pdf := renderTenantReportPDF(report)
+		pdf := reportpdf.RenderTenantReportPDF(report)
 		w.Header().Set("Content-Type", "application/pdf")
-		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s-%04d-%02d.pdf"`, safeFilenamePart(report.Tenant.DisplayName), report.Year, report.Month))
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s-%04d-%02d.pdf"`, reportpdf.SafeFilenamePart(report.Tenant.DisplayName), report.Year, report.Month))
 		if err := pdf.Output(w); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
@@ -179,26 +179,7 @@ func buildPortfolioReport(r *http.Request, deps ReportDeps) (dashboard.Portfolio
 	if err != nil {
 		return dashboard.PortfolioMonthlyReport{}, err
 	}
-	tenants, err := deps.Repos.Tenants.List(r.Context())
-	if err != nil {
-		return dashboard.PortfolioMonthlyReport{}, err
-	}
-	allSnapshots, err := deps.Repos.Snapshots.ListAllInRange(r.Context(), from, to)
-	if err != nil {
-		return dashboard.PortfolioMonthlyReport{}, err
-	}
-
-	byTenant := make(map[string][]snapshot.Snapshot, len(tenants))
-	for _, s := range allSnapshots {
-		byTenant[s.TenantID] = append(byTenant[s.TenantID], s)
-	}
-
-	tenantReports := make([]dashboard.TenantMonthlyReport, 0, len(tenants))
-	for _, t := range tenants {
-		tenantReports = append(tenantReports, dashboard.BuildTenantMonthlyReport(t, year, month, days, byTenant[t.ID]))
-	}
-
-	return dashboard.BuildPortfolioMonthlyReport(year, month, len(tenants), tenantReports, allSnapshots), nil
+	return dashboard.LoadPortfolioMonthlyReport(r.Context(), deps.Repos, year, month, days, from, to)
 }
 
 // PortfolioMonthlyReportHandler serves the MSP-wide monthly report as
@@ -224,7 +205,7 @@ func PortfolioMonthlyReportPDFHandler(deps ReportDeps) http.HandlerFunc {
 			return
 		}
 
-		pdf := renderPortfolioReportPDF(report)
+		pdf := reportpdf.RenderPortfolioReportPDF(report)
 		w.Header().Set("Content-Type", "application/pdf")
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="portfolio-%04d-%02d.pdf"`, report.Year, report.Month))
 		if err := pdf.Output(w); err != nil {

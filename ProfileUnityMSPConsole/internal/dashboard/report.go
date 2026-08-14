@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"context"
 	"sort"
 
 	"profileunity-msp-console/internal/snapshot"
@@ -195,4 +196,31 @@ func BuildPortfolioMonthlyReport(year, month, tenantsRegistered int, tenantRepor
 	}
 
 	return r
+}
+
+// LoadPortfolioMonthlyReport loads every tenant and every snapshot in
+// [from, to] and builds a PortfolioMonthlyReport — the shared
+// implementation behind both the HTTP report handler and the scheduled
+// report-email job, so the two can never drift apart.
+func LoadPortfolioMonthlyReport(ctx context.Context, repos Repos, year, month, days int, from, to string) (PortfolioMonthlyReport, error) {
+	tenants, err := repos.Tenants.List(ctx)
+	if err != nil {
+		return PortfolioMonthlyReport{}, err
+	}
+	allSnapshots, err := repos.Snapshots.ListAllInRange(ctx, from, to)
+	if err != nil {
+		return PortfolioMonthlyReport{}, err
+	}
+
+	byTenant := make(map[string][]snapshot.Snapshot, len(tenants))
+	for _, s := range allSnapshots {
+		byTenant[s.TenantID] = append(byTenant[s.TenantID], s)
+	}
+
+	tenantReports := make([]TenantMonthlyReport, 0, len(tenants))
+	for _, t := range tenants {
+		tenantReports = append(tenantReports, BuildTenantMonthlyReport(t, year, month, days, byTenant[t.ID]))
+	}
+
+	return BuildPortfolioMonthlyReport(year, month, len(tenants), tenantReports, allSnapshots), nil
 }

@@ -216,3 +216,109 @@ func TestLoad_AcceptsMatchedBootstrapAdminCredentials(t *testing.T) {
 		}
 	})
 }
+
+func TestLoad_ReportEmailDisabledByDefault(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr: "0.0.0.0:8443",
+		envSMTPHost: "",
+	}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.ReportEmailEnabled() {
+			t.Error("ReportEmailEnabled() should be false when PUMC_SMTP_HOST is unset")
+		}
+	})
+}
+
+func TestLoad_ReportEmailFullyConfigured(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:         "0.0.0.0:8443",
+		envSMTPHost:         "smtp.example.com",
+		envSMTPFrom:         "reports@example.com",
+		envReportRecipients: "msp@liquidware.eu, ops@example.com ,",
+		envReportEmailDay:   "1",
+	}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !cfg.ReportEmailEnabled() {
+			t.Fatal("ReportEmailEnabled() should be true once PUMC_SMTP_HOST is set")
+		}
+		if cfg.SMTPPort != 587 {
+			t.Errorf("SMTPPort = %d, want default 587", cfg.SMTPPort)
+		}
+		if cfg.SMTPSecurity != "starttls" {
+			t.Errorf("SMTPSecurity = %q, want default starttls", cfg.SMTPSecurity)
+		}
+		want := []string{"msp@liquidware.eu", "ops@example.com"}
+		if len(cfg.ReportRecipients) != len(want) || cfg.ReportRecipients[0] != want[0] || cfg.ReportRecipients[1] != want[1] {
+			t.Errorf("ReportRecipients = %v, want %v", cfg.ReportRecipients, want)
+		}
+	})
+}
+
+func TestLoad_RejectsSMTPHostWithoutFrom(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:         "0.0.0.0:8443",
+		envSMTPHost:         "smtp.example.com",
+		envSMTPFrom:         "",
+		envReportRecipients: "msp@liquidware.eu",
+	}, func() {
+		if _, err := Load(); err == nil {
+			t.Fatal("expected error for SMTP host set without a from address")
+		}
+	})
+}
+
+func TestLoad_RejectsSMTPHostWithoutRecipients(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:         "0.0.0.0:8443",
+		envSMTPHost:         "smtp.example.com",
+		envSMTPFrom:         "reports@example.com",
+		envReportRecipients: "",
+	}, func() {
+		if _, err := Load(); err == nil {
+			t.Fatal("expected error for SMTP host set without report recipients")
+		}
+	})
+}
+
+func TestLoad_RejectsRecipientsWithoutSMTPHost(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:         "0.0.0.0:8443",
+		envSMTPHost:         "",
+		envReportRecipients: "msp@liquidware.eu",
+	}, func() {
+		if _, err := Load(); err == nil {
+			t.Fatal("expected error for report recipients set without an SMTP host")
+		}
+	})
+}
+
+func TestLoad_RejectsUnknownSMTPSecurity(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:     "0.0.0.0:8443",
+		envSMTPSecurity: "ssl",
+	}, func() {
+		if _, err := Load(); err == nil {
+			t.Fatal("expected error for an unsupported SMTP security mode")
+		}
+	})
+}
+
+func TestLoad_RejectsOutOfRangeReportEmailDay(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:         "0.0.0.0:8443",
+		envSMTPHost:         "smtp.example.com",
+		envSMTPFrom:         "reports@example.com",
+		envReportRecipients: "msp@liquidware.eu",
+		envReportEmailDay:   "29",
+	}, func() {
+		if _, err := Load(); err == nil {
+			t.Fatal("expected error for a report email day outside 1-28")
+		}
+	})
+}

@@ -19,6 +19,9 @@ import (
 	"profileunity-msp-console/internal/db"
 	"profileunity-msp-console/internal/dotenv"
 	"profileunity-msp-console/internal/httpapi"
+	"profileunity-msp-console/internal/mailer"
+	"profileunity-msp-console/internal/reportemail"
+	"profileunity-msp-console/internal/reportmail"
 	"profileunity-msp-console/internal/scheduler"
 	"profileunity-msp-console/internal/snapshot"
 	"profileunity-msp-console/internal/tenant"
@@ -82,6 +85,22 @@ func run() error {
 	authDeps := httpapi.AuthDeps{Users: userRepo, Sessions: sessionRepo, Secure: true}
 	tenantDeps := httpapi.TenantDeps{Tenants: tenantRepo}
 	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo}
+
+	if cfg.ReportEmailEnabled() {
+		smtpCfg := mailer.Config{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
+			Security: cfg.SMTPSecurity,
+		}
+		reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), smtpCfg, cfg.ReportRecipients, cfg.ReportEmailDay, cfg.CollectionLocation)
+		go reportMailSched.Run(ctx)
+		log.Printf("monthly portfolio report emailing enabled: day %d of each month, to %v", cfg.ReportEmailDay, cfg.ReportRecipients)
+	} else {
+		log.Print("PUMC_SMTP_HOST is not set — monthly portfolio report emailing is disabled")
+	}
 	dashboardDeps := httpapi.DashboardDeps{Repos: repos, Location: cfg.CollectionLocation}
 	historyDeps := httpapi.HistoryDeps{Repos: repos}
 	reportDeps := httpapi.ReportDeps{Repos: repos}

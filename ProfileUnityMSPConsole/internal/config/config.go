@@ -75,6 +75,38 @@ type Config struct {
 	// self-signing entirely.
 	TLSCertFile string
 	TLSKeyFile  string
+
+	// SMTPHost/SMTPPort/SMTPUsername/SMTPPassword/SMTPFrom and
+	// ReportRecipients configure the monthly automatic emailing of the
+	// portfolio PDF report. SMTPHost empty means the feature is disabled
+	// entirely -- nothing is ever sent, and the scheduler doesn't start.
+	// Username/password may stay empty for a relay that doesn't require
+	// auth; every other field here is required once SMTPHost is set.
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+
+	// SMTPSecurity selects how the SMTP connection is secured:
+	// "starttls" (plain connection upgraded via STARTTLS, the common case
+	// for port 587), "tls" (implicit TLS from the first byte, port 465),
+	// or "none" (unencrypted, for a local relay only).
+	SMTPSecurity string
+
+	// ReportRecipients is who the monthly portfolio PDF is emailed to.
+	ReportRecipients []string
+
+	// ReportEmailDay is the day of the month (in CollectionTimezone) the
+	// previous month's portfolio report is sent, e.g. 1 to send on the
+	// 1st for the month that just ended.
+	ReportEmailDay int
+}
+
+// ReportEmailEnabled reports whether the monthly report-email feature is
+// configured at all -- SMTPHost is the single on/off switch.
+func (c Config) ReportEmailEnabled() bool {
+	return c.SMTPHost != ""
 }
 
 const (
@@ -94,10 +126,19 @@ const (
 	envBootstrapAdminPassword  = "PUMC_BOOTSTRAP_ADMIN_PASSWORD"
 	envTLSCertFile             = "PUMC_TLS_CERT_FILE"
 	envTLSKeyFile              = "PUMC_TLS_KEY_FILE"
+	envSMTPHost                = "PUMC_SMTP_HOST"
+	envSMTPPort                = "PUMC_SMTP_PORT"
+	envSMTPUsername            = "PUMC_SMTP_USERNAME"
+	envSMTPPassword            = "PUMC_SMTP_PASSWORD"
+	envSMTPFrom                = "PUMC_SMTP_FROM"
+	envSMTPSecurity            = "PUMC_SMTP_SECURITY"
+	envReportRecipients        = "PUMC_REPORT_RECIPIENTS"
+	envReportEmailDay          = "PUMC_REPORT_EMAIL_DAY"
 )
 
 var validDBDrivers = map[string]bool{"sqlite": true, "postgres": true}
 var validLogLevels = map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
+var validSMTPSecurity = map[string]bool{"starttls": true, "tls": true, "none": true}
 
 // Load reads configuration from environment variables. It intentionally
 // requires PUMC_HTTP_ADDR explicitly rather than defaulting to a localhost
@@ -153,6 +194,25 @@ func Load() (Config, error) {
 	cfg.TLSCertFile = firstNonEmpty(os.Getenv(envTLSCertFile), "./tls-cert.pem")
 	cfg.TLSKeyFile = firstNonEmpty(os.Getenv(envTLSKeyFile), "./tls-key.pem")
 
+	cfg.SMTPHost = strings.TrimSpace(os.Getenv(envSMTPHost))
+	cfg.SMTPUsername = strings.TrimSpace(os.Getenv(envSMTPUsername))
+	cfg.SMTPPassword = os.Getenv(envSMTPPassword)
+	cfg.SMTPFrom = strings.TrimSpace(os.Getenv(envSMTPFrom))
+	cfg.SMTPSecurity = firstNonEmpty(os.Getenv(envSMTPSecurity), "starttls")
+	cfg.ReportRecipients = splitAndTrim(os.Getenv(envReportRecipients))
+
+	smtpPort, err := parseIntDefault(os.Getenv(envSMTPPort), 587)
+	if err != nil {
+		return Config{}, fmt.Errorf("%s: %w", envSMTPPort, err)
+	}
+	cfg.SMTPPort = smtpPort
+
+	reportEmailDay, err := parseIntDefault(os.Getenv(envReportEmailDay), 1)
+	if err != nil {
+		return Config{}, fmt.Errorf("%s: %w", envReportEmailDay, err)
+	}
+	cfg.ReportEmailDay = reportEmailDay
+
 	if raw := strings.TrimSpace(os.Getenv(envCredentialEncryptionKey)); raw != "" {
 		key, err := base64.StdEncoding.DecodeString(raw)
 		if err != nil {
@@ -198,7 +258,40 @@ func (c Config) validate() error {
 	if (c.BootstrapAdminUsername == "") != (c.BootstrapAdminPassword == "") {
 		return fmt.Errorf("%s and %s must be both set or both empty", envBootstrapAdminUsername, envBootstrapAdminPassword)
 	}
+	if !validSMTPSecurity[c.SMTPSecurity] {
+		return fmt.Errorf("%s must be one of starttls, tls, none (got %q)", envSMTPSecurity, c.SMTPSecurity)
+	}
+	if c.ReportEmailEnabled() {
+		if c.SMTPFrom == "" {
+			return fmt.Errorf("%s is required once %s is set", envSMTPFrom, envSMTPHost)
+		}
+		if len(c.ReportRecipients) == 0 {
+			return fmt.Errorf("%s is required once %s is set", envReportRecipients, envSMTPHost)
+		}
+		if c.SMTPPort <= 0 {
+			return fmt.Errorf("%s must be positive (got %d)", envSMTPPort, c.SMTPPort)
+		}
+		if c.ReportEmailDay < 1 || c.ReportEmailDay > 28 {
+			return fmt.Errorf("%s must be between 1 and 28 (got %d) -- capped at 28 so it exists in every month", envReportEmailDay, c.ReportEmailDay)
+		}
+	} else if c.SMTPFrom != "" || len(c.ReportRecipients) > 0 {
+		return fmt.Errorf("%s is required when %s or %s is set", envSMTPHost, envSMTPFrom, envReportRecipients)
+	}
 	return nil
+}
+
+// splitAndTrim splits a comma-separated list, trims whitespace from each
+// item, and drops empty items -- e.g. "a@x.com, , b@x.com" -> [a@x.com
+// b@x.com]. Returns nil (not an empty non-nil slice) for a blank input, so
+// len(cfg.ReportRecipients) == 0 is the reliable "unset" check.
+func splitAndTrim(raw string) []string {
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func firstNonEmpty(values ...string) string {
