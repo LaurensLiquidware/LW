@@ -53,6 +53,25 @@ jobs:
       - name: Test
         run: go test ./cmd/... ./internal/... ./web
 
+      # Every build also produces a Windows binary, with the Liquidware
+      # icon/version info embedded via scripts/build-windows.sh, so a
+      # Windows regression (or a broken icon/version resource) fails CI
+      # the same way a Linux one would.
+      - name: Install goversioninfo
+        run: |
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Build Windows binary
+        run: ./scripts/build-windows.sh
+
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: profileunity-msp-console-windows-amd64
+          path: ProfileUnityMSPConsole/profileunity-msp-console.exe
+          retention-days: 14
+
   # Enforces project brief §11.8: SBOM stays current, and both dependency
   # trees are CVE-clean. Unlike scripts/release.sh's local/offline mode
   # (which warns instead of failing when govulncheck can't reach

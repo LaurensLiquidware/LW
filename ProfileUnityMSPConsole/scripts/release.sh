@@ -10,8 +10,10 @@
 # fallback content once the Phase 1 placeholder is gone.
 #
 # Local tool prerequisites beyond Go/Node: cyclonedx-gomod, govulncheck
-# (both `go install`, see scripts/generate-sbom.sh's header), and pandoc
-# plus a Chromium/Chrome binary for scripts/render-manual-pdf.sh.
+# (both `go install`, see scripts/generate-sbom.sh's header), pandoc plus
+# a Chromium/Chrome binary for scripts/render-manual-pdf.sh, and
+# goversioninfo for scripts/build-windows.sh (go install
+# github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest).
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -61,7 +63,7 @@ manual_pdf="$(mktemp --suffix=.pdf)"
 trap 'rm -f "$govulncheck_output" "$manual_pdf"' EXIT
 ./scripts/render-manual-pdf.sh "$manual_pdf"
 
-echo "== 8/9: build backend (embeds VERSION, frontend, SBOM, notices) =="
+echo "== 8/10: build backend (embeds VERSION, frontend, SBOM, notices) =="
 # Stage 4/6 rewrote bom.cdx.json and THIRD-PARTY-NOTICES.txt at the repo
 # root -- re-sync so internal/legal embeds the versions just generated,
 # not whatever was there before this script ran.
@@ -69,20 +71,39 @@ echo "== 8/9: build backend (embeds VERSION, frontend, SBOM, notices) =="
 go build -o "$repo_root/profileunity-msp-console" ./cmd/server
 echo "release: built ./profileunity-msp-console"
 
-echo "== 9/9: produce one release zip =="
+echo "== 9/10: cross-compile Windows build (Liquidware icon + version info) =="
+if ! command -v goversioninfo >/dev/null 2>&1; then
+  echo "release: goversioninfo not found on PATH -- go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest" >&2
+  exit 1
+fi
+./scripts/build-windows.sh "$repo_root/profileunity-msp-console.exe"
+
+echo "== 10/10: produce release zips (Linux + Windows) =="
 # Every release bundles: the binary, the user manual (PDF), the version
 # history, and everything a compliance reviewer needs to sign off on
 # third-party content -- the SBOM, the per-license breakdown, and the
 # Sparks Tool license/disclaimer itself. README.md stays out on purpose:
 # it's written for someone building this from source, not running it.
+# One zip per platform, since the binary itself differs but everything
+# else in the bundle is shared.
 version="$(cat VERSION)"
-zip_name="profileunity-msp-console-${version}.zip"
 zip_dir="$(mktemp -d)"
 trap 'rm -f "$govulncheck_output" "$manual_pdf"; rm -rf "$zip_dir"' EXIT
-stage_dir="$zip_dir/profileunity-msp-console-${version}"
-mkdir -p "$stage_dir"
-cp profileunity-msp-console "$stage_dir/"
-cp "$manual_pdf" "$stage_dir/MANUAL.pdf"
-cp Spark_License.pdf bom.cdx.json THIRD-PARTY-NOTICES.txt CHANGELOG.md "$stage_dir/"
-(cd "$zip_dir" && zip -qr "$repo_root/$zip_name" "profileunity-msp-console-${version}")
-echo "release: wrote $zip_name"
+
+linux_zip="profileunity-msp-console-${version}-linux-amd64.zip"
+linux_stage="$zip_dir/profileunity-msp-console-${version}-linux-amd64"
+mkdir -p "$linux_stage"
+cp profileunity-msp-console "$linux_stage/"
+cp "$manual_pdf" "$linux_stage/MANUAL.pdf"
+cp Spark_License.pdf bom.cdx.json THIRD-PARTY-NOTICES.txt CHANGELOG.md "$linux_stage/"
+(cd "$zip_dir" && zip -qr "$repo_root/$linux_zip" "profileunity-msp-console-${version}-linux-amd64")
+echo "release: wrote $linux_zip"
+
+windows_zip="profileunity-msp-console-${version}-windows-amd64.zip"
+windows_stage="$zip_dir/profileunity-msp-console-${version}-windows-amd64"
+mkdir -p "$windows_stage"
+cp profileunity-msp-console.exe "$windows_stage/"
+cp "$manual_pdf" "$windows_stage/MANUAL.pdf"
+cp Spark_License.pdf bom.cdx.json THIRD-PARTY-NOTICES.txt CHANGELOG.md "$windows_stage/"
+(cd "$zip_dir" && zip -qr "$repo_root/$windows_zip" "profileunity-msp-console-${version}-windows-amd64")
+echo "release: wrote $windows_zip"

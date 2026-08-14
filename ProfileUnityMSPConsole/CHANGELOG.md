@@ -342,4 +342,25 @@ Post-Phase-8 follow-up: release packaging now includes the user manual.
   console) is no longer included — `MANUAL.pdf` replaces it as the
   release's operator-facing document.
 
+Post-Phase-8 follow-up: every build now also produces a Windows binary,
+branded with the Liquidware icon.
+
+- Added `scripts/build-windows.sh`, cross-compiling a `windows/amd64`
+  build (`CGO_ENABLED=0` — `modernc.org/sqlite` is pure Go, so no cgo
+  toolchain is needed) and embedding a Windows version resource via
+  `goversioninfo`: the app icon (reusing `web/frontend/public/
+  favicon.ico`, the same mark already shown on the web UI's browser
+  tab), `CompanyName: Liquidware`, and the product name/version, so
+  Explorer/the taskbar/Properties dialog show a genuine branded
+  product instead of a bare Go binary.
+- `.github/workflows/profileunity-msp-console-ci.yml`'s
+  `build-and-test` job now also runs this cross-compile on every
+  push/PR and uploads the result as a workflow artifact, so a
+  Windows-specific build break is caught the same way a Linux one
+  would be.
+- `scripts/release.sh` now produces two zips per release
+  (`-linux-amd64`, `-windows-amd64`) instead of one, each with that
+  platform's binary alongside the same manual/changelog/SBOM/notices/
+  license bundle as before.
+
 No further phases remain beyond Phase 8.

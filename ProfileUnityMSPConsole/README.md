@@ -417,14 +417,26 @@ the SBOM, sync the version, then package the SBOM next to the license PDF.
 Audits are done read-only first, with a written summary of proposed
 changes confirmed before anything is edited.
 
-`scripts/release.sh` packages every release as one zip containing the
-binary, `docs/MANUAL.md` rendered to `MANUAL.pdf` (via
+`scripts/release.sh` packages every release as two zips — one per
+platform (`-linux-amd64`, `-windows-amd64`) — each containing that
+platform's binary, `docs/MANUAL.md` rendered to `MANUAL.pdf` (via
 `scripts/render-manual-pdf.sh` — pandoc to a self-contained HTML file,
 then a headless Chromium prints that to PDF, avoiding a full LaTeX
 toolchain for one document), `CHANGELOG.md`, `bom.cdx.json`,
 `THIRD-PARTY-NOTICES.txt`, and `Spark_License.pdf` — everything an
 operator or a compliance reviewer needs, without also needing this
 repository's build-status README.
+
+The Windows binary is built by `scripts/build-windows.sh`
+(`GOOS=windows GOARCH=amd64`, no cgo needed since `modernc.org/sqlite`
+is pure Go), which also embeds a Windows version resource via
+`goversioninfo` — the same `favicon.ico` already used for the web UI's
+browser tab (so the `.exe` and the site show the same Liquidware mark
+in Explorer/the taskbar), plus `CompanyName: Liquidware` and the
+product name/version, so Explorer's Properties dialog identifies it
+correctly instead of showing a bare Go binary. CI's `build-and-test`
+job builds this on every push/PR too (uploaded as a workflow artifact)
+so a Windows-specific regression fails the same way a Linux one would.
 
 ## Reference project
 
