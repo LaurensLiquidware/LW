@@ -57,8 +57,9 @@ type tenantMonthlyReportDTO struct {
 	PeakUsedDate string   `json:"peakUsedDate,omitempty"`
 	AverageUsed  *float64 `json:"averageUsed"`
 
-	EntitledAtMonthEnd *int                         `json:"entitledAtMonthEnd"`
-	EntitlementChanges []entitlementChangeReportDTO `json:"entitlementChanges"`
+	EntitledAtMonthEnd     *int                         `json:"entitledAtMonthEnd"`
+	MaximumUsersAtMonthEnd *int                         `json:"maximumUsersAtMonthEnd"`
+	EntitlementChanges     []entitlementChangeReportDTO `json:"entitlementChanges"`
 }
 
 func toTenantReportDTO(r dashboard.TenantMonthlyReport) tenantMonthlyReportDTO {
@@ -78,8 +79,9 @@ func toTenantReportDTO(r dashboard.TenantMonthlyReport) tenantMonthlyReportDTO {
 		PeakUsed:           r.PeakUsed,
 		PeakUsedDate:       r.PeakUsedDate,
 		AverageUsed:        r.AverageUsed,
-		EntitledAtMonthEnd: r.EntitledAtMonthEnd,
-		EntitlementChanges: changes,
+		EntitledAtMonthEnd:     r.EntitledAtMonthEnd,
+		MaximumUsersAtMonthEnd: r.MaximumUsersAtMonthEnd,
+		EntitlementChanges:     changes,
 	}
 }
 
@@ -151,8 +153,9 @@ type portfolioMonthlyReportDTO struct {
 	PeakTotalUsedDate string   `json:"peakTotalUsedDate,omitempty"`
 	AverageTotalUsed  *float64 `json:"averageTotalUsed"`
 
-	TotalEntitledAtMonthEnd *int                     `json:"totalEntitledAtMonthEnd"`
-	TenantReports           []tenantMonthlyReportDTO `json:"tenantReports"`
+	TotalEntitledAtMonthEnd     *int                     `json:"totalEntitledAtMonthEnd"`
+	TotalMaximumUsersAtMonthEnd *int                     `json:"totalMaximumUsersAtMonthEnd"`
+	TenantReports               []tenantMonthlyReportDTO `json:"tenantReports"`
 }
 
 func toPortfolioReportDTO(r dashboard.PortfolioMonthlyReport) portfolioMonthlyReportDTO {
@@ -167,8 +170,9 @@ func toPortfolioReportDTO(r dashboard.PortfolioMonthlyReport) portfolioMonthlyRe
 		PeakTotalUsed:           r.PeakTotalUsed,
 		PeakTotalUsedDate:       r.PeakTotalUsedDate,
 		AverageTotalUsed:        r.AverageTotalUsed,
-		TotalEntitledAtMonthEnd: r.TotalEntitledAtMonthEnd,
-		TenantReports:           tenantReports,
+		TotalEntitledAtMonthEnd:     r.TotalEntitledAtMonthEnd,
+		TotalMaximumUsersAtMonthEnd: r.TotalMaximumUsersAtMonthEnd,
+		TenantReports:               tenantReports,
 	}
 }
 

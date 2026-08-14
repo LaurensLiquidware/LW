@@ -113,6 +113,7 @@
     "peakUsed": "Piekgebruik",
     "averageUsed": "Gemiddeld Gebruik",
     "entitledAtMonthEnd": "Toegekend Aan Einde Maand",
+    "maximumUsersAtMonthEnd": "Maximum Aantal Gebruikers",
     "entitlementChanges": "Wijzigingen In Toewijzing",
     "noEntitlementChanges": "Geen wijzigingen in toewijzing deze maand.",
     "tenantsRegistered": "Klanten Geregistreerd",

@@ -113,6 +113,7 @@
     "peakUsed": "Peak Used",
     "averageUsed": "Average Used",
     "entitledAtMonthEnd": "Entitled At Month End",
+    "maximumUsersAtMonthEnd": "Maximum Users",
     "entitlementChanges": "Entitlement Changes",
     "noEntitlementChanges": "No entitlement changes this month.",
     "tenantsRegistered": "Tenants Registered",

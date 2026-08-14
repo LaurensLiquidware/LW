@@ -665,4 +665,24 @@ selection on Save.
   like "America" correctly leaves the value unchanged rather than
   picking one of many matches.
 
+Post-Phase-8 follow-up: "Entitled At Month End" was reporting the wrong
+number; added "Maximum Users" alongside it.
+
+- `TotalLicenses` from `/licenseinfo` is a license's Maximum Users
+  ceiling, not what's actually entitled/in-use — "Entitled At Month
+  End" was sourced from it, so the report showed the license's cap
+  rather than actual usage. `UsedLicenses` is what ProfileUnity itself
+  reports as in use.
+- "Entitled At Month End" (tenant and portfolio-total) is now sourced
+  from `UsedLicenses` on the last successful collection of the month,
+  matching what an MSP actually bills against.
+- Added a new "Maximum Users" figure (tenant `MaximumUsersAtMonthEnd`,
+  portfolio-total `TotalMaximumUsersAtMonthEnd`), sourced from
+  `TotalLicenses` on the last successful collection of the month — the
+  number "Entitled At Month End" used to (incorrectly) show — so that
+  ceiling is still visible, just correctly labeled. Added to the JSON
+  API, the PDF report, and the Reports screen (metric tiles and the
+  per-tenant portfolio table) in both languages.
+- Updated `dashboard` unit tests for the corrected values.
+
 No further phases remain beyond Phase 8.

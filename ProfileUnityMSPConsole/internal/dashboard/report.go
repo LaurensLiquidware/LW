@@ -49,9 +49,16 @@ type TenantMonthlyReport struct {
 	PeakUsedDate string
 	AverageUsed  *float64
 
-	// EntitledAtMonthEnd is TotalLicenses from the last successful
-	// collection in the month, nil if there was none.
+	// EntitledAtMonthEnd is UsedLicenses (what ProfileUnity itself reports
+	// as in-use) from the last successful collection in the month, nil if
+	// there was none — this is the figure MSP billing cares about, not
+	// the license's ceiling.
 	EntitledAtMonthEnd *int
+
+	// MaximumUsersAtMonthEnd is TotalLicenses (the license's Maximum
+	// Users ceiling) from the last successful collection in the month,
+	// nil if there was none.
+	MaximumUsersAtMonthEnd *int
 
 	EntitlementChanges []EntitlementChange
 }
@@ -88,9 +95,13 @@ func BuildTenantMonthlyReport(t tenant.Tenant, year, month, daysInMonth int, mon
 				r.PeakUsedDate = s.CollectionDate
 			}
 		}
+		if s.UsedLicenses != nil {
+			v := *s.UsedLicenses
+			r.EntitledAtMonthEnd = &v
+		}
 		if s.TotalLicenses != nil {
 			v := *s.TotalLicenses
-			r.EntitledAtMonthEnd = &v
+			r.MaximumUsersAtMonthEnd = &v
 		}
 	}
 	r.DaysNeverAttempted = daysInMonth - r.DaysCollected - r.DaysFailed
@@ -130,6 +141,9 @@ type PortfolioMonthlyReport struct {
 	AverageTotalUsed  *float64
 
 	TotalEntitledAtMonthEnd *int
+
+	// TotalMaximumUsersAtMonthEnd sums each tenant's MaximumUsersAtMonthEnd.
+	TotalMaximumUsersAtMonthEnd *int
 
 	// TenantReports is every tenant's own monthly report, so the
 	// portfolio view can show per-tenant coverage/entitlement-change
@@ -185,14 +199,23 @@ func BuildPortfolioMonthlyReport(year, month, tenantsRegistered int, tenantRepor
 	// success wasn't the portfolio's single latest date.
 	var entitledTotal int
 	var haveAnyEntitled bool
+	var maxUsersTotal int
+	var haveAnyMaxUsers bool
 	for _, tr := range tenantReports {
 		if tr.EntitledAtMonthEnd != nil {
 			entitledTotal += *tr.EntitledAtMonthEnd
 			haveAnyEntitled = true
 		}
+		if tr.MaximumUsersAtMonthEnd != nil {
+			maxUsersTotal += *tr.MaximumUsersAtMonthEnd
+			haveAnyMaxUsers = true
+		}
 	}
 	if haveAnyEntitled {
 		r.TotalEntitledAtMonthEnd = &entitledTotal
+	}
+	if haveAnyMaxUsers {
+		r.TotalMaximumUsersAtMonthEnd = &maxUsersTotal
 	}
 
 	return r

@@ -16,6 +16,7 @@ export interface TenantMonthlyReport {
   peakUsedDate?: string;
   averageUsed: number | null;
   entitledAtMonthEnd: number | null;
+  maximumUsersAtMonthEnd: number | null;
   entitlementChanges: EntitlementChange[];
 }
 
@@ -27,5 +28,6 @@ export interface PortfolioMonthlyReport {
   peakTotalUsedDate?: string;
   averageTotalUsed: number | null;
   totalEntitledAtMonthEnd: number | null;
+  totalMaximumUsersAtMonthEnd: number | null;
   tenantReports: TenantMonthlyReport[];
 }

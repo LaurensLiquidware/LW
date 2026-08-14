@@ -51,6 +51,10 @@
           <div class="lwl-metric-label">{{ 'reports.entitledAtMonthEnd' | transloco }}</div>
           <div class="lwl-metric-value">{{ tenantReport()!.entitledAtMonthEnd ?? '—' }}</div>
         </div>
+        <div>
+          <div class="lwl-metric-label">{{ 'reports.maximumUsersAtMonthEnd' | transloco }}</div>
+          <div class="lwl-metric-value">{{ tenantReport()!.maximumUsersAtMonthEnd ?? '—' }}</div>
+        </div>
       </div>
       <div>
         <h2 class="lwl-metric-label">{{ 'reports.entitlementChanges' | transloco }}</h2>
@@ -87,6 +91,10 @@
           <div class="lwl-metric-label">{{ 'reports.entitledAtMonthEnd' | transloco }}</div>
           <div class="lwl-metric-value">{{ portfolioReport()!.totalEntitledAtMonthEnd ?? '—' }}</div>
         </div>
+        <div>
+          <div class="lwl-metric-label">{{ 'reports.maximumUsersAtMonthEnd' | transloco }}</div>
+          <div class="lwl-metric-value">{{ portfolioReport()!.totalMaximumUsersAtMonthEnd ?? '—' }}</div>
+        </div>
       </div>
       <div>
         <h2 class="lwl-metric-label">{{ 'reports.perTenantDetail' | transloco }}</h2>
@@ -97,6 +105,7 @@
               <th class="lwl-cell text-left">{{ 'reports.coverage' | transloco }}</th>
               <th class="lwl-cell text-right">{{ 'reports.peakUsed' | transloco }}</th>
               <th class="lwl-cell text-right">{{ 'reports.entitledAtMonthEnd' | transloco }}</th>
+              <th class="lwl-cell text-right">{{ 'reports.maximumUsersAtMonthEnd' | transloco }}</th>
             </tr>
           </thead>
           <tbody>
@@ -106,6 +115,7 @@
                 <td class="lwl-cell"><app-status-badge kind="coverage" [value]="tr.coverage" /></td>
                 <td class="lwl-cell text-right">{{ tr.peakUsed ?? '—' }}</td>
                 <td class="lwl-cell text-right">{{ tr.entitledAtMonthEnd ?? '—' }}</td>
+                <td class="lwl-cell text-right">{{ tr.maximumUsersAtMonthEnd ?? '—' }}</td>
               </tr>
             }
           </tbody>

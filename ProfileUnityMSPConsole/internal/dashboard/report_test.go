@@ -29,8 +29,11 @@ func TestBuildTenantMonthlyReport_CompleteMonth(t *testing.T) {
 	if r.AverageUsed == nil || *r.AverageUsed != 4 {
 		t.Errorf("average = %v, want 4", r.AverageUsed)
 	}
-	if r.EntitledAtMonthEnd == nil || *r.EntitledAtMonthEnd != 10 {
-		t.Errorf("entitled at month end = %v, want 10", r.EntitledAtMonthEnd)
+	if r.EntitledAtMonthEnd == nil || *r.EntitledAtMonthEnd != 2 {
+		t.Errorf("entitled at month end = %v, want 2 (used licenses on the last day)", r.EntitledAtMonthEnd)
+	}
+	if r.MaximumUsersAtMonthEnd == nil || *r.MaximumUsersAtMonthEnd != 10 {
+		t.Errorf("maximum users at month end = %v, want 10", r.MaximumUsersAtMonthEnd)
 	}
 }
 
@@ -61,8 +64,8 @@ func TestBuildTenantMonthlyReport_NoSuccessfulDays(t *testing.T) {
 	if r.Coverage != CoverageNone {
 		t.Errorf("Coverage = %v, want none", r.Coverage)
 	}
-	if r.PeakUsed != nil || r.AverageUsed != nil || r.EntitledAtMonthEnd != nil {
-		t.Errorf("expected nil figures with zero successes, got peak=%v avg=%v entitled=%v", r.PeakUsed, r.AverageUsed, r.EntitledAtMonthEnd)
+	if r.PeakUsed != nil || r.AverageUsed != nil || r.EntitledAtMonthEnd != nil || r.MaximumUsersAtMonthEnd != nil {
+		t.Errorf("expected nil figures with zero successes, got peak=%v avg=%v entitled=%v maxUsers=%v", r.PeakUsed, r.AverageUsed, r.EntitledAtMonthEnd, r.MaximumUsersAtMonthEnd)
 	}
 }
 
@@ -137,15 +140,19 @@ func TestBuildPortfolioMonthlyReport_SumsAcrossTenants(t *testing.T) {
 	if r.AverageTotalUsed == nil || *r.AverageTotalUsed != 6 {
 		t.Errorf("average = %v, want 6 ((8+4)/2)", r.AverageTotalUsed)
 	}
-	// tenant a's entitled at month end = 10 (08-02), tenant b's = 20 (08-01, its only success)
-	if r.TotalEntitledAtMonthEnd == nil || *r.TotalEntitledAtMonthEnd != 30 {
-		t.Errorf("total entitled = %v, want 30", r.TotalEntitledAtMonthEnd)
+	// tenant a's entitled (used licenses) at month end = 4 (08-02), tenant b's = 5 (08-01, its only success)
+	if r.TotalEntitledAtMonthEnd == nil || *r.TotalEntitledAtMonthEnd != 9 {
+		t.Errorf("total entitled = %v, want 9", r.TotalEntitledAtMonthEnd)
+	}
+	// tenant a's maximum users at month end = 10 (08-02), tenant b's = 20 (08-01, its only success)
+	if r.TotalMaximumUsersAtMonthEnd == nil || *r.TotalMaximumUsersAtMonthEnd != 30 {
+		t.Errorf("total maximum users = %v, want 30", r.TotalMaximumUsersAtMonthEnd)
 	}
 }
 
 func TestBuildPortfolioMonthlyReport_NoTenantsReported(t *testing.T) {
 	r := BuildPortfolioMonthlyReport(2026, 8, 3, nil, nil)
-	if r.PeakTotalUsed != nil || r.AverageTotalUsed != nil || r.TotalEntitledAtMonthEnd != nil {
+	if r.PeakTotalUsed != nil || r.AverageTotalUsed != nil || r.TotalEntitledAtMonthEnd != nil || r.TotalMaximumUsersAtMonthEnd != nil {
 		t.Errorf("expected all nil with no data, got %+v", r)
 	}
 	if r.TenantsRegistered != 3 {
