@@ -329,4 +329,17 @@ deferred CVE gate.
   previously been capped at go1.24-compatible releases. Regenerated
   `bom.cdx.json`/`THIRD-PARTY-NOTICES.txt` to match.
 
+Post-Phase-8 follow-up: release packaging now includes the user manual.
+
+- Added `scripts/render-manual-pdf.sh`, converting `docs/MANUAL.md` to a
+  standalone PDF (pandoc to a self-contained HTML file with embedded
+  print CSS, then a headless Chromium/Chrome binary prints that to PDF —
+  no LaTeX toolchain, no external CDN references).
+- `scripts/release.sh`'s packaging stage now bundles `MANUAL.pdf`,
+  `CHANGELOG.md`, `bom.cdx.json`, `THIRD-PARTY-NOTICES.txt`, and
+  `Spark_License.pdf` alongside the binary in every release zip.
+  `README.md` (written for someone building from source, not running the
+  console) is no longer included — `MANUAL.pdf` replaces it as the
+  release's operator-facing document.
+
 No further phases remain beyond Phase 8.

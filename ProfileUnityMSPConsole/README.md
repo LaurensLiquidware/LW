@@ -417,6 +417,15 @@ the SBOM, sync the version, then package the SBOM next to the license PDF.
 Audits are done read-only first, with a written summary of proposed
 changes confirmed before anything is edited.
 
+`scripts/release.sh` packages every release as one zip containing the
+binary, `docs/MANUAL.md` rendered to `MANUAL.pdf` (via
+`scripts/render-manual-pdf.sh` — pandoc to a self-contained HTML file,
+then a headless Chromium prints that to PDF, avoiding a full LaTeX
+toolchain for one document), `CHANGELOG.md`, `bom.cdx.json`,
+`THIRD-PARTY-NOTICES.txt`, and `Spark_License.pdf` — everything an
+operator or a compliance reviewer needs, without also needing this
+repository's build-status README.
+
 ## Reference project
 
 Architectural patterns carried over from `ProUVisualizer-Go` (proxy
