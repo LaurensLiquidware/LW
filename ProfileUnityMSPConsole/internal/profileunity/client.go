@@ -116,49 +116,55 @@ func New(baseURL string, opts ...Option) (*Client, error) {
 // requires no authentication on 6.9.5.9678. Whether that stays true on a
 // future console version is an open question (§4); if the console starts
 // requiring a session, this call returns an *AuthRequiredError.
-func (c *Client) GetLicenseInfoUnauthenticated(ctx context.Context) (LicenseInfo, error) {
-	tag, err := c.doGET(ctx, pathLicenseInfo)
+//
+// It returns the exact response body alongside the parsed result — the
+// collector retains it per §7.2 ("store the raw JSON payload alongside
+// parsed fields"), so a future field-mapping change never has to work
+// from parsed-and-possibly-wrong history.
+func (c *Client) GetLicenseInfoUnauthenticated(ctx context.Context) (LicenseInfo, []byte, error) {
+	rawBody, tag, err := c.doGET(ctx, pathLicenseInfo)
 	if err != nil {
-		return LicenseInfo{}, err
+		return LicenseInfo{}, rawBody, err
 	}
 
 	var rows []licenseInfoRaw
 	if err := json.Unmarshal(tag, &rows); err != nil {
-		return LicenseInfo{}, &MalformedPayloadError{Body: tag, Cause: err}
+		return LicenseInfo{}, rawBody, &MalformedPayloadError{Body: tag, Cause: err}
 	}
 	if len(rows) == 0 {
-		return LicenseInfo{}, &MalformedPayloadError{Body: tag, Cause: fmt.Errorf("licenseinfo Tag array is empty")}
+		return LicenseInfo{}, rawBody, &MalformedPayloadError{Body: tag, Cause: fmt.Errorf("licenseinfo Tag array is empty")}
 	}
-	return normalizeLicenseInfo(rows[0]), nil
+	return normalizeLicenseInfo(rows[0]), rawBody, nil
 }
 
 // CollectLicenseInfo is the primary collection entry point: it attempts
 // the unauthenticated call first, and only falls back to authenticating
 // if the console demands a session and credentials were configured (§4).
 // The returned AuthPath records which one actually produced the result,
-// for the collector to store alongside the snapshot (§7.2).
-func (c *Client) CollectLicenseInfo(ctx context.Context) (LicenseInfo, AuthPath, error) {
-	info, err := c.GetLicenseInfoUnauthenticated(ctx)
+// and rawBody is the exact response body that produced info, both for
+// the collector to store alongside the snapshot (§7.2).
+func (c *Client) CollectLicenseInfo(ctx context.Context) (info LicenseInfo, authPath AuthPath, rawBody []byte, err error) {
+	info, rawBody, err = c.GetLicenseInfoUnauthenticated(ctx)
 	if err == nil {
-		return info, AuthPathUnauthenticated, nil
+		return info, AuthPathUnauthenticated, rawBody, nil
 	}
 
 	var authRequired *AuthRequiredError
 	if !errors.As(err, &authRequired) {
-		return LicenseInfo{}, "", err
+		return LicenseInfo{}, "", rawBody, err
 	}
 	if c.username == "" {
-		return LicenseInfo{}, "", err
+		return LicenseInfo{}, "", rawBody, err
 	}
 
 	if err := c.EnsureAuthenticated(ctx); err != nil {
-		return LicenseInfo{}, "", err
+		return LicenseInfo{}, "", nil, err
 	}
-	info, err = c.GetLicenseInfoUnauthenticated(ctx)
+	info, rawBody, err = c.GetLicenseInfoUnauthenticated(ctx)
 	if err != nil {
-		return LicenseInfo{}, "", err
+		return LicenseInfo{}, "", rawBody, err
 	}
-	return info, AuthPathAuthenticated, nil
+	return info, AuthPathAuthenticated, rawBody, nil
 }
 
 // Authenticate calls POST /authenticate (§3.6) and, on success, retains
@@ -220,7 +226,7 @@ func (c *Client) EnsureAuthenticated(ctx context.Context) error {
 // beyond what /licenseinfo provides. Requires an authenticated session;
 // call EnsureAuthenticated first, or expect *AuthRequiredError.
 func (c *Client) GetServerLicensing(ctx context.Context) (ServerLicensing, error) {
-	tag, err := c.doGET(ctx, pathServerLicensing)
+	_, tag, err := c.doGET(ctx, pathServerLicensing)
 	if err != nil {
 		return ServerLicensing{}, err
 	}
@@ -235,7 +241,7 @@ func (c *Client) GetServerLicensing(ctx context.Context) (ServerLicensing, error
 // health, keyed on the LastKnownRunningUTC heartbeat. Requires an
 // authenticated session.
 func (c *Client) GetLicenseServers(ctx context.Context) ([]LicenseServer, error) {
-	tag, err := c.doGET(ctx, pathLicenseServer)
+	_, tag, err := c.doGET(ctx, pathLicenseServer)
 	if err != nil {
 		return nil, err
 	}
@@ -251,31 +257,33 @@ func (c *Client) GetLicenseServers(ctx context.Context) ([]LicenseServer, error)
 }
 
 // doGET performs a GET against one of the whitelisted paths and returns
-// the envelope's Tag, having already checked Type == "success" — never
-// the HTTP status (§3.1) — except for HTTP 401, which the API contract
-// (§3.3/§3.4) uses as a real, meaningful status for "no session".
-func (c *Client) doGET(ctx context.Context, path string) (json.RawMessage, error) {
+// both the raw response body and the envelope's Tag, having already
+// checked Type == "success" — never the HTTP status (§3.1) — except for
+// HTTP 401, which the API contract (§3.3/§3.4) uses as a real, meaningful
+// status for "no session".
+func (c *Client) doGET(ctx context.Context, path string) (rawBody []byte, tag json.RawMessage, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
-		return nil, fmt.Errorf("profileunity: build request for %s: %w", path, err)
+		return nil, nil, fmt.Errorf("profileunity: build request for %s: %w", path, err)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, classifyTransportError(err)
+		return nil, nil, classifyTransportError(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, &AuthRequiredError{}
+		return nil, nil, &AuthRequiredError{}
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, classifyTransportError(err)
+		return nil, nil, classifyTransportError(err)
 	}
 
-	return decodeEnvelope(body)
+	tag, err = decodeEnvelope(body)
+	return body, tag, err
 }
 
 // classifyTransportError turns a transport-level failure (network,

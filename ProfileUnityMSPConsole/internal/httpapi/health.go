@@ -9,10 +9,17 @@ import (
 )
 
 // SchedulerStatus reports the collection scheduler's liveness and last-run
-// outcome. The scheduler itself lands in Phase 3; until then every server
-// reports "not_implemented" rather than faking a healthy scheduler.
+// outcome (project brief §9: "health endpoint reporting scheduler
+// liveness and last-run outcome"). Status is "not_implemented" only
+// before the scheduler starts; once it does, it is "ok", "partial",
+// "failed", or "run_error" as internal/scheduler.Status reports.
 type SchedulerStatus struct {
-	Status string `json:"status"`
+	Status       string `json:"status"`
+	Running      bool   `json:"running"`
+	LastRunAtUTC string `json:"lastRunAtUtc,omitempty"`
+	LastRunError string `json:"lastRunError,omitempty"`
+	TenantCount  int    `json:"tenantCount,omitempty"`
+	SuccessCount int    `json:"successCount,omitempty"`
 }
 
 type healthResponse struct {

@@ -28,12 +28,28 @@ func TestOpen_AppliesMigrationsIdempotently(t *testing.T) {
 	}
 	defer sqlDB2.Close()
 
-	var count int
-	if err := sqlDB2.QueryRow(`SELECT COUNT(*) FROM schema_migrations`).Scan(&count); err != nil {
+	var afterFirstOpen int
+	if err := sqlDB2.QueryRow(`SELECT COUNT(*) FROM schema_migrations`).Scan(&afterFirstOpen); err != nil {
 		t.Fatalf("count migrations: %v", err)
 	}
-	if count != 1 {
-		t.Errorf("schema_migrations count = %d, want 1", count)
+	if afterFirstOpen == 0 {
+		t.Fatal("expected at least one migration to be recorded")
+	}
+
+	// A third open must not re-apply anything: the count must be
+	// unchanged from the second open.
+	sqlDB3, err := Open("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("third open: %v", err)
+	}
+	defer sqlDB3.Close()
+
+	var afterThirdOpen int
+	if err := sqlDB3.QueryRow(`SELECT COUNT(*) FROM schema_migrations`).Scan(&afterThirdOpen); err != nil {
+		t.Fatalf("count migrations: %v", err)
+	}
+	if afterThirdOpen != afterFirstOpen {
+		t.Errorf("schema_migrations count changed across idempotent re-opens: %d -> %d", afterFirstOpen, afterThirdOpen)
 	}
 }
 

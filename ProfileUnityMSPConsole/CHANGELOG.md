@@ -57,3 +57,43 @@ Phase 2 (API client) of the build plan:
   `RegisteredTo` text, an unknown field with a differing `ConsoleVersion`,
   an HTML error page, connection refused, timeout, and TLS failure with
   and without the verification override.
+
+Phase 3 (Collector and scheduler) of the build plan:
+
+- `internal/crypto`: AES-256-GCM encrypt/decrypt for tenant credentials at
+  rest, key supplied externally (`PUMC_CREDENTIAL_ENCRYPTION_KEY`, never
+  stored alongside the data it protects).
+- `internal/tenant`: registered-console CRUD. `Tenant` never carries a
+  password, even after creation; only a separate, collector-only
+  `GetCredentials` call ever decrypts one. Username/password must be both
+  set or both empty, and storing a password without an encryption key
+  configured is a hard error, never a silent plaintext write.
+- `internal/snapshot`: one row per tenant per collection day
+  (`UNIQUE(tenant_id, collection_date)`), upserted so re-running
+  collection on the same day updates that row rather than duplicating it.
+  A failed poll stores nil license figures — never a zero — plus a
+  distinct status and the raw response body.
+- `internal/collector`: builds a `profileunity.Client` per tenant from its
+  stored config (TLS-verify toggle, optional credentials), retries
+  transient failures (unreachable, timeout) with backoff, and classifies
+  every other failure (TLS, auth rejected/required, malformed response)
+  without retrying it.
+- `internal/scheduler`: an in-process ticker (no external cron
+  dependency) that collects from every enabled tenant concurrently, capped
+  at a configurable concurrency, each bounded by a per-tenant timeout so
+  one dead tenant can never stall the run. `CollectNow` is the same code
+  path the ticker uses, ready for a future manual "Collect Now" control.
+  Reports live status (running/idle, last outcome, tenant/success counts)
+  for `/healthz`.
+- `internal/db`: SQLite now opens with `busy_timeout` and WAL mode, since
+  concurrent tenant polling means concurrent writers; without it,
+  concurrent snapshot writes failed outright with `SQLITE_BUSY`.
+- New config: `PUMC_COLLECTION_INTERVAL`, `PUMC_COLLECTION_TIMEZONE`,
+  `PUMC_COLLECTION_CONCURRENCY`, `PUMC_COLLECTION_TENANT_TIMEOUT`,
+  `PUMC_CREDENTIAL_ENCRYPTION_KEY`.
+- `cmd/server`: starts the scheduler at boot and stops it on
+  SIGINT/SIGTERM with a graceful HTTP shutdown; `/healthz` now reports
+  real scheduler state instead of `not_implemented`.
+
+Still no HTTP API or UI for registering tenants or viewing results — that
+is Phase 4 (frontend shell) and Phase 5 (dashboard).

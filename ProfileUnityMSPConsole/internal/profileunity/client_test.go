@@ -34,7 +34,7 @@ func TestClient_GetLicenseInfoUnauthenticated_Success(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info, err := c.GetLicenseInfoUnauthenticated(context.Background())
+	info, _, err := c.GetLicenseInfoUnauthenticated(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestClient_GetLicenseInfoUnauthenticated_ErrorTypeWithHTTP200(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = c.GetLicenseInfoUnauthenticated(context.Background())
+	_, _, err = c.GetLicenseInfoUnauthenticated(context.Background())
 	if err == nil {
 		t.Fatal("expected an error despite HTTP 200")
 	}
@@ -74,7 +74,7 @@ func TestClient_HTMLErrorPageIsMalformedPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = c.GetLicenseInfoUnauthenticated(context.Background())
+	_, _, err = c.GetLicenseInfoUnauthenticated(context.Background())
 	if _, ok := err.(*MalformedPayloadError); !ok {
 		t.Fatalf("error type = %T (%v), want *MalformedPayloadError", err, err)
 	}
@@ -93,7 +93,7 @@ func TestClient_ConnectionRefusedIsUnreachable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = c.GetLicenseInfoUnauthenticated(context.Background())
+	_, _, err = c.GetLicenseInfoUnauthenticated(context.Background())
 	if _, ok := err.(*UnreachableError); !ok {
 		t.Fatalf("error type = %T (%v), want *UnreachableError", err, err)
 	}
@@ -110,7 +110,7 @@ func TestClient_TimeoutIsClassified(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = c.GetLicenseInfoUnauthenticated(context.Background())
+	_, _, err = c.GetLicenseInfoUnauthenticated(context.Background())
 	if _, ok := err.(*TimeoutError); !ok {
 		t.Fatalf("error type = %T (%v), want *TimeoutError", err, err)
 	}
@@ -126,7 +126,7 @@ func TestClient_TLSFailureWithoutSkipVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = c.GetLicenseInfoUnauthenticated(context.Background())
+	_, _, err = c.GetLicenseInfoUnauthenticated(context.Background())
 	if _, ok := err.(*TLSError); !ok {
 		t.Fatalf("error type = %T (%v), want *TLSError", err, err)
 	}
@@ -142,7 +142,7 @@ func TestClient_TLSSucceedsWithSkipVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info, err := c.GetLicenseInfoUnauthenticated(context.Background())
+	info, _, err := c.GetLicenseInfoUnauthenticated(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error with skip-verify: %v", err)
 	}
@@ -230,7 +230,7 @@ func TestClient_CollectLicenseInfo_FallsBackToAuthenticated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info, authPath, err := c.CollectLicenseInfo(context.Background())
+	info, authPath, _, err := c.CollectLicenseInfo(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -252,7 +252,7 @@ func TestClient_CollectLicenseInfo_UnauthenticatedPathReported(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, authPath, err := c.CollectLicenseInfo(context.Background())
+	_, authPath, _, err := c.CollectLicenseInfo(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestClient_CollectLicenseInfo_NoCredentialsSurfacesOriginalError(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = c.CollectLicenseInfo(context.Background())
+	_, _, _, err = c.CollectLicenseInfo(context.Background())
 	if _, ok := err.(*AuthRequiredError); !ok {
 		t.Fatalf("error type = %T (%v), want *AuthRequiredError", err, err)
 	}

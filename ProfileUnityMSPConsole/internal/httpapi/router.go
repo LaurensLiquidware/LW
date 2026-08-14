@@ -12,12 +12,14 @@ import (
 // reporting are added in later build phases behind an explicit whitelist,
 // per the reference project's proxy pattern — nothing beyond what is
 // deliberately exposed here is reachable from the frontend.
-func NewRouter() (http.Handler, error) {
+//
+// schedulerStatus reports live scheduler state; pass a func that always
+// returns SchedulerStatus{Status: "not_implemented"} where no scheduler
+// exists yet.
+func NewRouter(schedulerStatus func() SchedulerStatus) (http.Handler, error) {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/healthz", HealthHandler(func() SchedulerStatus {
-		return SchedulerStatus{Status: "not_implemented"}
-	}))
+	mux.HandleFunc("/healthz", HealthHandler(schedulerStatus))
 
 	distFS, err := fs.Sub(web.Dist, web.DistDir)
 	if err != nil {

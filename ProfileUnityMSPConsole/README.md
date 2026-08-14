@@ -11,10 +11,11 @@ This tool also ships `bom.cdx.json` — a **CycloneDX 1.6** JSON inventory of
 every third-party component it uses, so your security team can review it
 against your own policy. It sits next to the license PDF for that reason;
 see `THIRD-PARTY-NOTICES.txt` for the accompanying license texts. **Both
-files are placeholders as of this commit** — Phase 1 of the build has no
-functional dependencies yet worth inventorying. They are regenerated for
-real starting when dependencies are added, and finalized only after the
-CVE remediation pass in the compliance phase (see "Compliance" below).
+files are still placeholders** — real dependencies exist already (SQLite,
+`google/uuid`), but per the project brief §11.8 the SBOM is only ever
+regenerated for real as part of the compliance pass in Phase 8, after CVE
+remediation, so it describes exactly what ships rather than an
+intermediate state. See "Compliance" below.
 
 ## What this is
 
@@ -24,21 +25,40 @@ consoles, track it over time, and produce monthly reports. See the project
 brief for the full functional and compliance spec; this README tracks
 build-phase status and the things a reader needs before touching the code.
 
-## Status: Phase 2 — API client
+## Status: Phase 3 — Collector and scheduler
 
-Phase 1 (repo layout, config loading, migrations, health endpoint, version
-single-source-of-truth) is done. Phase 2 adds `internal/profileunity`, the
-ProfileUnity API client described in the project brief §3: string
-coercion for the documented-as-string-but-verify-anyway fields, the
-`/Date(ms)/` legacy ASP.NET date format, `Type`-not-HTTP-status success
-checks, explicit US `M/D/YYYY`-to-ISO-8601 parsing, and the
-unauthenticated-then-authenticated fallback with the auth path recorded.
-It talks to exactly four endpoints — `/licenseinfo`, `/authenticate`,
-`/api/server/licensing`, `/api/licenseserver` — and nothing else; there is
-no generic "call any path" escape hatch. It is not wired into the server
-yet: no tenant management, collection, dashboard, history, reporting, or
-alerting. Those are later build phases, each of which ends in a checkpoint
-before the next begins.
+Phase 1 (repo layout, config, migrations, health endpoint, version
+single-source-of-truth) and Phase 2 (the `internal/profileunity` API
+client — §3's wire contract, `Type`-not-status checks, the `/Date(ms)/`
+format, explicit US-date parsing, the unauthenticated/authenticated
+fallback) are done.
+
+Phase 3 wires that client into a running server:
+
+- `internal/tenant`: registered-console CRUD. Credentials are encrypted
+  at rest (AES-256-GCM, key held outside the database per §9) and never
+  travel through the `Tenant` type once saved — only a collector-only
+  `GetCredentials` call ever produces a plaintext password.
+- `internal/snapshot`: one row per tenant per collection day, upserted —
+  re-running collection the same day updates that row instead of
+  duplicating it. A failed poll stores nil license figures, never a zero.
+- `internal/collector`: runs one tenant's poll, retries transient
+  failures (unreachable, timeout) with backoff, and classifies every
+  other outcome (TLS failure, auth rejected/required, malformed
+  response) into a distinct stored status. The raw response body is
+  retained alongside the parsed fields.
+- `internal/scheduler`: an in-process ticker (no external cron
+  dependency) that polls every enabled tenant concurrently, capped, with
+  a per-tenant timeout so one dead tenant can never stall the run. Manual
+  "Collect Now" is the same code path the ticker uses. `/healthz` reports
+  live scheduler state — running/idle, last run's outcome, tenant/success
+  counts.
+
+There is still no HTTP API or UI for registering tenants or viewing
+results — that is Phase 4 (frontend shell) and Phase 5 (dashboard). Tenant
+registration for now happens only by calling `internal/tenant`'s Go API
+directly (e.g. from a short-lived script), which is enough to exercise
+the collector and scheduler end to end.
 
 ## Critical constraint: this app owns the time series
 
