@@ -1,13 +1,10 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TranslocoModule } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { PasswordModule } from 'primeng/password';
 import { MessageModule } from 'primeng/message';
-import { CardModule } from 'primeng/card';
 
 import { SessionService } from '../../core/session.service';
 import { LanguageSwitcherComponent } from '../../shared/language-switcher.component';
@@ -16,17 +13,14 @@ import { LanguageSwitcherComponent } from '../../shared/language-switcher.compon
     selector: 'app-login',
     imports: [
         ReactiveFormsModule,
-        RouterLink,
         TranslocoModule,
         ButtonModule,
-        InputTextModule,
-        PasswordModule,
         MessageModule,
-        CardModule,
         LanguageSwitcherComponent,
     ],
     changeDetection: ChangeDetectionStrategy.Eager,
-    templateUrl: './login.component.html'
+    templateUrl: './login.component.html',
+    styleUrl: './login.component.css'
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
@@ -42,6 +36,7 @@ export class LoginComponent {
   readonly submitting = signal(false);
   readonly errorKey = signal<string | null>(null);
   readonly expired = signal(this.route.snapshot.queryParamMap.get('expired') === '1');
+  readonly passwordVisible = signal(false);
 
   async submit(): Promise<void> {
     if (this.form.invalid || this.submitting()) {

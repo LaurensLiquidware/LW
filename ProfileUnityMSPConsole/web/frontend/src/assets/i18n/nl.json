@@ -16,7 +16,8 @@
     "submit": "Inloggen",
     "invalidCredentials": "Onjuiste gebruikersnaam of wachtwoord",
     "genericError": "Er is een fout opgetreden",
-    "sessionExpired": "Je sessie is verlopen. Log opnieuw in."
+    "sessionExpired": "Je sessie is verlopen. Log opnieuw in.",
+    "togglePassword": "Wachtwoord Zichtbaarheid Wisselen"
   },
   "header": {
     "signOut": "Uitloggen",

@@ -465,4 +465,32 @@ Post-Phase-8 follow-up: operators can change their own password.
   dialog itself renders correctly (screenshotted the real authenticated
   app, same cookie-injection technique used for earlier UI changes).
 
+Post-Phase-8 follow-up: login screen brought to the actual brand spec.
+
+- The login screen had drifted from the Liquidware design system: it was
+  a plain `p-card` with stock PrimeNG inputs on the app's ordinary light
+  background, rather than the hex-honeycomb backdrop, frosted-glass
+  panel, and pill-shaped inputs the design-system reference
+  (`docs/design-system-reference/liquidware-ui/ui_kits/stratusphere-ux/
+  kit.css`, `.login`/`.login-form`/`.login-logo`/`.login-field`) actually
+  specifies. Rewrote `login.component.html`/`.ts` and added a new
+  `login.component.css` matching those rules: full-viewport hex
+  background over the dark primary color, a blurred/translucent form
+  panel, a large centered wordmark, and pill inputs with a lead icon
+  (user/lock) and, for the password field, a trailing show/hide toggle.
+- Removed the login screen's "About" link. (The in-app nav's About
+  dialog, and the standalone `/about` route it and the dialog share, are
+  unaffected and still reachable — only the login page stopped linking
+  to it.)
+- Added the missing `login.togglePassword` key to both `en.json` and
+  `nl.json` for the new toggle button's `aria-label`, and confirmed by
+  diffing both files' key sets that EN/NL remain fully aligned (118 keys
+  each, none only in one file).
+- Verified visually against the real running app (headless Chromium
+  screenshot of `/login`, no auth needed since it's pre-login): hex
+  background, frosted panel, and pill inputs all render as specified,
+  the logo fits its box without distortion despite being a wide
+  wordmark rather than the squarer mark the spec's own CSS assumed, and
+  no About link remains on the page.
+
 No further phases remain beyond Phase 8.

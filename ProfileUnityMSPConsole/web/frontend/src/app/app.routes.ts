@@ -34,7 +34,9 @@ export const routes: Routes = [
       },
       // No nested "about" route: it's shown as a dialog from the shell
       // (see shell.component.html) so it never needs a back button.
-      // The top-level "about" route above still serves the pre-login link.
+      // The top-level "about" route above stays directly reachable by URL
+      // pre-login (e.g. for a compliance check before deploying), even
+      // though the login screen no longer links to it.
     ],
   },
   { path: '**', redirectTo: 'login' },

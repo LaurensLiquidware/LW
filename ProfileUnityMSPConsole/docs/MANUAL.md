@@ -243,10 +243,11 @@ and which didn't.
 ## About screen
 
 Reachable from the nav — opens as a popup rather than navigating away,
-so there's nothing to "go back" from. (It's also reachable as its own
-page without signing in, for anyone who needs to check compliance
-details before deploying this tool; that version is a full page since
-there's no console screen behind it to pop up over.) Shows the running
+so there's nothing to "go back" from. (It's also reachable at `/about`
+without signing in, for anyone who needs to check compliance details
+before deploying this tool — that version is a full page since there's
+no console screen behind it to pop up over; the login screen itself no
+longer links to it, but the URL still works.) Shows the running
 version, who built it, the required Sparks Tool disclaimer, a link to
 `Spark_License.pdf` (the Sparks Tool License and Disclaimer), and a link
 to `bom.cdx.json` — a CycloneDX 1.6 Software Bill of Materials listing

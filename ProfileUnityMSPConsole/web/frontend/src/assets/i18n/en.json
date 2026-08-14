@@ -16,7 +16,8 @@
     "submit": "Sign In",
     "invalidCredentials": "Incorrect Username or Password",
     "genericError": "An error has occurred",
-    "sessionExpired": "Your session has expired. Sign in again."
+    "sessionExpired": "Your session has expired. Sign in again.",
+    "togglePassword": "Toggle Password Visibility"
   },
   "header": {
     "signOut": "Sign Out",
