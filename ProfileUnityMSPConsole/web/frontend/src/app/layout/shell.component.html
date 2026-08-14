@@ -8,6 +8,12 @@
       <span style="font-size: var(--header-font-size); font-weight: var(--weight-medium);">
         {{ 'app.title' | transloco }}
       </span>
+      @if (version()) {
+        <span
+          class="rounded-full px-2 py-0.5 text-xs"
+          style="border: 1px solid var(--p-surface-0); color: var(--p-surface-0);"
+        >v{{ version() }}-beta</span>
+      }
     </div>
 
     <div class="flex items-center gap-4">

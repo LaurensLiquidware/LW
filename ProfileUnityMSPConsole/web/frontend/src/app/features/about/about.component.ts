@@ -1,7 +1,8 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { TranslocoModule } from '@jsverse/transloco';
 import { CardModule } from 'primeng/card';
+
+import { VersionService } from '../../core/version.service';
 
 /**
  * About screen: version plus the license/SBOM pointers and disclaimer
@@ -16,13 +17,13 @@ import { CardModule } from 'primeng/card';
     templateUrl: './about.component.html'
 })
 export class AboutComponent {
-  private readonly http = inject(HttpClient);
+  private readonly versionService = inject(VersionService);
   readonly version = signal<string | null>(null);
 
   constructor() {
-    this.http.get<{ version: string }>('/api/version').subscribe({
-      next: (res) => this.version.set(res.version),
-      error: () => this.version.set(null),
-    });
+    this.versionService
+      .fetch()
+      .then((version) => this.version.set(version))
+      .catch(() => this.version.set(null));
   }
 }
