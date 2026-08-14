@@ -391,12 +391,17 @@ to build it.
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in values, or set the equivalent
-environment variables directly. There is deliberately no baked-in
-`localhost` default for the listen address — this is a continuously
-running, multi-user server, not a local single-operator tool, and it must
-be bound to an address you chose on purpose. See `.env.example` for the
-full list.
+Copy `.env.example` to `.env` (in the same directory the binary is run
+from) and fill in values, or set the equivalent environment variables
+directly — a real environment variable always wins over a `.env` entry
+for the same key, so this composes with a deployment that already
+exports `PUMC_*` itself. `internal/dotenv` loads it (a small in-house
+parser, not a dependency — `KEY=VALUE` per line, `#` comments, optional
+quotes, nothing fancier); a missing `.env` file is not an error, since
+it's optional. There is deliberately no baked-in `localhost` default for
+the listen address — this is a continuously running, multi-user server,
+not a local single-operator tool, and it must be bound to an address you
+chose on purpose. See `.env.example` for the full list.
 
 The server always serves HTTPS. If `PUMC_TLS_CERT_FILE`/`PUMC_TLS_KEY_FILE`
 don't both already exist, a self-signed pair is generated there at first

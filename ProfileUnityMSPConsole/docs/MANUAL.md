@@ -49,10 +49,16 @@ with the web frontend, license text, and SBOM built in — nothing extra
 to install alongside it besides a place to store its SQLite database
 file.
 
-1. Copy `.env.example` to `.env` and fill in the values that matter for
-   your deployment (see the reference below). At minimum you need
-   `PUMC_HTTP_ADDR` set — there is no default listen address, since this
-   is meant to run for a team, not just `localhost`.
+1. Copy `.env.example` to `.env`, in the same folder you'll run the
+   binary from, and fill in the values that matter for your deployment
+   (see the reference below). At minimum you need `PUMC_HTTP_ADDR` set —
+   there is no default listen address, since this is meant to run for a
+   team, not just `localhost`. This is a one-time step — after that, just
+   starting the binary from that folder picks the file up automatically,
+   with no environment variables to set by hand each time. (If you'd
+   rather set real environment variables instead — e.g. in a Windows
+   Service definition — that works too, and takes priority over anything
+   in `.env`.)
 2. Run the binary (or `make run` from source). On first startup it will:
    - create the SQLite database file (and run migrations) if it doesn't
      exist yet,

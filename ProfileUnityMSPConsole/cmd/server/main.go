@@ -17,6 +17,7 @@ import (
 	"profileunity-msp-console/internal/config"
 	"profileunity-msp-console/internal/dashboard"
 	"profileunity-msp-console/internal/db"
+	"profileunity-msp-console/internal/dotenv"
 	"profileunity-msp-console/internal/httpapi"
 	"profileunity-msp-console/internal/scheduler"
 	"profileunity-msp-console/internal/snapshot"
@@ -37,6 +38,10 @@ func main() {
 }
 
 func run() error {
+	if err := dotenv.Load(".env"); err != nil {
+		return fmt.Errorf("load .env: %w", err)
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)

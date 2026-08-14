@@ -377,4 +377,23 @@ out a deferred feature.
   and then refreshes the table — so a newly-added tenant doesn't have
   to sit at **Never Collected** until the next scheduled tick.
 
+Post-Phase-8 follow-up: the server now actually reads `.env`.
+
+- README and `.env.example` always described "copy `.env.example` to
+  `.env` and fill it in" as the setup workflow, but nothing ever read
+  that file — only real exported environment variables worked, which
+  meant setting five-plus `PUMC_*` variables by hand in the shell
+  before every start (easy to forget one, and easy to lose track of
+  what's set once the terminal closes).
+- Added `internal/dotenv` (a small in-house `KEY=VALUE` parser, not a
+  dependency) and wired `dotenv.Load(".env")` into `cmd/server`'s
+  startup, before `config.Load()` reads the environment. A real
+  environment variable for a given key always wins over the file, so
+  a deployment that already exports `PUMC_*` (e.g. a Windows Service
+  definition) needs no changes.
+- Verified end to end: started the binary with `env -i` (a completely
+  empty environment) and only a `.env` file present, and it came up
+  correctly; then repeated it with one real environment variable set
+  alongside a conflicting `.env` entry and confirmed the real one won.
+
 No further phases remain beyond Phase 8.
