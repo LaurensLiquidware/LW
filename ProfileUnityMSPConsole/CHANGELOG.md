@@ -640,4 +640,29 @@ Timezone into a real dropdown.
   (`scrollWidth`/`clientWidth`, exactly equal) that the smaller Add
   Tenant dialog still has zero overflow.
 
+Post-Phase-8 follow-up: fixed the Timezone dropdown discarding a typed
+selection on Save.
+
+- Root cause: the Timezone `p-select`'s filter box lets an operator type
+  to narrow ~419 IANA zones, but PrimeNG only commits a selection on an
+  explicit click or Enter-on-highlighted-row — `autoOptionFocus` (which
+  auto-highlights the first filtered match so Enter works) defaults to
+  `false`. An operator who typed a zone name and went straight to Save
+  (never clicking the row or pressing Enter) had their typed filter text
+  silently discarded; the control's real value hadn't changed, so it
+  reappeared as "UTC" (or whatever it was before) after saving — reported
+  as "the timezone is not saved... changes back to utc".
+- Fixed by (1) setting `[autoOptionFocus]="true"` so Enter now selects the
+  top filtered match, and (2) tracking the filter query via `(onFilter)`
+  and, on `(onHide)`, auto-committing it if it uniquely narrows the list
+  to exactly one zone — so typing a specific zone and clicking Save
+  directly (without an explicit click/Enter) now works too. An ambiguous
+  filter (matching more than one zone) is left alone rather than guessing.
+- Verified via a real headless-browser session driving the actual
+  `p-select` DOM: typing "Los_Angeles" into the filter and clicking Save
+  with no intervening click/Enter now persists `America/Los_Angeles`
+  (previously silently kept the prior value); typing an ambiguous query
+  like "America" correctly leaves the value unchanged rather than
+  picking one of many matches.
+
 No further phases remain beyond Phase 8.

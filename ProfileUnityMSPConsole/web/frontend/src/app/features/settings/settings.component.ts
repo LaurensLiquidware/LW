@@ -79,6 +79,13 @@ export class SettingsComponent implements OnInit {
    * Intl.supportedValuesOf. */
   readonly timezoneOptions: string[] = buildTimezoneOptions();
 
+  /** Tracks the p-select's in-progress filter text so that, if the panel
+   * closes (blur, click elsewhere, Save) while it uniquely narrows the
+   * list to one zone, that zone is treated as selected — instead of
+   * silently discarding what the operator typed because they never
+   * explicitly clicked or Enter-selected the highlighted row. */
+  private timezoneFilterQuery = '';
+
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly saveError = signal<string | null>(null);
@@ -113,6 +120,22 @@ export class SettingsComponent implements OnInit {
 
   get existingSmtpPasswordSet(): boolean {
     return this.current()?.smtpPasswordSet ?? false;
+  }
+
+  onTimezoneFilter(event: { filter: string }): void {
+    this.timezoneFilterQuery = event.filter ?? '';
+  }
+
+  onTimezoneHide(): void {
+    const query = this.timezoneFilterQuery.trim().toLowerCase();
+    this.timezoneFilterQuery = '';
+    if (!query) {
+      return;
+    }
+    const matches = this.timezoneOptions.filter((tz) => tz.toLowerCase().includes(query));
+    if (matches.length === 1) {
+      this.form.patchValue({ collectionTimezone: matches[0] });
+    }
   }
 
   async ngOnInit(): Promise<void> {

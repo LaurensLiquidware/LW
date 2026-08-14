@@ -87,7 +87,16 @@
             </label>
             <label class="flex flex-1 flex-col gap-1">
               <span class="lwl-micro">{{ 'settings.collectionTimezone' | transloco }}</span>
-              <p-select formControlName="collectionTimezone" [options]="timezoneOptions" [filter]="true" filterPlaceholder="UTC" styleClass="w-full" />
+              <p-select
+                formControlName="collectionTimezone"
+                [options]="timezoneOptions"
+                [filter]="true"
+                [autoOptionFocus]="true"
+                filterPlaceholder="UTC"
+                styleClass="w-full"
+                (onFilter)="onTimezoneFilter($event)"
+                (onHide)="onTimezoneHide()"
+              />
             </label>
           </div>
           <div class="flex flex-wrap items-start gap-3">
