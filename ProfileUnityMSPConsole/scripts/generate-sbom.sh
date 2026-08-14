@@ -21,11 +21,6 @@ npm_sbom="$(mktemp)"
 trap 'rm -f "$go_sbom" "$npm_sbom"' EXIT
 
 echo "generate-sbom: scanning Go module graph..."
-# cyclonedx-gomod shells out to `go list -deps -json ./cmd/server` internally
-# and on failure reports only "exit status 1" with no stderr -- run the same
-# command here first so a real failure is diagnosable from CI logs instead of
-# being swallowed.
-go list -deps -json ./cmd/server >/dev/null
 cyclonedx-gomod app -json -output "$go_sbom" -licenses -main cmd/server .
 
 echo "generate-sbom: scanning frontend production npm dependencies..."

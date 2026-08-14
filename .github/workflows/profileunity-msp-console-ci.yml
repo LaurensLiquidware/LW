@@ -83,6 +83,18 @@ jobs:
         working-directory: ProfileUnityMSPConsole/web/frontend
         run: npm ci
 
+      # cmd/server transitively go:embeds web/dist, VERSION_EMBED, and
+      # Spark_License.pdf -- without these, `go list`/cyclonedx-gomod's
+      # module-graph scan fails outright ("no matching files found").
+      - name: Build frontend
+        working-directory: ProfileUnityMSPConsole/web/frontend
+        run: npm run build
+
+      - name: Sync version and legal files
+        run: |
+          ./scripts/sync-version.sh
+          ./scripts/sync-legal.sh
+
       - name: npm audit (production dependencies only)
         working-directory: ProfileUnityMSPConsole/web/frontend
         run: npm audit --omit=dev --audit-level=high
