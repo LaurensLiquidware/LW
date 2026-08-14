@@ -492,5 +492,8 @@ Post-Phase-8 follow-up: login screen brought to the actual brand spec.
   the logo fits its box without distortion despite being a wide
   wordmark rather than the squarer mark the spec's own CSS assumed, and
   no About link remains on the page.
+- Added the product name ("ProfileUnity MSP Licensing Console", the
+  existing `app.title` i18n key) under the logo, so the login screen
+  identifies the app rather than showing only the Liquidware wordmark.
 
 No further phases remain beyond Phase 8.
