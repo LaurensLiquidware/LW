@@ -11,6 +11,7 @@ internal/legal/THIRD-PARTY-NOTICES.txt
 
 # Build output
 /profileunity-msp-console
+/profileunity-msp-console.exe
 /dist/
 /bin/
 /profileunity-msp-console-*.zip
