@@ -2,35 +2,49 @@ import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@ang
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 
 import { SessionService } from '../core/session.service';
 import { VersionService } from '../core/version.service';
 import { LanguageSwitcherComponent } from '../shared/language-switcher.component';
 import { AlertBellComponent } from '../shared/alert-bell.component';
+import { AboutComponent } from '../features/about/about.component';
 
 interface NavItem {
   path: string;
   labelKey: string;
+  icon: string;
 }
 
 @Component({
     selector: 'app-shell',
-    imports: [RouterLink, RouterLinkActive, RouterOutlet, TranslocoModule, ButtonModule, LanguageSwitcherComponent, AlertBellComponent],
+    imports: [
+        RouterLink,
+        RouterLinkActive,
+        RouterOutlet,
+        TranslocoModule,
+        ButtonModule,
+        DialogModule,
+        LanguageSwitcherComponent,
+        AlertBellComponent,
+        AboutComponent,
+    ],
     changeDetection: ChangeDetectionStrategy.Eager,
-    templateUrl: './shell.component.html'
+    templateUrl: './shell.component.html',
+    styleUrl: './shell.component.css'
 })
 export class ShellComponent implements OnInit {
   readonly session = inject(SessionService);
   private readonly versionService = inject(VersionService);
 
   readonly version = signal<string | null>(null);
+  readonly aboutVisible = signal(false);
 
   readonly navItems: NavItem[] = [
-    { path: '/dashboard', labelKey: 'nav.dashboard' },
-    { path: '/tenants', labelKey: 'nav.tenants' },
-    { path: '/history', labelKey: 'nav.history' },
-    { path: '/reports', labelKey: 'nav.reports' },
-    { path: '/about', labelKey: 'nav.about' },
+    { path: '/dashboard', labelKey: 'nav.dashboard', icon: 'pi pi-home' },
+    { path: '/tenants', labelKey: 'nav.tenants', icon: 'pi pi-building' },
+    { path: '/history', labelKey: 'nav.history', icon: 'pi pi-chart-line' },
+    { path: '/reports', labelKey: 'nav.reports', icon: 'pi pi-file' },
   ];
 
   async ngOnInit(): Promise<void> {

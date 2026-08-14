@@ -31,7 +31,8 @@
     "notice": "This is a Liquidware Sparks Tool — a community/field-contributed utility, not a Liquidware commercial product. It is provided outside Liquidware's standard product development lifecycle, \"AS IS\" with no warranty, support, or maintenance, and used at your own risk.",
     "licenseLink": "Sparks Tool License and Disclaimer (Spark_License.pdf)",
     "sbomLink": "Software Bill of Materials (bom.cdx.json)",
-    "sbomDescription": "A CycloneDX 1.6 inventory of third-party components, provided so your security team can review it against your own policy."
+    "sbomDescription": "A CycloneDX 1.6 inventory of third-party components, provided so your security team can review it against your own policy.",
+    "developer": "Developed by Laurens van Duijn"
   },
   "tenants": {
     "addTenant": "Add Tenant",

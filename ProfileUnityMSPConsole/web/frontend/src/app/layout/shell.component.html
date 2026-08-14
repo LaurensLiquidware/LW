@@ -28,21 +28,24 @@
 
   <div class="flex flex-1 overflow-hidden">
     <nav
-      class="flex flex-col gap-1 p-3"
+      class="flex flex-col gap-1.5 p-3"
       style="width: var(--nav-width); background: var(--p-content-background); border-right: 1px solid var(--frame-border-color);"
     >
       @for (item of navItems; track item.path) {
         <a
           [routerLink]="item.path"
-          routerLinkActive
-          #active="routerLinkActive"
-          class="rounded-sm px-3 py-2"
-          [style.background]="active.isActive ? 'var(--highlight)' : 'transparent'"
-          [style.color]="'var(--p-text-color)'"
+          routerLinkActive="active"
+          class="lwl-nav-item"
         >
-          {{ item.labelKey | transloco }}
+          <i [class]="item.icon"></i>
+          <span>{{ item.labelKey | transloco }}</span>
         </a>
       }
+
+      <button type="button" class="lwl-nav-item" (click)="aboutVisible.set(true)">
+        <i class="pi pi-info-circle"></i>
+        <span>{{ 'nav.about' | transloco }}</span>
+      </button>
     </nav>
 
     <main class="flex-1 overflow-auto" style="background: var(--p-content-background);">
@@ -50,3 +53,7 @@
     </main>
   </div>
 </div>
+
+<p-dialog [(visible)]="aboutVisible" [modal]="true" [header]="'about.heading' | transloco" [style]="{ width: '32rem' }">
+  <app-about [showHeading]="false" />
+</p-dialog>

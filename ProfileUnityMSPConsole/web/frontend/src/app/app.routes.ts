@@ -32,10 +32,9 @@ export const routes: Routes = [
         path: 'reports',
         loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent),
       },
-      {
-        path: 'about',
-        loadComponent: () => import('./features/about/about.component').then((m) => m.AboutComponent),
-      },
+      // No nested "about" route: it's shown as a dialog from the shell
+      // (see shell.component.html) so it never needs a back button.
+      // The top-level "about" route above still serves the pre-login link.
     ],
   },
   { path: '**', redirectTo: 'login' },

@@ -399,4 +399,21 @@ Post-Phase-8 follow-up: the server now actually reads `.env`.
   binary — the `.env` feature above is only actually usable out of the
   box if the release bundle ships the template to copy and fill in.
 
+Post-Phase-8 follow-up: nav polish, an About popup instead of a dead-end
+page, and a developer credit.
+
+- The left nav's plain text links now render as icon + label buttons
+  (`shell.component.css`), with a hover state and a stronger highlight
+  for the active route.
+- The in-app "About" link used to navigate to a standalone route with
+  no header/nav and no way back except the browser's own back button.
+  It's now a `p-dialog` popover over whatever screen you were on (the
+  same `AboutComponent`, reused via a new `showHeading` input so its
+  title isn't shown twice against the dialog's own header) — closing
+  it just closes the dialog, nothing to navigate back from. The
+  pre-login `/about` route (linked from the login screen, where there's
+  no console screen behind it to pop up over) is unchanged.
+- Added a developer credit ("Developed by Laurens van Duijn") to the
+  About content.
+
 No further phases remain beyond Phase 8.
