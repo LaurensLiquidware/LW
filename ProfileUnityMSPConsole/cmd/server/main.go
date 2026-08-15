@@ -230,6 +230,9 @@ func bootstrapAdmin(users *auth.UserRepo, cfg config.Config) error {
 		return err
 	}
 	slog.Info(fmt.Sprintf("created initial operator account %q", cfg.BootstrapAdminUsername))
+	if cfg.BootstrapAdminUsername == config.DefaultBootstrapAdminUsername && cfg.BootstrapAdminPassword == config.DefaultBootstrapAdminPassword {
+		slog.Warn("created the built-in LiquidwareMSP admin account with its default password — change it from the account/change-password screen as soon as you sign in")
+	}
 	return nil
 }
 

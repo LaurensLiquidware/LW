@@ -71,8 +71,11 @@ type Config struct {
 	SessionAbsoluteTimeout time.Duration
 
 	// BootstrapAdminUsername/Password create the first operator account
-	// at startup if the users table is empty. Both empty means "don't
-	// bootstrap" — the operator must already have another way to sign in.
+	// at startup if the users table is empty. Leaving both unset defaults
+	// to a built-in "LiquidwareMSP"/"LiquidwareMSP" account (see
+	// defaultBootstrapAdmin) — change its password from the change-
+	// password screen right after first login. Setting one but not the
+	// other is still a config error (see validate).
 	BootstrapAdminUsername string
 	BootstrapAdminPassword string
 
@@ -199,8 +202,10 @@ func Load() (Config, error) {
 	}
 	cfg.SessionAbsoluteTimeout = sessionAbsolute
 
-	cfg.BootstrapAdminUsername = strings.TrimSpace(os.Getenv(envBootstrapAdminUsername))
-	cfg.BootstrapAdminPassword = os.Getenv(envBootstrapAdminPassword)
+	cfg.BootstrapAdminUsername, cfg.BootstrapAdminPassword = defaultBootstrapAdmin(
+		strings.TrimSpace(os.Getenv(envBootstrapAdminUsername)),
+		os.Getenv(envBootstrapAdminPassword),
+	)
 	cfg.TLSCertFile = firstNonEmpty(os.Getenv(envTLSCertFile), "./tls-cert.pem")
 	cfg.TLSKeyFile = firstNonEmpty(os.Getenv(envTLSKeyFile), "./tls-key.pem")
 
@@ -302,6 +307,29 @@ func splitAndTrim(raw string) []string {
 		}
 	}
 	return out
+}
+
+// DefaultBootstrapAdminUsername/Password are the built-in operator
+// account created at first startup when no PUMC_BOOTSTRAP_ADMIN_* env
+// vars are set, so the console is usable out of the box with zero
+// configuration. Change the password from the change-password screen
+// right after first login -- this is a fixed, publicly-known default,
+// not a secret.
+const (
+	DefaultBootstrapAdminUsername = "LiquidwareMSP"
+	DefaultBootstrapAdminPassword = "LiquidwareMSP"
+)
+
+// defaultBootstrapAdmin applies the built-in default only when *both*
+// raw env values are empty, so setting exactly one still falls through
+// to validate()'s "must be both set or both empty" check rather than
+// silently pairing an operator-supplied value with the built-in default
+// for the other field.
+func defaultBootstrapAdmin(rawUsername, rawPassword string) (username, password string) {
+	if rawUsername == "" && rawPassword == "" {
+		return DefaultBootstrapAdminUsername, DefaultBootstrapAdminPassword
+	}
+	return rawUsername, rawPassword
 }
 
 // defaultLogLevel is the LogLevel default when PUMC_LOG_LEVEL is unset:

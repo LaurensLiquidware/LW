@@ -42,7 +42,8 @@ console's own authentication:
   request, and a self-signed TLS certificate generated at first startup
   (the server only ever serves HTTPS). The first operator account is
   bootstrapped from `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` if none
-  exist yet.
+  exist yet, defaulting to a built-in `LiquidwareMSP`/`LiquidwareMSP`
+  account when both are left unset.
 - **`internal/legal`**: embeds `Spark_License.pdf`, `bom.cdx.json`, and
   `THIRD-PARTY-NOTICES.txt` into the binary (synced from the repo root by
   `scripts/sync-legal.sh`, same pattern as the version file) and serves
@@ -406,9 +407,13 @@ chose on purpose. See `.env.example` for the full list.
 The server always serves HTTPS. If `PUMC_TLS_CERT_FILE`/`PUMC_TLS_KEY_FILE`
 don't both already exist, a self-signed pair is generated there at first
 startup (browsers will warn about it — replace it with a CA-signed pair
-for anything beyond local/lab use). No operator account exists until you
-set `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` for the first run; the
-server logs a warning and stays otherwise unusable if nobody can sign in.
+for anything beyond local/lab use). On first startup (only ever when no
+operator accounts exist yet), a `LiquidwareMSP`/`LiquidwareMSP` operator
+account is created automatically if `PUMC_BOOTSTRAP_ADMIN_USERNAME`/
+`PASSWORD` are left unset — **change that password from the account/
+change-password screen as soon as you sign in**, since it's a fixed,
+publicly-known default, not a secret. Set both env vars to use your own
+username/password from the first run instead.
 
 Logs go to both stderr and a file next to the binary (`PUMC_LOG_FILE`,
 default `./profileunity-msp-console.log`; the file is appended to, not

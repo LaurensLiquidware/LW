@@ -252,6 +252,25 @@ func TestLoad_AcceptsMatchedBootstrapAdminCredentials(t *testing.T) {
 	})
 }
 
+func TestLoad_BootstrapAdminDefaultsWhenBothUnset(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:               "0.0.0.0:8443",
+		envBootstrapAdminUsername: "",
+		envBootstrapAdminPassword: "",
+	}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.BootstrapAdminUsername != DefaultBootstrapAdminUsername {
+			t.Errorf("BootstrapAdminUsername = %q, want %q", cfg.BootstrapAdminUsername, DefaultBootstrapAdminUsername)
+		}
+		if cfg.BootstrapAdminPassword != DefaultBootstrapAdminPassword {
+			t.Errorf("BootstrapAdminPassword = %q, want %q", cfg.BootstrapAdminPassword, DefaultBootstrapAdminPassword)
+		}
+	})
+}
+
 func TestLoad_ReportEmailDisabledByDefault(t *testing.T) {
 	withEnv(t, map[string]string{
 		envHTTPAddr: "0.0.0.0:8443",

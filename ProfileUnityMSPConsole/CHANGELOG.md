@@ -731,4 +731,27 @@ to the development/production environment switch.
   lines in both; an explicit `PUMC_LOG_LEVEL=debug` re-enables debug
   logging even in production; `PUMC_LOG_FILE` relocates the file.
 
+Post-Phase-8 follow-up: a built-in default admin account, so the
+console works with zero bootstrap configuration.
+
+- Previously, if `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` were both
+  left unset, no operator account was created at all and the server
+  logged "nobody can sign in yet." Now, leaving both unset creates a
+  built-in `LiquidwareMSP`/`LiquidwareMSP` operator account instead —
+  the console is usable immediately after install with no `.env`
+  editing required, and the operator changes the password afterward
+  from the existing self-service change-password screen.
+- **Security tradeoff, made deliberately**: this is a fixed, predictable
+  default credential, not a randomly-generated one-time password — the
+  simpler, more discoverable option was chosen explicitly over
+  generating and logging a random password on first boot. The server
+  logs a prominent warning (visible in both the console and the log
+  file added earlier today) every time the built-in default account is
+  created, telling the operator to change its password immediately.
+  Setting `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` explicitly still
+  works exactly as before and skips the built-in default entirely.
+- Setting exactly one of the two env vars (as opposed to leaving both
+  unset) is still a configuration error, unchanged from before — this
+  only changes the both-unset case.
+
 No further phases remain beyond Phase 8.
