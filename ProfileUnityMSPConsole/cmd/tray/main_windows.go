@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
@@ -57,11 +58,23 @@ type app struct {
 	cmd *exec.Cmd
 }
 
+// main is a windowsgui-subsystem entry point: there is no console
+// attached at all, so anything written to stdout/stderr (fmt.Println,
+// an unhandled panic's default crash output) is invisible to whoever
+// double-clicked this .exe -- a single failure anywhere in startup
+// looks exactly like "nothing happens." Every failure path below goes
+// through fatal/warnDialog instead, which show a native message box, so
+// a startup problem is diagnosable instead of silent.
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			fatal("panic", fmt.Errorf("%v\n\n%s", r, debug.Stack()))
+		}
+	}()
+
 	exePath, err := os.Executable()
 	if err != nil {
-		fmt.Println("determine install directory:", err)
-		os.Exit(1)
+		fatal("determine install directory", err)
 	}
 	installDir := filepath.Dir(exePath)
 
@@ -71,21 +84,46 @@ func main() {
 	}
 
 	if icon, err := loadEmbeddedIcon(); err != nil {
-		fmt.Println("load icon:", err)
+		warnDialog("load icon", err)
 	} else {
 		a.icon = icon
 	}
 
 	if err := a.buildMainWindow(); err != nil {
-		fmt.Println("build window:", err)
-		os.Exit(1)
+		fatal("build window", err)
 	}
 	if err := a.buildNotifyIcon(); err != nil {
-		fmt.Println("build tray icon:", err)
+		warnDialog("build tray icon", err)
 	}
 
 	a.start()
 	a.mw.Run()
+}
+
+// fatal shows a blocking native message box describing what failed and
+// exits -- see main's comment for why this exists instead of printing.
+func fatal(context string, err error) {
+	showMessageBox(appTitle+" — Startup Error", fmt.Sprintf("Failed to %s:\n\n%v", context, err), windows.MB_ICONERROR)
+	os.Exit(1)
+}
+
+// warnDialog reports a non-fatal startup problem the same way, without
+// exiting -- e.g. a missing icon or tray-icon failure shouldn't stop the
+// window itself from showing.
+func warnDialog(context string, err error) {
+	showMessageBox(appTitle+" — Warning", fmt.Sprintf("Failed to %s:\n\n%v", context, err), windows.MB_ICONWARNING)
+}
+
+func showMessageBox(caption, text string, iconFlag uint32) {
+	captionPtr, err := windows.UTF16PtrFromString(caption)
+	if err != nil {
+		return
+	}
+	textPtr, err := windows.UTF16PtrFromString(text)
+	if err != nil {
+		return
+	}
+	windows.MessageBox(0, textPtr, captionPtr, windows.MB_OK|iconFlag)
 }
 
 // loadEmbeddedIcon writes the embedded .ico to a temp file and loads it
@@ -339,8 +377,12 @@ func (a *app) setRunningState(running bool) {
 func (a *app) reportError(message string) {
 	if a.notifyIcon != nil {
 		a.notifyIcon.ShowError(appTitle, message)
+		return
 	}
-	fmt.Println(message)
+	// No tray icon to balloon from (e.g. buildNotifyIcon itself failed) --
+	// fall back to a message box so this is still visible rather than
+	// only going to a console that doesn't exist.
+	showMessageBox(appTitle, message, windows.MB_ICONERROR)
 }
 
 // showLog opens (or focuses) the log viewer window and, the first time

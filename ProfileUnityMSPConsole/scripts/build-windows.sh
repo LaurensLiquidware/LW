@@ -35,17 +35,23 @@ mkdir -p "$out_dir"
 version="$(cat VERSION)"
 IFS='.' read -r major minor patch <<<"$version"
 
-# generate_syso <package_dir> <internal_name> <original_filename> <file_description>
+# generate_syso <package_dir> <internal_name> <original_filename> <file_description> [manifest_path]
 # Writes a versioninfo.json describing one binary and runs goversioninfo
 # to produce a .syso in that package's directory, which `go build`
 # picks up automatically for GOOS=windows GOARCH=amd64 -- same mechanism
-# used for the single binary before this script built two.
+# used for the single binary before this script built two. The optional
+# manifest embeds comctl32 v6 + per-monitor DPI awareness (only needed
+# for the tray launcher's actual UI, not the headless server).
 generate_syso() {
-  local pkg_dir="$1" internal_name="$2" original_filename="$3" file_description="$4"
-  local json_path syso_path
+  local pkg_dir="$1" internal_name="$2" original_filename="$3" file_description="$4" manifest_path="${5:-}"
+  local json_path syso_path manifest_json="null"
   json_path="$(mktemp --suffix=.json)"
   syso_path="$pkg_dir/resource_windows_amd64.syso"
   cleanup_paths+=("$json_path" "$syso_path")
+
+  if [[ -n "$manifest_path" ]]; then
+    manifest_json="\"$manifest_path\""
+  fi
 
   cat >"$json_path" <<EOF
 {
@@ -71,7 +77,8 @@ generate_syso() {
   "VarFileInfo": {
     "Translation": {"LangID": "0409", "CharsetID": "04B0"}
   },
-  "IconPath": "web/frontend/public/favicon.ico"
+  "IconPath": "web/frontend/public/favicon.ico",
+  "ManifestPath": ${manifest_json}
 }
 EOF
 
@@ -82,7 +89,7 @@ cleanup_paths=()
 trap 'rm -f "${cleanup_paths[@]}"' EXIT
 
 echo "build-windows: generating Windows resources (icon + version info)..."
-generate_syso cmd/tray profileunity-msp-console profileunity-msp-console.exe "ProfileUnity MSP Licensing Console"
+generate_syso cmd/tray profileunity-msp-console profileunity-msp-console.exe "ProfileUnity MSP Licensing Console" cmd/tray/app.manifest
 generate_syso cmd/server profileunity-msp-console-server profileunity-msp-console-server.exe "ProfileUnity MSP Licensing Console (Server)"
 
 echo "build-windows: cross-compiling windows/amd64..."

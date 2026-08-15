@@ -809,4 +809,30 @@ console gives a real app instead of a bare console window.
   (buttons, tray icon, live log viewer, the graceful-stop signal) needs a
   real smoke test on Windows before being fully verified.
 
+Post-Phase-8 follow-up: the tray launcher silently did nothing on a
+real Windows test — made startup failures visible instead of invisible.
+
+- Reported: double-clicking `profileunity-msp-console.exe` produced no
+  window, no tray icon, nothing. Root cause: the launcher is built
+  `-ldflags "-H=windowsgui"` (no console, by design — that's what makes
+  it a real double-click app), but its startup error handling still did
+  `fmt.Println(...)` before exiting — with no console attached, that
+  output goes nowhere visible, so *any* single startup failure looked
+  exactly like "nothing happens," with no way to tell what actually
+  broke.
+- Fixed: every startup failure path (including an actual Go panic, now
+  caught via `recover()`) shows a native Windows message box with the
+  failing step and the underlying error instead of printing to a
+  nonexistent console. This doesn't fix a specific bug — it turns the
+  next failure, if any, from invisible into diagnosable.
+- Also embedded the Windows application manifest
+  `github.com/lxn/walk`'s own examples ship (comctl32 v6 + per-monitor
+  DPI awareness) into the tray exe via `goversioninfo`'s `ManifestPath`
+  field, matching the library's documented convention — this is cosmetic
+  (themed controls, correct DPI scaling), not the fix for the reported
+  symptom, but free and correct to add regardless.
+- Root cause of the original report is still unconfirmed — this sandbox
+  cannot run a Windows GUI to reproduce it, so what the new message box
+  (if it appears) actually says is what will pin it down.
+
 No further phases remain beyond Phase 8.
