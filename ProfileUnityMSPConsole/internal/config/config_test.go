@@ -40,8 +40,43 @@ func TestLoad_Defaults(t *testing.T) {
 		if cfg.DBDriver != "sqlite" {
 			t.Errorf("DBDriver = %q, want sqlite", cfg.DBDriver)
 		}
+		if cfg.LogLevel != "debug" {
+			t.Errorf("LogLevel = %q, want debug (default environment is development)", cfg.LogLevel)
+		}
+		if cfg.LogFile != "./profileunity-msp-console.log" {
+			t.Errorf("LogFile = %q, want ./profileunity-msp-console.log", cfg.LogFile)
+		}
+	})
+}
+
+func TestLoad_LogLevelDefaultsToInfoInProduction(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:    "0.0.0.0:8443",
+		envEnvironment: "production",
+		envLogLevel:    "",
+	}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if cfg.LogLevel != "info" {
-			t.Errorf("LogLevel = %q, want info", cfg.LogLevel)
+			t.Errorf("LogLevel = %q, want info in production", cfg.LogLevel)
+		}
+	})
+}
+
+func TestLoad_LogLevelExplicitOverridesEnvironmentDefault(t *testing.T) {
+	withEnv(t, map[string]string{
+		envHTTPAddr:    "0.0.0.0:8443",
+		envEnvironment: "production",
+		envLogLevel:    "debug",
+	}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.LogLevel != "debug" {
+			t.Errorf("LogLevel = %q, want debug (explicit override)", cfg.LogLevel)
 		}
 	})
 }

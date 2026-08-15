@@ -8,7 +8,8 @@ package scheduler
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -146,6 +147,7 @@ func (s *Scheduler) CollectNow(ctx context.Context) (RunSummary, error) {
 			enabled = append(enabled, t)
 		}
 	}
+	slog.Debug(fmt.Sprintf("collection run %s: starting, %d of %d tenants enabled, concurrency=%d, tenant_timeout=%s", runID, len(enabled), len(tenants), cur.concurrency, cur.tenantTimeout))
 
 	counts := make(map[snapshot.Status]int)
 	var mu sync.Mutex
@@ -175,6 +177,7 @@ func (s *Scheduler) CollectNow(ctx context.Context) (RunSummary, error) {
 		Counts:      counts,
 	}
 	s.recordRunSummary(summary)
+	slog.Debug(fmt.Sprintf("collection run %s: finished, outcome=%s counts=%v", runID, outcomeFor(summary), counts))
 	return summary, nil
 }
 
@@ -187,11 +190,13 @@ func (s *Scheduler) CollectNow(ctx context.Context) (RunSummary, error) {
 func (s *Scheduler) collectTenant(ctx context.Context, runID string, t tenant.Tenant, now time.Time, cur *tunables) (resultStatus snapshot.Status) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("collection run %s: tenant %s panicked: %v", runID, t.ID, r)
+			slog.Error(fmt.Sprintf("collection run %s: tenant %s panicked: %v", runID, t.ID, r))
 			s.storeErrorSnapshot(t.ID, now, "internal error during collection", cur)
 			resultStatus = snapshot.StatusError
 		}
 	}()
+
+	slog.Debug(fmt.Sprintf("collection run %s: tenant %s: starting poll", runID, t.ID))
 
 	tenantCtx, cancel := context.WithTimeout(ctx, cur.tenantTimeout)
 	defer cancel()
@@ -201,7 +206,7 @@ func (s *Scheduler) collectTenant(ctx context.Context, runID string, t tenant.Te
 		var err error
 		creds, err = s.tenants.GetCredentials(tenantCtx, t.ID)
 		if err != nil {
-			log.Printf("collection run %s: tenant %s: load credentials: %v", runID, t.ID, err)
+			slog.Error(fmt.Sprintf("collection run %s: tenant %s: load credentials: %v", runID, t.ID, err))
 			s.storeErrorSnapshot(t.ID, now, "failed to load stored credentials", cur)
 			return snapshot.StatusError
 		}
@@ -209,8 +214,9 @@ func (s *Scheduler) collectTenant(ctx context.Context, runID string, t tenant.Te
 
 	snap := collector.CollectOne(tenantCtx, t, creds, now, cur.location)
 	if _, err := s.snapshots.Upsert(context.Background(), snap); err != nil {
-		log.Printf("collection run %s: tenant %s: store snapshot: %v", runID, t.ID, err)
+		slog.Error(fmt.Sprintf("collection run %s: tenant %s: store snapshot: %v", runID, t.ID, err))
 	}
+	slog.Debug(fmt.Sprintf("collection run %s: tenant %s: finished poll, status=%s", runID, t.ID, snap.Status))
 	return snap.Status
 }
 
@@ -223,7 +229,7 @@ func (s *Scheduler) storeErrorSnapshot(tenantID string, now time.Time, message s
 		ErrorMessage:   message,
 	}
 	if _, err := s.snapshots.Upsert(context.Background(), snap); err != nil {
-		log.Printf("tenant %s: store error snapshot: %v", tenantID, err)
+		slog.Error(fmt.Sprintf("tenant %s: store error snapshot: %v", tenantID, err))
 	}
 }
 

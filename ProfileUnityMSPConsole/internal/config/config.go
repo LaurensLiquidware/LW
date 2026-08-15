@@ -19,7 +19,8 @@ type Config struct {
 	HTTPAddr string
 
 	// Environment is a free-form deployment label ("development",
-	// "production", ...). It currently only affects logging verbosity.
+	// "production", ...). It sets LogLevel's default (see defaultLogLevel)
+	// when PUMC_LOG_LEVEL isn't set explicitly.
 	Environment string
 
 	// DBDriver selects the storage backend: "sqlite" or "postgres".
@@ -28,8 +29,14 @@ type Config struct {
 	// DBDSN is the sqlite file path or the postgres connection string.
 	DBDSN string
 
-	// LogLevel is one of "debug", "info", "warn", "error".
+	// LogLevel is one of "debug", "info", "warn", "error". Defaults to
+	// "debug" in development and "info" in any other Environment (see
+	// defaultLogLevel) unless PUMC_LOG_LEVEL overrides it explicitly.
 	LogLevel string
+
+	// LogFile is where logs are written, in addition to stderr. Relative
+	// to the process's working directory, same convention as DBDSN.
+	LogFile string
 
 	// CollectionInterval is how often the scheduler checks whether it's
 	// time to collect. Snapshots are keyed by calendar day (in
@@ -115,6 +122,7 @@ const (
 	envDBDriver                = "PUMC_DB_DRIVER"
 	envDBDSN                   = "PUMC_DB_DSN"
 	envLogLevel                = "PUMC_LOG_LEVEL"
+	envLogFile                 = "PUMC_LOG_FILE"
 	envCollectionInterval      = "PUMC_COLLECTION_INTERVAL"
 	envCollectionTimezone      = "PUMC_COLLECTION_TIMEZONE"
 	envCollectionConcurrency   = "PUMC_COLLECTION_CONCURRENCY"
@@ -144,12 +152,14 @@ var validSMTPSecurity = map[string]bool{"starttls": true, "tls": true, "none": t
 // requires PUMC_HTTP_ADDR explicitly rather than defaulting to a localhost
 // address: this is a continuously running, multi-user server.
 func Load() (Config, error) {
+	environment := firstNonEmpty(os.Getenv(envEnvironment), "development")
 	cfg := Config{
 		HTTPAddr:           strings.TrimSpace(os.Getenv(envHTTPAddr)),
-		Environment:        firstNonEmpty(os.Getenv(envEnvironment), "development"),
+		Environment:        environment,
 		DBDriver:           firstNonEmpty(os.Getenv(envDBDriver), "sqlite"),
 		DBDSN:              firstNonEmpty(os.Getenv(envDBDSN), "./profileunity-msp-console.db"),
-		LogLevel:           firstNonEmpty(os.Getenv(envLogLevel), "info"),
+		LogLevel:           firstNonEmpty(os.Getenv(envLogLevel), defaultLogLevel(environment)),
+		LogFile:            firstNonEmpty(os.Getenv(envLogFile), "./profileunity-msp-console.log"),
 		CollectionTimezone: firstNonEmpty(os.Getenv(envCollectionTimezone), "UTC"),
 	}
 
@@ -292,6 +302,16 @@ func splitAndTrim(raw string) []string {
 		}
 	}
 	return out
+}
+
+// defaultLogLevel is the LogLevel default when PUMC_LOG_LEVEL is unset:
+// verbose in development, quieter in every other environment. Still
+// overridable explicitly via PUMC_LOG_LEVEL in either case.
+func defaultLogLevel(environment string) string {
+	if environment == "development" {
+		return "debug"
+	}
+	return "info"
 }
 
 func firstNonEmpty(values ...string) string {

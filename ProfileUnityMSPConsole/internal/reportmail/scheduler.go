@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -125,14 +125,17 @@ func (s *Scheduler) checkAndSendAt(ctx context.Context, now time.Time) {
 	s.recordCheck(now)
 
 	if !cur.enabled() {
+		slog.Debug("reportmail: check skipped, SMTP not configured")
 		s.recordOutcome(now, 0, 0, "disabled", nil)
 		return
 	}
 	if now.Day() < cur.day {
+		slog.Debug(fmt.Sprintf("reportmail: not due yet, today is day %d, send day is %d", now.Day(), cur.day))
 		s.recordOutcome(now, 0, 0, "not_due", nil)
 		return
 	}
 	if len(cur.recipients) == 0 {
+		slog.Debug("reportmail: check skipped, no recipients configured")
 		s.recordOutcome(now, 0, 0, "no_recipients", nil)
 		return
 	}
@@ -141,17 +144,18 @@ func (s *Scheduler) checkAndSendAt(ctx context.Context, now time.Time) {
 
 	alreadySent, err := s.emails.AlreadySent(ctx, year, month)
 	if err != nil {
-		log.Printf("reportmail: check already-sent for %04d-%02d: %v", year, month, err)
+		slog.Error(fmt.Sprintf("reportmail: check already-sent for %04d-%02d: %v", year, month, err))
 		s.recordOutcome(now, year, month, "error", err)
 		return
 	}
 	if alreadySent {
+		slog.Debug(fmt.Sprintf("reportmail: %04d-%02d already sent, skipping", year, month))
 		s.recordOutcome(now, year, month, "already_sent", nil)
 		return
 	}
 
 	if err := s.send(ctx, year, month, cur); err != nil {
-		log.Printf("reportmail: send portfolio report for %04d-%02d: %v", year, month, err)
+		slog.Error(fmt.Sprintf("reportmail: send portfolio report for %04d-%02d: %v", year, month, err))
 		s.recordOutcome(now, year, month, "error", err)
 		return
 	}
@@ -160,9 +164,9 @@ func (s *Scheduler) checkAndSendAt(ctx context.Context, now time.Time) {
 		// The email itself was already sent -- failing to record that
 		// isn't something to retry by resending, only to log loudly, or
 		// next month's run risks resending this month's report too.
-		log.Printf("reportmail: sent %04d-%02d but failed to record it: %v", year, month, err)
+		slog.Error(fmt.Sprintf("reportmail: sent %04d-%02d but failed to record it: %v", year, month, err))
 	}
-	log.Printf("reportmail: emailed the %04d-%02d portfolio report to %v", year, month, cur.recipients)
+	slog.Info(fmt.Sprintf("reportmail: emailed the %04d-%02d portfolio report to %v", year, month, cur.recipients))
 	s.recordOutcome(now, year, month, "sent", nil)
 }
 

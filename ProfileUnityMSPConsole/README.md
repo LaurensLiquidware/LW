@@ -410,6 +410,14 @@ for anything beyond local/lab use). No operator account exists until you
 set `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` for the first run; the
 server logs a warning and stays otherwise unusable if nobody can sign in.
 
+Logs go to both stderr and a file next to the binary (`PUMC_LOG_FILE`,
+default `./profileunity-msp-console.log`; the file is appended to, not
+rotated). Verbosity (`PUMC_LOG_LEVEL`: `debug`/`info`/`warn`/`error`)
+defaults from `PUMC_ENVIRONMENT` — `debug` in development, `info`
+otherwise — and can be set explicitly to override that default in either
+environment, e.g. to turn on debug logging temporarily in a production
+install while troubleshooting.
+
 ## Compliance
 
 This project is built against the Sparks Tool Project Review Checklist

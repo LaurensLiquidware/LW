@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"profileunity-msp-console/internal/db"
 	"profileunity-msp-console/internal/dotenv"
 	"profileunity-msp-console/internal/httpapi"
+	"profileunity-msp-console/internal/logging"
 	"profileunity-msp-console/internal/mailer"
 	"profileunity-msp-console/internal/reportemail"
 	"profileunity-msp-console/internal/reportmail"
@@ -53,7 +55,14 @@ func run() error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	log.Printf("profileunity-msp-console %s starting (environment=%s)", version.Version, cfg.Environment)
+	logger, logCloser, err := logging.New(cfg)
+	if err != nil {
+		return fmt.Errorf("set up logging: %w", err)
+	}
+	defer logCloser.Close()
+	slog.SetDefault(logger)
+
+	slog.Info(fmt.Sprintf("profileunity-msp-console %s starting (environment=%s, log_level=%s, log_file=%s)", version.Version, cfg.Environment, cfg.LogLevel, cfg.LogFile))
 
 	sqlDB, err := db.Open(cfg.DBDriver, cfg.DBDSN)
 	if err != nil {
@@ -106,7 +115,7 @@ func run() error {
 			return fmt.Errorf("ensure TLS certificate: %w", err)
 		}
 		if generated {
-			log.Printf("generated a self-signed TLS certificate at %s (hosts: %v) — replace it with a CA-signed certificate for production use, from the Settings screen or by replacing these files", cfg.TLSCertFile, hosts)
+			slog.Info(fmt.Sprintf("generated a self-signed TLS certificate at %s (hosts: %v) — replace it with a CA-signed certificate for production use, from the Settings screen or by replacing these files", cfg.TLSCertFile, hosts))
 		}
 		certPEM, err := os.ReadFile(cfg.TLSCertFile)
 		if err != nil {
@@ -146,9 +155,9 @@ func run() error {
 	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), reportMailSmtp, current.ReportRecipients, current.ReportEmailDay, collectionLocation)
 	go reportMailSched.Run(ctx)
 	if current.ReportEmailEnabled() {
-		log.Printf("monthly portfolio report emailing enabled: day %d of each month, to %v", current.ReportEmailDay, current.ReportRecipients)
+		slog.Info(fmt.Sprintf("monthly portfolio report emailing enabled: day %d of each month, to %v", current.ReportEmailDay, current.ReportRecipients))
 	} else {
-		log.Print("SMTP is not configured — monthly portfolio report emailing is disabled (set it up from the Settings screen)")
+		slog.Info("SMTP is not configured — monthly portfolio report emailing is disabled (set it up from the Settings screen)")
 	}
 
 	dashboardDeps := httpapi.DashboardDeps{Repos: repos, Location: collectionLocation}
@@ -177,7 +186,7 @@ func run() error {
 	server := &http.Server{Addr: cfg.HTTPAddr, Handler: router, TLSConfig: &tls.Config{GetCertificate: certHolder.GetCertificate}}
 	serveErr := make(chan error, 1)
 	go func() {
-		log.Printf("listening on https://%s", cfg.HTTPAddr)
+		slog.Info(fmt.Sprintf("listening on https://%s", cfg.HTTPAddr))
 		if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serveErr <- err
 			return
@@ -187,7 +196,7 @@ func run() error {
 
 	select {
 	case <-ctx.Done():
-		log.Print("shutting down")
+		slog.Info("shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
@@ -214,13 +223,13 @@ func bootstrapAdmin(users *auth.UserRepo, cfg config.Config) error {
 		return nil
 	}
 	if cfg.BootstrapAdminUsername == "" {
-		log.Print("no operator accounts exist and no PUMC_BOOTSTRAP_ADMIN_USERNAME/PASSWORD were set — nobody can sign in yet")
+		slog.Info("no operator accounts exist and no PUMC_BOOTSTRAP_ADMIN_USERNAME/PASSWORD were set — nobody can sign in yet")
 		return nil
 	}
 	if _, err := users.CreateUser(context.Background(), cfg.BootstrapAdminUsername, cfg.BootstrapAdminPassword, auth.RoleOperator); err != nil {
 		return err
 	}
-	log.Printf("created initial operator account %q", cfg.BootstrapAdminUsername)
+	slog.Info(fmt.Sprintf("created initial operator account %q", cfg.BootstrapAdminUsername))
 	return nil
 }
 

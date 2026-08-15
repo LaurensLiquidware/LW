@@ -705,4 +705,30 @@ non-UTC Timezone on Windows.
   container, or anywhere else, independent of what the host OS has
   installed.
 
+Post-Phase-8 follow-up: added file-based logging, with verbosity tied
+to the development/production environment switch.
+
+- New `internal/logging` package builds a single `log/slog` logger for
+  the whole process, writing every line to both stderr (unchanged
+  console behavior) and a log file next to the binary/database
+  (`PUMC_LOG_FILE`, default `./profileunity-msp-console.log`). Not
+  rotated in this pass — a known limitation, not a blocker.
+- `PUMC_LOG_LEVEL` (debug/info/warn/error — already existed as a
+  config field but was previously dead, unread anywhere) now actually
+  controls verbosity, and defaults from `PUMC_ENVIRONMENT` when unset:
+  `debug` in development, `info` otherwise — answering "should the
+  normal/debug switch match the dev/production switch" with "yes, by
+  default, but still explicitly overridable" (e.g. to turn on debug
+  logging temporarily on a production install while troubleshooting).
+- Replaced every `log.Print*` call across `cmd/server/main.go`,
+  `internal/scheduler`, and `internal/reportmail` with the shared
+  `slog` logger, and added new debug-only lines at points that were
+  previously silent (per-tenant collection attempt/outcome, report-mail
+  check decisions) — this is what makes the debug tier meaningfully
+  more verbose than normal, not just a level number.
+- Verified end to end: development mode shows debug lines in both
+  stderr and the file; production mode suppresses them but keeps info
+  lines in both; an explicit `PUMC_LOG_LEVEL=debug` re-enables debug
+  logging even in production; `PUMC_LOG_FILE` relocates the file.
+
 No further phases remain beyond Phase 8.
