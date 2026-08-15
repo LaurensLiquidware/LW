@@ -1,6 +1,79 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.2.3 — unreleased
+
+- **Monthly report PDF**: relabeled "Maximum users at month end:" to
+  "Maximum users:" (tenant section) and "Total maximum users at month
+  end:" to "Total maximum users:" (portfolio summary), matching how
+  the Reports screen already displays this field ("Maximum Users",
+  no "at month end" suffix). The underlying data/field names are
+  unchanged — display text only.
+
+## 0.2.2 — unreleased
+
+- **Login screen**: made the sign-in card more compact — narrower
+  (640px → 400px), smaller logo, tighter padding/spacing. Purely a
+  layout change; no functional difference.
+
+## 0.2.1 — unreleased
+
+Two small fixes: `docs/MANUAL.md` accuracy, and Test Connection now
+surfaces license data it was already fetching but discarding.
+
+- **`docs/MANUAL.md`**: fixed three inaccuracies found during a
+  line-by-line review against the actual UI.
+  - The Reports section called `EntitledAtMonthEnd` "entitled-license
+    count" — but that field is actually `UsedLicenses` (what's
+    currently *in use*, not the license's ceiling). The actual ceiling,
+    `MaximumUsersAtMonthEnd`, wasn't mentioned at all. Rewrote both
+    sentences (tenant and portfolio views) to describe each figure
+    correctly and by name.
+  - The Users screen section didn't mention the Role and Created
+    columns the table actually shows.
+  - The Test Connection outcome list (two occurrences) was missing the
+    9th `ConnectivityOutcome` value, a generic client-side `error`.
+- **Test Connection** (Tenants screen): the connectivity check already
+  fetches a console's full `/licenseinfo` response to verify
+  reachability/auth, but discarded the license data itself. A
+  successful test now also flags anything that looks off — no licensed
+  seats configured, no license product reported, or an already-expired
+  trial — appended to the existing success message. The connectivity
+  outcome itself is unchanged (still green/success): these are
+  advisories about the *console's* configuration, not connection
+  failures, and don't duplicate the Dashboard's own Usage/Expiry badges
+  (which already own over-limit/expiring-soon detection from real
+  collection history).
+
+## 0.2.0 — unreleased
+
+Surfaces ProfileUnity's own license **Product** name (e.g.
+"ProU+FlexApp") everywhere License Mode is already shown — it was
+already being collected and stored on every poll, and the Dashboard API
+was already returning it, but nothing displayed it.
+
+- **Dashboard**: added a **Product** column right next to License Mode.
+  The API (`/api/dashboard`) already returned `licenseProduct` and the
+  search box already filtered by it — this was a pure UI gap, and also
+  fixes a pre-existing mismatch where the manual described the search
+  box as filtering by license product with no column to show what
+  matched.
+- **Monthly Reports (JSON + PDF, tenant and portfolio)**: added
+  `licenseProductAtMonthEnd` — the license product as of the last
+  successful collection in the reporting month, using the same "last
+  known value this month" convention as `entitledAtMonthEnd`/
+  `maximumUsersAtMonthEnd`. This was a genuine gap: report data never
+  carried it at all. Shows as a metric tile on the tenant report view, a
+  column in the portfolio's per-tenant detail table, and a line in both
+  PDF exports (which the portfolio PDF picks up automatically, since it
+  reuses the same per-tenant rendering).
+- No database migration needed — `license_product` has been a stored
+  snapshot column since Phase 3; this only threads an already-collected
+  value through to two more places it wasn't reaching yet.
+- Verified end-to-end against the built server: a snapshot with a real
+  `LicenseProduct` value shows up correctly in the Dashboard column, the
+  tenant/portfolio report JSON, and both PDF exports.
+
+## 0.1.0
 
 Phase 1 (Skeleton) of the build plan:
 

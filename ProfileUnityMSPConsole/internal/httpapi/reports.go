@@ -57,9 +57,10 @@ type tenantMonthlyReportDTO struct {
 	PeakUsedDate string   `json:"peakUsedDate,omitempty"`
 	AverageUsed  *float64 `json:"averageUsed"`
 
-	EntitledAtMonthEnd     *int                         `json:"entitledAtMonthEnd"`
-	MaximumUsersAtMonthEnd *int                         `json:"maximumUsersAtMonthEnd"`
-	EntitlementChanges     []entitlementChangeReportDTO `json:"entitlementChanges"`
+	EntitledAtMonthEnd       *int                         `json:"entitledAtMonthEnd"`
+	MaximumUsersAtMonthEnd   *int                         `json:"maximumUsersAtMonthEnd"`
+	LicenseProductAtMonthEnd string                       `json:"licenseProductAtMonthEnd,omitempty"`
+	EntitlementChanges       []entitlementChangeReportDTO `json:"entitlementChanges"`
 }
 
 func toTenantReportDTO(r dashboard.TenantMonthlyReport) tenantMonthlyReportDTO {
@@ -79,9 +80,10 @@ func toTenantReportDTO(r dashboard.TenantMonthlyReport) tenantMonthlyReportDTO {
 		PeakUsed:           r.PeakUsed,
 		PeakUsedDate:       r.PeakUsedDate,
 		AverageUsed:        r.AverageUsed,
-		EntitledAtMonthEnd:     r.EntitledAtMonthEnd,
-		MaximumUsersAtMonthEnd: r.MaximumUsersAtMonthEnd,
-		EntitlementChanges:     changes,
+		EntitledAtMonthEnd:       r.EntitledAtMonthEnd,
+		MaximumUsersAtMonthEnd:   r.MaximumUsersAtMonthEnd,
+		LicenseProductAtMonthEnd: r.LicenseProductAtMonthEnd,
+		EntitlementChanges:       changes,
 	}
 }
 

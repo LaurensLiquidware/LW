@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.13"
+          cache-dependency-path: ProfileUnityMSPConsole/go.sum
 
       - uses: actions/setup-node@v4
         with:
@@ -65,11 +66,13 @@ jobs:
       - name: Build Windows binary
         run: ./scripts/build-windows.sh
 
-      - name: Upload Windows binary
+      - name: Upload Windows binaries
         uses: actions/upload-artifact@v4
         with:
           name: profileunity-msp-console-windows-amd64
-          path: ProfileUnityMSPConsole/profileunity-msp-console.exe
+          path: |
+            ProfileUnityMSPConsole/profileunity-msp-console.exe
+            ProfileUnityMSPConsole/profileunity-msp-console-server.exe
           retention-days: 14
 
   # Enforces project brief §11.8: SBOM stays current, and both dependency
@@ -85,6 +88,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.13"
+          cache-dependency-path: ProfileUnityMSPConsole/go.sum
 
       - uses: actions/setup-node@v4
         with:

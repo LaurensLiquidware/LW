@@ -207,7 +207,9 @@ this console already uses everywhere else.
 
 - **Add User** takes a username and a password (at least 12 characters,
   same rule as Change Password) and creates the account immediately —
-  it can sign in right away with that password.
+  it can sign in right away with that password. The list also shows
+  each account's Role (always `operator` today — see above) and when it
+  was created.
 - There is no edit or password reset from this screen: an account only
   ever changes its own password, from Change Password in the header.
   If someone is locked out, another operator can delete their account
@@ -235,9 +237,13 @@ this console already uses everywhere else.
   just pass/fail: unauthenticated success, authenticated success, a TLS
   failure, a timeout, the console rejecting the credentials, the console
   requiring credentials you didn't supply, a response that didn't parse
-  as ProfileUnity's expected format, or the console being unreachable
-  outright. Use this before saving a new tenant, and any time collection
-  starts failing, to narrow down why.
+  as ProfileUnity's expected format, the console being unreachable
+  outright, or an unexpected client-side error. A successful test also
+  flags anything that looks off in the console's own license data — no
+  licensed seats configured, no license product reported, or a trial
+  that's already expired — without failing the connection itself. Use
+  this before saving a new tenant, and any time collection starts
+  failing, to narrow down why.
 - **Disabling** a tenant (the "Enabled" toggle) stops the scheduler from
   polling it without deleting its history — use this for a customer
   that's temporarily offline or being decommissioned, rather than
@@ -265,8 +271,11 @@ filterable, showing:
 - **Data**: whether the figures above can currently be trusted — see
   [Understanding the status language](#understanding-the-status-language)
   below; this is the single most important column on the screen.
-- **License Mode**, **Console Version**, **Last Successful Collection**:
-  reported as-is from the tenant's most recent successful poll.
+- **License Mode**, **Product**, **Console Version**, **Last Successful
+  Collection**: reported as-is from the tenant's most recent successful
+  poll. Product is ProfileUnity's own license product name (e.g.
+  "ProU+FlexApp") — useful when an MSP's tenants are licensed under
+  different ProfileUnity products.
 
 Use the search box to filter by display name, hostname, license mode, or
 license product; click a column header to sort by it.
@@ -338,11 +347,14 @@ Every report leads with an explicit **coverage** badge:
   the numeric figures shown alongside this badge aren't meaningful.
 
 Below the coverage badge: days collected vs. days in the month, peak and
-average used-license count, entitled-license count as of month end, and
+average used-license count, the number of licenses in use as of month
+end ("Entitled At Month End" — what ProfileUnity itself reports as
+in-use, not the license's ceiling), the license's Maximum Users ceiling
+as of month end, the ProfileUnity license product as of month end, and
 a list of any entitlement changes detected during that month. The
-portfolio view additionally breaks down coverage and figures per tenant
-in a table, so you can see at a glance which customers had a clean month
-and which didn't.
+portfolio view additionally breaks down coverage, Entitled At Month
+End, and Maximum Users per tenant in a table, so you can see at a
+glance which customers had a clean month and which didn't.
 
 ### Automatic monthly report emails
 
@@ -418,7 +430,8 @@ meantime.
 **A tenant shows "Never Collected" and never changes.** Check Test
 Connection on that tenant first — it will tell you exactly what's wrong
 (unreachable, TLS failure, timeout, credentials rejected/required,
-malformed response) rather than a bare failure. Also confirm the tenant
+malformed response, or an unexpected client-side error) rather than a
+bare failure. Also confirm the tenant
 is Enabled — a disabled tenant is never polled by the scheduler.
 
 **A tenant that was fine yesterday now shows "Collection Failing."**

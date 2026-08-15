@@ -55,6 +55,10 @@
           <div class="lwl-metric-label">{{ 'reports.maximumUsersAtMonthEnd' | transloco }}</div>
           <div class="lwl-metric-value">{{ tenantReport()!.maximumUsersAtMonthEnd ?? '—' }}</div>
         </div>
+        <div>
+          <div class="lwl-metric-label">{{ 'reports.licenseProduct' | transloco }}</div>
+          <div class="lwl-metric-value">{{ tenantReport()!.licenseProductAtMonthEnd ?? '—' }}</div>
+        </div>
       </div>
       <div>
         <h2 class="lwl-metric-label">{{ 'reports.entitlementChanges' | transloco }}</h2>
@@ -106,6 +110,7 @@
               <th class="lwl-cell text-right">{{ 'reports.peakUsed' | transloco }}</th>
               <th class="lwl-cell text-right">{{ 'reports.entitledAtMonthEnd' | transloco }}</th>
               <th class="lwl-cell text-right">{{ 'reports.maximumUsersAtMonthEnd' | transloco }}</th>
+              <th class="lwl-cell text-left pl-4">{{ 'reports.licenseProduct' | transloco }}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,6 +121,7 @@
                 <td class="lwl-cell text-right">{{ tr.peakUsed ?? '—' }}</td>
                 <td class="lwl-cell text-right">{{ tr.entitledAtMonthEnd ?? '—' }}</td>
                 <td class="lwl-cell text-right">{{ tr.maximumUsersAtMonthEnd ?? '—' }}</td>
+                <td class="lwl-cell pl-4">{{ tr.licenseProductAtMonthEnd ?? '—' }}</td>
               </tr>
             }
           </tbody>

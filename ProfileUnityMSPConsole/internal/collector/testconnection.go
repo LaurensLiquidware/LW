@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"profileunity-msp-console/internal/profileunity"
 )
@@ -53,12 +54,12 @@ func TestConnection(ctx context.Context, p TestConnectionParams) (ConnectivityOu
 		return ConnError, err.Error()
 	}
 
-	_, authPath, _, err := client.CollectLicenseInfo(ctx)
+	info, authPath, _, err := client.CollectLicenseInfo(ctx)
 	if err == nil {
 		if authPath == profileunity.AuthPathAuthenticated {
-			return ConnAuthenticatedSuccess, "Connected and authenticated successfully."
+			return ConnAuthenticatedSuccess, "Connected and authenticated successfully." + licenseWarnings(info)
 		}
-		return ConnUnauthenticatedSuccess, "Connected successfully (no authentication was required)."
+		return ConnUnauthenticatedSuccess, "Connected successfully (no authentication was required)." + licenseWarnings(info)
 	}
 
 	var unreachable *profileunity.UnreachableError
@@ -84,4 +85,25 @@ func TestConnection(ctx context.Context, p TestConnectionParams) (ConnectivityOu
 	default:
 		return ConnError, err.Error()
 	}
+}
+
+// licenseWarnings flags license data that looks off in a console's
+// /licenseinfo response -- data Test Connection already fetches but
+// would otherwise discard. It never changes the outcome (still a
+// *_success case): these are advisory, not connectivity failures.
+func licenseWarnings(info profileunity.LicenseInfo) string {
+	var warnings []string
+	if !info.TotalLicenses.Valid || info.TotalLicenses.Value == 0 {
+		warnings = append(warnings, "the console reported no licensed seats")
+	}
+	if info.LicenseProduct == "" {
+		warnings = append(warnings, "the console did not report a license product")
+	}
+	if info.IsTrialExpired {
+		warnings = append(warnings, "this console's trial has already expired")
+	}
+	if len(warnings) == 0 {
+		return ""
+	}
+	return " Warning: " + strings.Join(warnings, "; ") + "."
 }

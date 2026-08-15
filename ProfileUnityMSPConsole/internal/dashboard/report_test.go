@@ -37,6 +37,32 @@ func TestBuildTenantMonthlyReport_CompleteMonth(t *testing.T) {
 	}
 }
 
+func TestBuildTenantMonthlyReport_LicenseProductAtMonthEndFromLastSuccess(t *testing.T) {
+	tn := tenant.Tenant{ID: "a"}
+	points := []snapshot.Snapshot{
+		{CollectionDate: "2026-08-01", Status: snapshot.StatusSuccess, LicenseProduct: "ProU"},
+		{CollectionDate: "2026-08-02", Status: snapshot.StatusUnreachable, LicenseProduct: "ignored-on-a-failed-day"},
+		{CollectionDate: "2026-08-03", Status: snapshot.StatusSuccess, LicenseProduct: "ProU+FlexApp"},
+	}
+
+	r := BuildTenantMonthlyReport(tn, 2026, 8, 3, points)
+
+	if r.LicenseProductAtMonthEnd != "ProU+FlexApp" {
+		t.Errorf("LicenseProductAtMonthEnd = %q, want %q (the last successful day's value)", r.LicenseProductAtMonthEnd, "ProU+FlexApp")
+	}
+}
+
+func TestBuildTenantMonthlyReport_LicenseProductAtMonthEndEmptyWithNoSuccesses(t *testing.T) {
+	tn := tenant.Tenant{ID: "a"}
+	points := []snapshot.Snapshot{failedPoint("2026-08-01"), failedPoint("2026-08-02")}
+
+	r := BuildTenantMonthlyReport(tn, 2026, 8, 2, points)
+
+	if r.LicenseProductAtMonthEnd != "" {
+		t.Errorf("LicenseProductAtMonthEnd = %q, want empty with zero successes", r.LicenseProductAtMonthEnd)
+	}
+}
+
 func TestBuildTenantMonthlyReport_PartialMonthWithFailuresAndGaps(t *testing.T) {
 	tn := tenant.Tenant{ID: "a"}
 	points := []snapshot.Snapshot{

@@ -135,6 +135,13 @@ func fmtAvg(v *float64) string {
 	return fmt.Sprintf("%.1f", *v)
 }
 
+func fmtProduct(v string) string {
+	if v == "" {
+		return "unknown"
+	}
+	return v
+}
+
 func newReportPDF(title string) *fpdf.Fpdf {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.AddUTF8FontFromBytes(reportFontFamily, "", dejaVuSansRegular)
@@ -174,7 +181,8 @@ func writeTenantReportBody(pdf *fpdf.Fpdf, r dashboard.TenantMonthlyReport) {
 	writeStatLine(pdf, "Peak used licenses:", peak)
 	writeStatLine(pdf, "Average used licenses:", fmtAvg(r.AverageUsed))
 	writeStatLine(pdf, "Entitled at month end:", fmtInt(r.EntitledAtMonthEnd))
-	writeStatLine(pdf, "Maximum users at month end:", fmtInt(r.MaximumUsersAtMonthEnd))
+	writeStatLine(pdf, "Maximum users:", fmtInt(r.MaximumUsersAtMonthEnd))
+	writeStatLine(pdf, "Product:", fmtProduct(r.LicenseProductAtMonthEnd))
 	pdf.Ln(2)
 
 	if len(r.EntitlementChanges) == 0 {
@@ -212,7 +220,7 @@ func RenderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport) *fpdf.Fpdf {
 	writeStatLine(pdf, "Peak total used licenses:", peak)
 	writeStatLine(pdf, "Average total used licenses:", fmtAvg(r.AverageTotalUsed))
 	writeStatLine(pdf, "Total entitled at month end:", fmtInt(r.TotalEntitledAtMonthEnd))
-	writeStatLine(pdf, "Total maximum users at month end:", fmtInt(r.TotalMaximumUsersAtMonthEnd))
+	writeStatLine(pdf, "Total maximum users:", fmtInt(r.TotalMaximumUsersAtMonthEnd))
 	pdf.Ln(6)
 
 	writeSectionHeading(pdf, "Per-tenant detail")
