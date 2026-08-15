@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.1 — unreleased
+
+Two small fixes: `docs/MANUAL.md` accuracy, and Test Connection now
+surfaces license data it was already fetching but discarding.
+
+- **`docs/MANUAL.md`**: fixed three inaccuracies found during a
+  line-by-line review against the actual UI.
+  - The Reports section called `EntitledAtMonthEnd` "entitled-license
+    count" — but that field is actually `UsedLicenses` (what's
+    currently *in use*, not the license's ceiling). The actual ceiling,
+    `MaximumUsersAtMonthEnd`, wasn't mentioned at all. Rewrote both
+    sentences (tenant and portfolio views) to describe each figure
+    correctly and by name.
+  - The Users screen section didn't mention the Role and Created
+    columns the table actually shows.
+  - The Test Connection outcome list (two occurrences) was missing the
+    9th `ConnectivityOutcome` value, a generic client-side `error`.
+- **Test Connection** (Tenants screen): the connectivity check already
+  fetches a console's full `/licenseinfo` response to verify
+  reachability/auth, but discarded the license data itself. A
+  successful test now also flags anything that looks off — no licensed
+  seats configured, no license product reported, or an already-expired
+  trial — appended to the existing success message. The connectivity
+  outcome itself is unchanged (still green/success): these are
+  advisories about the *console's* configuration, not connection
+  failures, and don't duplicate the Dashboard's own Usage/Expiry badges
+  (which already own over-limit/expiring-soon detection from real
+  collection history).
+
 ## 0.2.0 — unreleased
 
 Surfaces ProfileUnity's own license **Product** name (e.g.

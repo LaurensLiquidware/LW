@@ -2,9 +2,11 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -20,6 +22,82 @@ func TestTestConnection_UnauthenticatedSuccess(t *testing.T) {
 	})
 	if outcome != ConnUnauthenticatedSuccess {
 		t.Fatalf("outcome = %q, want unauthenticated_success (msg: %s)", outcome, msg)
+	}
+	if strings.Contains(msg, "Warning") {
+		t.Errorf("message = %q, want no warning for a normal healthy license fixture", msg)
+	}
+}
+
+// licenseInfoJSONWith returns a copy of the success fixture with one
+// field's raw string value replaced, for exercising licenseWarnings'
+// individual checks without a separate fixture file per case.
+func licenseInfoJSONWith(field, value string) string {
+	replacements := map[string]string{
+		"TotalLicenses":  `"TotalLicenses": "5"`,
+		"LicenseProduct": `"LicenseProduct": "ProU+FlexApp"`,
+		"IsTrialExpired": `"IsTrialExpired": "false"`,
+	}
+	replacements[field] = fmt.Sprintf(`"%s": %s`, field, value)
+	return fmt.Sprintf(`{ "WebMessageType": 2, "Type": "success", "Message": "", "MessageKey": null, "Tag": [ {
+		"RegisteredTo": "Liquidware Training EU", "LicenseMode": "NamedUser", %s,
+		"SupportEnds": "12/31/2026", %s, "UsedLicenses": "1", "Evaluation": "Yes",
+		"ConsoleVersion": "6.9.5.9678 3038806 2026-07-01", %s, "IsTrial": "false",
+		"IsProUOnly": "false", "IsFlexOnly": "false"
+	} ] }`, replacements["LicenseProduct"], replacements["TotalLicenses"], replacements["IsTrialExpired"])
+}
+
+func TestTestConnection_WarnsWhenNoLicensedSeats(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(licenseInfoJSONWith("TotalLicenses", `"0"`)))
+	}))
+	defer srv.Close()
+
+	tn := tenantForServer(t, srv, true)
+	outcome, msg := TestConnection(context.Background(), TestConnectionParams{Hostname: tn.Hostname, Port: tn.Port, TLSSkipVerify: true})
+	if outcome != ConnUnauthenticatedSuccess {
+		t.Fatalf("outcome = %q, want unauthenticated_success (still a success -- this is advisory)", outcome)
+	}
+	if !strings.Contains(msg, "no licensed seats") {
+		t.Errorf("message = %q, want it to mention no licensed seats", msg)
+	}
+}
+
+func TestTestConnection_WarnsWhenTotalLicensesUnparseable(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(licenseInfoJSONWith("TotalLicenses", `"not-a-number"`)))
+	}))
+	defer srv.Close()
+
+	tn := tenantForServer(t, srv, true)
+	_, msg := TestConnection(context.Background(), TestConnectionParams{Hostname: tn.Hostname, Port: tn.Port, TLSSkipVerify: true})
+	if !strings.Contains(msg, "no licensed seats") {
+		t.Errorf("message = %q, want it to mention no licensed seats when TotalLicenses doesn't parse", msg)
+	}
+}
+
+func TestTestConnection_WarnsWhenNoLicenseProduct(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(licenseInfoJSONWith("LicenseProduct", `""`)))
+	}))
+	defer srv.Close()
+
+	tn := tenantForServer(t, srv, true)
+	_, msg := TestConnection(context.Background(), TestConnectionParams{Hostname: tn.Hostname, Port: tn.Port, TLSSkipVerify: true})
+	if !strings.Contains(msg, "did not report a license product") {
+		t.Errorf("message = %q, want it to mention the missing license product", msg)
+	}
+}
+
+func TestTestConnection_WarnsWhenTrialExpired(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(licenseInfoJSONWith("IsTrialExpired", `"true"`)))
+	}))
+	defer srv.Close()
+
+	tn := tenantForServer(t, srv, true)
+	_, msg := TestConnection(context.Background(), TestConnectionParams{Hostname: tn.Hostname, Port: tn.Port, TLSSkipVerify: true})
+	if !strings.Contains(msg, "trial has already expired") {
+		t.Errorf("message = %q, want it to mention the expired trial", msg)
 	}
 }
 
