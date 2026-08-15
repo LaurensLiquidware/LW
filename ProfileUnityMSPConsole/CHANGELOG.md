@@ -835,4 +835,15 @@ real Windows test — made startup failures visible instead of invisible.
   cannot run a Windows GUI to reproduce it, so what the new message box
   (if it appears) actually says is what will pin it down.
 
+Post-Phase-8 follow-up: the tray launcher now starts and works on a
+real Windows machine, confirming the previous fix — but its window
+opened nearly full-screen with large gaps between the title, status,
+and button row. `buildMainWindow()` only set a *minimum* window size
+(`SetMinMaxSize`), never an explicit initial one, so it opened at
+`walk.MainWindow`'s (large) default and `VBoxLayout` spread the unused
+space evenly across every child, since none of them had a stretch
+factor set. Fixed by explicitly sizing the window
+(`mw.SetSize(walk.Size{Width: 420, Height: 210})`) to fit its actual
+content.
+
 No further phases remain beyond Phase 8.

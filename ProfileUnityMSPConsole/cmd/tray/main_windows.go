@@ -161,6 +161,13 @@ func (a *app) buildMainWindow() error {
 	}
 	mw.SetLayout(walk.NewVBoxLayout())
 	mw.SetMinMaxSize(walk.Size{Width: 360, Height: 180}, walk.Size{})
+	// walk.MainWindow has no "size to content" default -- without an
+	// explicit initial size it opens at whatever default is much larger
+	// than this window needs, and VBoxLayout spreads the leftover space
+	// evenly across every child since none of them set a stretch factor
+	// (hence big gaps between the title/status/buttons instead of a
+	// snug window).
+	mw.SetSize(walk.Size{Width: 420, Height: 210})
 
 	titleLabel, err := walk.NewTextLabel(mw)
 	if err != nil {
