@@ -860,6 +860,17 @@ Liquidware wordmark and a clickable link straight to the console.
   itself browsable, so that (and an empty host) is shown/opened as
   `localhost` instead, which is always correct from the same machine
   the launcher runs on.
+
+Post-Phase-8 follow-up: the tray launcher's wordmark logo showed up
+inside a visible white box instead of blending with the window
+background. The PNG had been rasterized without asking the renderer to
+omit its background, so it carried an opaque white fill baked into
+every pixel rather than real transparency — `walk.NewBitmapFromImage`
+and the toolkit's `AlphaBlend`-based drawing both already handle
+per-pixel alpha correctly, so this was purely an asset problem.
+Re-rasterized `cmd/tray/logo.png` with a transparent background
+preserved, so the wordmark now blends into the window like the title
+text next to it.
 - New shared `config.DefaultHTTPAddr` constant (mirroring
   `DefaultLogFile`) so this doesn't duplicate the literal.
 - Window height bumped slightly (260px) to fit the new logo and link
