@@ -18,6 +18,7 @@ import (
 
 	"profileunity-msp-console/internal/auth"
 	"profileunity-msp-console/internal/config"
+	pumccrypto "profileunity-msp-console/internal/crypto"
 	"profileunity-msp-console/internal/dashboard"
 	"profileunity-msp-console/internal/db"
 	"profileunity-msp-console/internal/dotenv"
@@ -85,6 +86,21 @@ func run() error {
 	collectionLocation, err := current.Location()
 	if err != nil {
 		return fmt.Errorf("runtime settings: %w", err)
+	}
+
+	// PUMC_CREDENTIAL_ENCRYPTION_KEY, if set, always wins; otherwise a key
+	// is generated once and persisted to CredentialEncryptionKeyFile on
+	// first boot, then reused as-is on every later boot — same
+	// generate-once-then-reuse pattern as the self-signed TLS cert below.
+	if cfg.CredentialEncryptionKey == nil {
+		key, generated, err := pumccrypto.EnsureKey(cfg.CredentialEncryptionKeyFile)
+		if err != nil {
+			return fmt.Errorf("ensure credential encryption key: %w", err)
+		}
+		cfg.CredentialEncryptionKey = key
+		if generated {
+			slog.Warn(fmt.Sprintf("generated a new tenant-credential encryption key at %s — back this file up; if it's ever lost or changed, every previously stored tenant credential becomes permanently undecryptable", cfg.CredentialEncryptionKeyFile))
+		}
 	}
 
 	tenantRepo := tenant.NewRepo(sqlDB, cfg.CredentialEncryptionKey)

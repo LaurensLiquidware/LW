@@ -14,8 +14,9 @@ import (
 
 // Config is the full set of settings the server needs to start.
 type Config struct {
-	// HTTPAddr is the address the HTTP server binds to, e.g. "0.0.0.0:8443".
-	// There is no default — see README.md "Configuration" for why.
+	// HTTPAddr is the address the HTTP server binds to. Defaults to
+	// "0.0.0.0:8443" (all interfaces) so the console works out of the box;
+	// set PUMC_HTTP_ADDR explicitly to bind to a specific interface/port.
 	HTTPAddr string
 
 	// Environment is a free-form deployment label ("development",
@@ -59,10 +60,22 @@ type Config struct {
 	CollectionTenantTimeout time.Duration
 
 	// CredentialEncryptionKey encrypts stored tenant credentials at rest
-	// (project brief §9). Nil if unset — tenants may still be registered
-	// without credentials; storing a credential without this key set is
-	// an error, not a silent plaintext write.
+	// (project brief §9). Nil here means "not supplied via
+	// PUMC_CREDENTIAL_ENCRYPTION_KEY" -- cmd/server/main.go then resolves
+	// the real key via internal/crypto.EnsureKey(CredentialEncryptionKeyFile),
+	// auto-generating and persisting one on first boot rather than leaving
+	// this nil at runtime. Tenants may still be registered without
+	// credentials; storing a credential without a resolved key is an
+	// error, not a silent plaintext write.
 	CredentialEncryptionKey []byte
+
+	// CredentialEncryptionKeyFile is where the auto-generated credential
+	// encryption key is persisted when PUMC_CREDENTIAL_ENCRYPTION_KEY
+	// isn't set explicitly. Relative to the working directory, same
+	// convention as DBDSN/TLSCertFile. Losing or replacing this file
+	// makes every previously stored tenant credential permanently
+	// undecryptable.
+	CredentialEncryptionKeyFile string
 
 	// SessionIdleTimeout and SessionAbsoluteTimeout bound a console
 	// operator's login session (project brief §9/§6's carried-over idle
@@ -130,7 +143,8 @@ const (
 	envCollectionTimezone      = "PUMC_COLLECTION_TIMEZONE"
 	envCollectionConcurrency   = "PUMC_COLLECTION_CONCURRENCY"
 	envCollectionTenantTimeout = "PUMC_COLLECTION_TENANT_TIMEOUT"
-	envCredentialEncryptionKey = "PUMC_CREDENTIAL_ENCRYPTION_KEY"
+	envCredentialEncryptionKey     = "PUMC_CREDENTIAL_ENCRYPTION_KEY"
+	envCredentialEncryptionKeyFile = "PUMC_CREDENTIAL_ENCRYPTION_KEY_FILE"
 	envSessionIdleTimeout      = "PUMC_SESSION_IDLE_TIMEOUT"
 	envSessionAbsoluteTimeout  = "PUMC_SESSION_ABSOLUTE_TIMEOUT"
 	envBootstrapAdminUsername  = "PUMC_BOOTSTRAP_ADMIN_USERNAME"
@@ -151,13 +165,11 @@ var validDBDrivers = map[string]bool{"sqlite": true, "postgres": true}
 var validLogLevels = map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
 var validSMTPSecurity = map[string]bool{"starttls": true, "tls": true, "none": true}
 
-// Load reads configuration from environment variables. It intentionally
-// requires PUMC_HTTP_ADDR explicitly rather than defaulting to a localhost
-// address: this is a continuously running, multi-user server.
+// Load reads configuration from environment variables.
 func Load() (Config, error) {
 	environment := firstNonEmpty(os.Getenv(envEnvironment), "development")
 	cfg := Config{
-		HTTPAddr:           strings.TrimSpace(os.Getenv(envHTTPAddr)),
+		HTTPAddr:           firstNonEmpty(os.Getenv(envHTTPAddr), "0.0.0.0:8443"),
 		Environment:        environment,
 		DBDriver:           firstNonEmpty(os.Getenv(envDBDriver), "sqlite"),
 		DBDSN:              firstNonEmpty(os.Getenv(envDBDSN), "./profileunity-msp-console.db"),
@@ -238,6 +250,7 @@ func Load() (Config, error) {
 		}
 		cfg.CredentialEncryptionKey = key
 	}
+	cfg.CredentialEncryptionKeyFile = firstNonEmpty(os.Getenv(envCredentialEncryptionKeyFile), "./credential-encryption.key")
 
 	if err := cfg.validate(); err != nil {
 		return Config{}, err
@@ -246,8 +259,11 @@ func Load() (Config, error) {
 }
 
 func (c Config) validate() error {
+	// Load() always defaults HTTPAddr to "0.0.0.0:8443", so this never
+	// triggers via the normal path -- kept as a defensive backstop for
+	// any caller constructing a Config directly.
 	if c.HTTPAddr == "" {
-		return fmt.Errorf("%s is required (no default listen address is provided by design; see README.md)", envHTTPAddr)
+		return fmt.Errorf("%s must not be empty", envHTTPAddr)
 	}
 	if !validDBDrivers[c.DBDriver] {
 		return fmt.Errorf("%s must be one of sqlite, postgres (got %q)", envDBDriver, c.DBDriver)

@@ -14,10 +14,26 @@ func withEnv(t *testing.T, kv map[string]string, fn func()) {
 	fn()
 }
 
-func TestLoad_RequiresHTTPAddr(t *testing.T) {
+func TestLoad_HTTPAddrDefaultsWhenUnset(t *testing.T) {
 	withEnv(t, map[string]string{envHTTPAddr: ""}, func() {
-		if _, err := Load(); err == nil {
-			t.Fatal("expected error when PUMC_HTTP_ADDR is unset, got nil")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.HTTPAddr != "0.0.0.0:8443" {
+			t.Errorf("HTTPAddr = %q, want 0.0.0.0:8443", cfg.HTTPAddr)
+		}
+	})
+}
+
+func TestLoad_HTTPAddrExplicitOverridesDefault(t *testing.T) {
+	withEnv(t, map[string]string{envHTTPAddr: "127.0.0.1:9000"}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.HTTPAddr != "127.0.0.1:9000" {
+			t.Errorf("HTTPAddr = %q, want 127.0.0.1:9000", cfg.HTTPAddr)
 		}
 	})
 }
@@ -45,6 +61,9 @@ func TestLoad_Defaults(t *testing.T) {
 		}
 		if cfg.LogFile != "./profileunity-msp-console.log" {
 			t.Errorf("LogFile = %q, want ./profileunity-msp-console.log", cfg.LogFile)
+		}
+		if cfg.CredentialEncryptionKeyFile != "./credential-encryption.key" {
+			t.Errorf("CredentialEncryptionKeyFile = %q, want ./credential-encryption.key", cfg.CredentialEncryptionKeyFile)
 		}
 	})
 }

@@ -399,21 +399,25 @@ for the same key, so this composes with a deployment that already
 exports `PUMC_*` itself. `internal/dotenv` loads it (a small in-house
 parser, not a dependency — `KEY=VALUE` per line, `#` comments, optional
 quotes, nothing fancier); a missing `.env` file is not an error, since
-it's optional. There is deliberately no baked-in `localhost` default for
-the listen address — this is a continuously running, multi-user server,
-not a local single-operator tool, and it must be bound to an address you
-chose on purpose. See `.env.example` for the full list.
+it's optional. `PUMC_HTTP_ADDR` defaults to `0.0.0.0:8443` (all
+interfaces) if left unset — set it explicitly to bind to a specific
+interface/port instead. See `.env.example` for the full list.
 
 The server always serves HTTPS. If `PUMC_TLS_CERT_FILE`/`PUMC_TLS_KEY_FILE`
 don't both already exist, a self-signed pair is generated there at first
 startup (browsers will warn about it — replace it with a CA-signed pair
-for anything beyond local/lab use). On first startup (only ever when no
-operator accounts exist yet), a `LiquidwareMSP`/`LiquidwareMSP` operator
-account is created automatically if `PUMC_BOOTSTRAP_ADMIN_USERNAME`/
-`PASSWORD` are left unset — **change that password from the account/
-change-password screen as soon as you sign in**, since it's a fixed,
-publicly-known default, not a secret. Set both env vars to use your own
-username/password from the first run instead.
+for anything beyond local/lab use). Likewise, if `PUMC_CREDENTIAL_ENCRYPTION_KEY`
+is left unset, a key is generated on first startup and saved to
+`PUMC_CREDENTIAL_ENCRYPTION_KEY_FILE` (default `./credential-encryption.key`)
+— **back up that file**; losing or replacing it makes every previously
+stored tenant credential permanently undecryptable. On first startup
+(only ever when no operator accounts exist yet), a
+`LiquidwareMSP`/`LiquidwareMSP` operator account is created automatically
+if `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` are left unset — **change
+that password from the account/change-password screen as soon as you
+sign in**, since it's a fixed, publicly-known default, not a secret. Set
+both env vars to use your own username/password from the first run
+instead.
 
 Logs go to both stderr and a file next to the binary (`PUMC_LOG_FILE`,
 default `./profileunity-msp-console.log`; the file is appended to, not
