@@ -45,31 +45,41 @@ not as an interpolated guess.
 
 ## Installing and starting the server
 
-The console ships as a single self-contained binary (`profileunity-msp-console`)
-with the web frontend, license text, and SBOM built in — nothing extra
-to install alongside it besides a place to store its SQLite database
-file.
+The console ships as a self-contained server binary
+(`profileunity-msp-console-server` on Windows, `profileunity-msp-console`
+on Linux) with the web frontend, license text, and SBOM built in —
+nothing extra to install alongside it besides a place to store its
+SQLite database file. The Windows zip also ships
+`profileunity-msp-console.exe`, a small tray launcher — see "Starting on
+Windows" below.
 
 1. Copy `.env.example` to `.env`, in the same folder you'll run the
-   binary from, and fill in the values that matter for your deployment
-   (see the reference below). At minimum you need `PUMC_HTTP_ADDR` set —
-   there is no default listen address, since this is meant to run for a
-   team, not just `localhost`. This is a one-time step — after that, just
-   starting the binary from that folder picks the file up automatically,
-   with no environment variables to set by hand each time. (If you'd
-   rather set real environment variables instead — e.g. in a Windows
-   Service definition — that works too, and takes priority over anything
-   in `.env`.)
+   binary from, and adjust any values that matter for your deployment
+   (see the reference below) — everything has a sensible zero-config
+   default, so this step is optional if the defaults suit you. This is a
+   one-time step — after that, just starting the binary from that folder
+   picks the file up automatically, with no environment variables to set
+   by hand each time. (If you'd rather set real environment variables
+   instead — e.g. in a Windows Service definition — that works too, and
+   takes priority over anything in `.env`.)
 2. Run the binary (or `make run` from source). On first startup it will:
    - create the SQLite database file (and run migrations) if it doesn't
      exist yet,
    - generate a self-signed TLS certificate at the configured paths if
      none exists there already (the server only ever serves HTTPS — there
      is no plain-HTTP mode),
-   - create the first operator account from
-     `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD`, if the users table is
-     empty and those are set.
-3. Browse to `https://<host>:<port>`. Your browser will warn about the
+   - generate a tenant-credential encryption key if none was supplied
+     (see `PUMC_CREDENTIAL_ENCRYPTION_KEY`/`_FILE` below — **back this
+     file up**, since losing or replacing it makes every previously
+     stored tenant credential permanently undecryptable),
+   - create the first operator account — either from
+     `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` if you set those, or a
+     built-in `LiquidwareMSP`/`LiquidwareMSP` account otherwise (change
+     that password from the account/change-password screen as soon as
+     you sign in — it's a fixed, publicly-known default, not a secret).
+3. Browse to `https://<host>:<port>` (default `https://0.0.0.0:8443` —
+   browse to the machine's actual hostname/IP, not literally `0.0.0.0`).
+   Your browser will warn about the
    self-signed certificate unless you've replaced it with a real one —
    either by uploading it from the Settings screen after signing in (no
    restart needed), or by dropping a CA-signed pair at the configured
@@ -77,6 +87,31 @@ file.
    startup. The self-signed warning is expected on a fresh install and
    safe to accept for internal use, but replace the certificate before
    exposing this beyond a trusted network.
+
+### Starting on Windows
+
+The Windows zip contains two executables:
+
+- **`profileunity-msp-console.exe`** — a small tray launcher. This is
+  what you double-click. It starts `profileunity-msp-console-server.exe`
+  as a background process, shows Start/Stop/Restart buttons and a
+  status indicator, and collapses to a system tray icon while running —
+  click the tray icon (or the window's [x] button) to hide it, right-click
+  the tray icon for a menu (Show, Start, Stop, Restart, Show Log, Exit).
+  **Show Log** opens a window that live-tails the server's log file as
+  new lines are written, so you can watch what's happening without
+  opening the log file yourself. **Exit** (from the tray menu — not the
+  window's [x] button, which just hides it) is what actually stops the
+  server and closes the launcher.
+- **`profileunity-msp-console-server.exe`** — the actual server, unchanged
+  by any of the above. Run this directly instead of the launcher if
+  you're starting the console from a script, a Scheduled Task, or a
+  Windows Service — it behaves exactly like the Linux binary, logging to
+  the console and to its log file with no GUI involved.
+
+Both read `.env`/write their data files (database, TLS cert, log,
+encryption key) from whichever folder they're run from, so keep them in
+the same folder together with your `.env`.
 
 ## Configuration reference
 
@@ -86,13 +121,15 @@ at startup, and can't be changed from the UI:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `PUMC_HTTP_ADDR` | Address the server binds to, e.g. `0.0.0.0:8443` | *(required, no default)* |
-| `PUMC_ENVIRONMENT` | `development` or `production` — affects logging verbosity only | `development` |
+| `PUMC_HTTP_ADDR` | Address the server binds to | `0.0.0.0:8443` (all interfaces) |
+| `PUMC_ENVIRONMENT` | `development` or `production` — sets `PUMC_LOG_LEVEL`'s default (see below) | `development` |
 | `PUMC_DB_DRIVER` | `sqlite` or `postgres` | `sqlite` |
 | `PUMC_DB_DSN` | File path (sqlite) or connection string (postgres) | `./profileunity-msp-console.db` |
-| `PUMC_LOG_LEVEL` | `debug`, `info`, `warn`, or `error` | `info` |
-| `PUMC_CREDENTIAL_ENCRYPTION_KEY` | Base64 32-byte (AES-256) key encrypting stored tenant credentials at rest. Generate with `openssl rand -base64 32`. Leave unset if no tenant will ever have credentials. | *(unset)* |
-| `PUMC_BOOTSTRAP_ADMIN_USERNAME` / `PASSWORD` | Creates the first operator account at startup, only while the users table is empty. Leave both unset once a real account exists. | *(unset)* |
+| `PUMC_LOG_LEVEL` | `debug`, `info`, `warn`, or `error`. Leave unset to default from `PUMC_ENVIRONMENT` (`debug` in development, `info` otherwise); set explicitly to override that default either way. | *(from `PUMC_ENVIRONMENT`)* |
+| `PUMC_LOG_FILE` | Where logs are written, in addition to stderr/console (appended to, not rotated) | `./profileunity-msp-console.log` |
+| `PUMC_CREDENTIAL_ENCRYPTION_KEY` | Base64 32-byte (AES-256) key encrypting stored tenant credentials at rest. Leave unset and one is generated automatically on first boot and saved to `PUMC_CREDENTIAL_ENCRYPTION_KEY_FILE` — **back up that file**. Set this explicitly instead to supply/rotate your own key (`openssl rand -base64 32`). | *(auto-generated)* |
+| `PUMC_CREDENTIAL_ENCRYPTION_KEY_FILE` | Where the auto-generated key above is saved when `PUMC_CREDENTIAL_ENCRYPTION_KEY` is left unset | `./credential-encryption.key` |
+| `PUMC_BOOTSTRAP_ADMIN_USERNAME` / `PASSWORD` | Creates the first operator account at startup, only while the users table is empty. Leave both unset and a built-in `LiquidwareMSP`/`LiquidwareMSP` account is created instead — change that password from the account/change-password screen right after first sign-in. Set both to use your own username/password from the first run instead. | *(`LiquidwareMSP`/`LiquidwareMSP`)* |
 
 Everything else below is a **seed value only**: read from the
 environment the very first time the server starts against a fresh
@@ -366,12 +403,14 @@ sanity check that collection is actually running at all.
 the language choice is a runtime UI setting, not yet persisted across a
 full page reload. Switch it again after reloading.
 
-**Nobody can sign in.** The server logs a warning at startup if the
-users table is empty and no `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD`
-were set — in that state, nobody can sign in until an administrator
-creates the first account by setting those and restarting, or via
-direct database access. This bootstrap only ever fires when the users
-table is empty; it will never overwrite or reset an existing account.
+**Nobody can sign in.** A fresh install always gets a first account —
+either `PUMC_BOOTSTRAP_ADMIN_USERNAME`/`PASSWORD` if you set those, or
+the built-in `LiquidwareMSP`/`LiquidwareMSP` default otherwise (the
+server logs which one it created at startup). If truly nobody can sign
+in, the users table must already be non-empty with credentials nobody
+has — recovery is via direct database access, since bootstrap only ever
+fires once, when the users table is empty; it will never overwrite or
+reset an existing account.
 
 **I forgot my password.** There is no self-service or administrator
 password reset. If you're still signed in somewhere, use Change

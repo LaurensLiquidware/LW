@@ -776,4 +776,37 @@ auto-generated credential encryption key, and a default listen address.
   same zero-config reasoning as the rest of today's defaults. Still
   fully overridable by setting it explicitly.
 
+Post-Phase-8 follow-up: a Windows tray launcher, so double-clicking the
+console gives a real app instead of a bare console window.
+
+- Windows can't make one `.exe` behave differently for a double-click
+  vs. a terminal launch, so this is now two binaries in the Windows zip:
+  `profileunity-msp-console.exe` (new) is a small system-tray launcher —
+  Start/Stop/Restart buttons, a status indicator, Liquidware branding,
+  and a "Show Log" window that live-tails the server's log file. It
+  collapses to a tray icon while running (click the [x] to hide, not
+  quit; Exit from the tray menu actually quits) and starts the server
+  automatically on launch. `profileunity-msp-console-server.exe` is the
+  actual headless server, byte-for-byte the same `cmd/server` as before
+  under a new name — running it directly (PowerShell, a Scheduled Task,
+  a Windows Service) is completely unaffected.
+- New `cmd/tray` package, pure-Go (`github.com/lxn/walk`, Win32 bindings
+  over `syscall` — no cgo, so this still cross-compiles from a plain
+  Linux build machine with zero C toolchain, exactly like the existing
+  server build). The launcher spawns the server with
+  `CREATE_NEW_PROCESS_GROUP|CREATE_NO_WINDOW` (no stray console window)
+  and stops it by sending `CTRL_BREAK_EVENT` to trigger the server's
+  existing graceful shutdown, falling back to a hard kill after 10s if
+  that doesn't work — Stop always eventually works even if graceful
+  signal delivery has some environment-specific quirk.
+- `scripts/build-windows.sh` now builds and version-stamps both
+  executables; `scripts/release.sh`'s Windows zip includes both. Linux
+  packaging is unaffected (single headless binary, no GUI).
+- `docs/MANUAL.md` documents the two Windows executables and what each
+  is for.
+- **Known limitation**: this was built and cross-compiled from a Linux
+  sandbox that cannot run a live Windows GUI — the interactive behavior
+  (buttons, tray icon, live log viewer, the graceful-stop signal) needs a
+  real smoke test on Windows before being fully verified.
+
 No further phases remain beyond Phase 8.

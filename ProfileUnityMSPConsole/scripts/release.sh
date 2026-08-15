@@ -71,24 +71,26 @@ echo "== 8/10: build backend (embeds VERSION, frontend, SBOM, notices) =="
 go build -o "$repo_root/profileunity-msp-console" ./cmd/server
 echo "release: built ./profileunity-msp-console"
 
-echo "== 9/10: cross-compile Windows build (Liquidware icon + version info) =="
+echo "== 9/10: cross-compile Windows build (tray launcher + server, Liquidware icon + version info) =="
 if ! command -v goversioninfo >/dev/null 2>&1; then
   echo "release: goversioninfo not found on PATH -- go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest" >&2
   exit 1
 fi
-./scripts/build-windows.sh "$repo_root/profileunity-msp-console.exe"
+./scripts/build-windows.sh "$repo_root"
 
 echo "== 10/10: produce release zips (Linux + Windows) =="
-# Every release bundles: the binary, the user manual (PDF), a starting
-# .env.example (see internal/dotenv -- the binary reads .env from its own
-# working directory, so operators need this to get running without
+# Every release bundles: the binary/binaries (Windows gets two -- the
+# tray launcher an operator double-clicks, and the actual headless
+# server it spawns), the user manual (PDF), a starting .env.example (see
+# internal/dotenv -- the server reads .env from its own working
+# directory, so operators need this to get running without
 # hand-exporting environment variables), the version history, and
 # everything a compliance reviewer needs to sign off on third-party
 # content -- the SBOM, the per-license breakdown, and the Sparks Tool
 # license/disclaimer itself. README.md stays out on purpose: it's written
 # for someone building this from source, not running it. One zip per
-# platform, since the binary itself differs but everything else in the
-# bundle is shared.
+# platform, since the binaries differ but everything else in the bundle
+# is shared.
 version="$(cat VERSION)"
 zip_dir="$(mktemp -d)"
 trap 'rm -f "$govulncheck_output" "$manual_pdf"; rm -rf "$zip_dir"' EXIT
@@ -105,7 +107,7 @@ echo "release: wrote $linux_zip"
 windows_zip="profileunity-msp-console-${version}-windows-amd64.zip"
 windows_stage="$zip_dir/profileunity-msp-console-${version}-windows-amd64"
 mkdir -p "$windows_stage"
-cp profileunity-msp-console.exe "$windows_stage/"
+cp profileunity-msp-console.exe profileunity-msp-console-server.exe "$windows_stage/"
 cp "$manual_pdf" "$windows_stage/MANUAL.pdf"
 cp .env.example Spark_License.pdf bom.cdx.json THIRD-PARTY-NOTICES.txt CHANGELOG.md "$windows_stage/"
 (cd "$zip_dir" && zip -qr "$repo_root/$windows_zip" "profileunity-msp-console-${version}-windows-amd64")

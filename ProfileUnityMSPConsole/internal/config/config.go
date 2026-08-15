@@ -174,7 +174,7 @@ func Load() (Config, error) {
 		DBDriver:           firstNonEmpty(os.Getenv(envDBDriver), "sqlite"),
 		DBDSN:              firstNonEmpty(os.Getenv(envDBDSN), "./profileunity-msp-console.db"),
 		LogLevel:           firstNonEmpty(os.Getenv(envLogLevel), defaultLogLevel(environment)),
-		LogFile:            firstNonEmpty(os.Getenv(envLogFile), "./profileunity-msp-console.log"),
+		LogFile:            firstNonEmpty(os.Getenv(envLogFile), DefaultLogFile),
 		CollectionTimezone: firstNonEmpty(os.Getenv(envCollectionTimezone), "UTC"),
 	}
 
@@ -335,6 +335,12 @@ const (
 	DefaultBootstrapAdminUsername = "LiquidwareMSP"
 	DefaultBootstrapAdminPassword = "LiquidwareMSP"
 )
+
+// DefaultLogFile is LogFile's default when PUMC_LOG_FILE is unset.
+// Exported so other entry points (e.g. cmd/tray, which tails this same
+// file for its "Show Log" viewer without importing the full config
+// loader) can resolve the same default without duplicating the literal.
+const DefaultLogFile = "./profileunity-msp-console.log"
 
 // defaultBootstrapAdmin applies the built-in default only when *both*
 // raw env values are empty, so setting exactly one still falls through
