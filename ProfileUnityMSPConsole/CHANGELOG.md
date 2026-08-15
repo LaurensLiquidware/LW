@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 — unreleased
+
+- **Login screen**: made the sign-in card more compact — narrower
+  (640px → 400px), smaller logo, tighter padding/spacing. Purely a
+  layout change; no functional difference.
+
 ## 0.2.1 — unreleased
 
 Two small fixes: `docs/MANUAL.md` accuracy, and Test Connection now

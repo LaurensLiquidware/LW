@@ -1,8 +1,9 @@
-/* Matches docs/design-system-reference/liquidware-ui/ui_kits/stratusphere-ux/kit.css's
-   .login/.login-form/.login-logo/.login-field rules verbatim (values copied
-   from there, not reinvented) -- kept here rather than in styles/tokens.css,
-   which is the design-system reference file itself, not a place for
-   component CSS. */
+/* Based on docs/design-system-reference/liquidware-ui/ui_kits/stratusphere-ux/kit.css's
+   .login/.login-form/.login-logo/.login-field rules -- kept here rather than
+   in styles/tokens.css, which is the design-system reference file itself,
+   not a place for component CSS. Sizing (form width, padding, logo box,
+   gap) is intentionally tightened from the reference's 640px/2.5rem/320x96
+   for a more compact card; colors/blur/shape are unchanged. */
 .login {
   position: relative;
   display: flex;
@@ -19,10 +20,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
-  width: 640px;
+  gap: 1.15rem;
+  width: 400px;
   max-width: 100%;
-  padding: 2.5rem;
+  padding: 2rem;
   border-radius: var(--radius-2xl);
   background: rgba(50, 50, 50, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -31,9 +32,9 @@
 }
 
 .login-logo {
-  width: 320px;
+  width: 220px;
   max-width: 80%;
-  height: 96px;
+  height: 66px;
   display: flex;
   align-items: center;
   justify-content: center;
