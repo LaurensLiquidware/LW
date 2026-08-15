@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 export interface SessionUser {
+  id: string;
   username: string;
   role: string;
 }

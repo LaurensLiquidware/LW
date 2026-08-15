@@ -36,6 +36,10 @@ export const routes: Routes = [
         path: 'settings',
         loadComponent: () => import('./features/settings/settings.component').then((m) => m.SettingsComponent),
       },
+      {
+        path: 'users',
+        loadComponent: () => import('./features/users/users.component').then((m) => m.UsersComponent),
+      },
       // No nested "about" route: it's shown as a dialog from the shell
       // (see shell.component.html) so it never needs a back button.
       // The top-level "about" route above stays directly reachable by URL

@@ -124,6 +124,20 @@ func (r *SessionRepo) Revoke(ctx context.Context, token string) error {
 	return nil
 }
 
+// RevokeAllForUser ends every session belonging to userID -- called
+// right after a user account is deleted. sessions.user_id declares
+// ON DELETE CASCADE, but this database never enables
+// PRAGMA foreign_keys, so that constraint is not actually enforced;
+// this explicit delete is what actually invalidates the deleted
+// account's sessions rather than leaving them valid until they expire
+// naturally.
+func (r *SessionRepo) RevokeAllForUser(ctx context.Context, userID string) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID); err != nil {
+		return fmt.Errorf("auth: revoke sessions for user: %w", err)
+	}
+	return nil
+}
+
 func newToken() (string, error) {
 	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {

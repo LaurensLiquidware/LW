@@ -8,6 +8,7 @@
     "history": "History",
     "reports": "Reports",
     "settings": "Settings",
+    "users": "Users",
     "about": "About"
   },
   "login": {
@@ -201,5 +202,21 @@
     "mismatch": "New password and confirmation do not match.",
     "wrongCurrent": "Current password is incorrect.",
     "error": "Could not change password. Please try again."
+  },
+  "users": {
+    "addUser": "Add User",
+    "username": "Username",
+    "password": "Password",
+    "passwordHint": "at least 12 characters",
+    "role": "Role",
+    "createdAt": "Created",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete User",
+    "deleteConfirmMessage": "Delete {{username}}? They will no longer be able to sign in, and any active session of theirs ends immediately. This cannot be undone.",
+    "noUsers": "No Users Yet",
+    "saveError": "Could Not Create User",
+    "usernameTaken": "That username is already taken."
   }
 }

@@ -185,6 +185,48 @@ func (r *UserRepo) Count(ctx context.Context) (int, error) {
 	return n, nil
 }
 
+// List returns every user account, ordered by username, for the Users
+// management screen.
+func (r *UserRepo) List(ctx context.Context) ([]User, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT id, username, role, created_at_utc, updated_at_utc FROM users ORDER BY username`)
+	if err != nil {
+		return nil, fmt.Errorf("auth: list users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		var role, createdAt, updatedAt string
+		if err := rows.Scan(&u.ID, &u.Username, &role, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("auth: scan user: %w", err)
+		}
+		u.Role = Role(role)
+		if u.CreatedAt, err = time.Parse(isoUTC, createdAt); err != nil {
+			return nil, err
+		}
+		if u.UpdatedAt, err = time.Parse(isoUTC, updatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+// Delete removes a user account. Callers (the HTTP layer) are
+// responsible for the self-delete and last-account checks -- this is a
+// plain, unconditional delete.
+func (r *UserRepo) Delete(ctx context.Context, id string) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("auth: delete user: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 // dummyHash is a valid bcrypt hash of an arbitrary fixed string, compared
 // against on every "unknown username" path purely to keep that path's
 // timing indistinguishable from a real (failing) comparison.

@@ -198,6 +198,29 @@ administrator override or password-reset flow — if you forget your
 password entirely, an administrator has to reset the account by other
 means (see the Troubleshooting section).
 
+## Managing users
+
+**Users** lists every account that can sign in, and lets you add or
+remove one. There is no separate "administrator" role — every signed-in
+operator can add and remove accounts, the same flat permission model
+this console already uses everywhere else.
+
+- **Add User** takes a username and a password (at least 12 characters,
+  same rule as Change Password) and creates the account immediately —
+  it can sign in right away with that password.
+- There is no edit or password reset from this screen: an account only
+  ever changes its own password, from Change Password in the header.
+  If someone is locked out, another operator can delete their account
+  here and create them a fresh one — this is the closest thing to an
+  administrator password reset this console has.
+- **Delete** removes an account and immediately ends any of its active
+  sessions — it can no longer sign in, and if it's currently signed in
+  elsewhere, that session stops working right away. You can't delete
+  your own account (to avoid locking yourself out), and you can't
+  delete the last remaining account (the console would become
+  impossible to sign into, with no bootstrap path to recover from that
+  short of the database-reset procedure in Troubleshooting).
+
 ## Managing tenants
 
 **Tenants** is where you register each customer's ProfileUnity console.
@@ -424,7 +447,10 @@ reset an existing account.
 **I forgot my password.** There is no self-service or administrator
 password reset. If you're still signed in somewhere, use Change
 Password (click your username in the header) instead of getting locked
-out. If you're already locked out and this is a test/lab instance with
+out. If another operator account exists and is still signed in, they
+can delete your locked-out account from the Users screen and create you
+a new one — the closest thing to an administrator reset this console
+has. If you're already locked out and this is a test/lab instance with
 nothing worth keeping, the only way back in is to delete the SQLite
 database file (`PUMC_DB_DSN`, default `./profileunity-msp-console.db`)
 and restart — this re-triggers the bootstrap above using whatever

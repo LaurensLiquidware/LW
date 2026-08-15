@@ -35,6 +35,7 @@ type changePasswordRequest struct {
 }
 
 type userResponse struct {
+	ID       string `json:"id"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
 }
@@ -89,7 +90,7 @@ func LoginHandler(deps AuthDeps) http.HandlerFunc {
 			SameSite: http.SameSiteStrictMode,
 		})
 
-		writeJSON(w, http.StatusOK, userResponse{Username: user.Username, Role: string(user.Role)})
+		writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Username: user.Username, Role: string(user.Role)})
 	}
 }
 
@@ -126,7 +127,7 @@ func MeHandler(deps AuthDeps) http.HandlerFunc {
 			http.Error(w, "not authenticated", http.StatusUnauthorized)
 			return
 		}
-		writeJSON(w, http.StatusOK, userResponse{Username: user.Username, Role: string(user.Role)})
+		writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Username: user.Username, Role: string(user.Role)})
 	}
 }
 

@@ -33,6 +33,16 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	mux.Handle("/api/auth/me", RequireSession(authDeps.Sessions, MeHandler(authDeps)))
 	mux.Handle("/api/auth/change-password", RequireSession(authDeps.Sessions, auth.RequireCSRF(ChangePasswordHandler(authDeps))))
 
+	// Console login account management (the Users screen) -- lets a
+	// signed-in operator add or remove other login accounts. There is no
+	// separate admin role gate today (every screen is open to any
+	// session, per the flat permission model this app already has); the
+	// only hard restrictions are inside DeleteUserHandler itself
+	// (can't delete yourself, can't delete the last remaining account).
+	mux.Handle("GET /api/users", RequireSession(authDeps.Sessions, ListUsersHandler(authDeps)))
+	mux.Handle("POST /api/users", RequireSession(authDeps.Sessions, auth.RequireCSRF(CreateUserHandler(authDeps))))
+	mux.Handle("DELETE /api/users/{id}", RequireSession(authDeps.Sessions, auth.RequireCSRF(DeleteUserHandler(authDeps))))
+
 	// Tenant management (project brief §7.1). All of it requires a
 	// session; the mutating routes additionally require CSRF. Test
 	// Connection makes outbound requests to whatever host:port is in the

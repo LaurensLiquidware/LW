@@ -78,6 +78,63 @@ func TestUserRepo_CreateUser_RejectsShortPassword(t *testing.T) {
 	}
 }
 
+func TestUserRepo_List_ReturnsAllOrderedByUsername(t *testing.T) {
+	repo := newTestDB(t)
+	ctx := context.Background()
+
+	if _, err := repo.CreateUser(ctx, "zack", "correct-horse-battery-staple", RoleOperator); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.CreateUser(ctx, "amy", "correct-horse-battery-staple", RoleViewer); err != nil {
+		t.Fatal(err)
+	}
+
+	users, err := repo.List(ctx)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(users) != 2 {
+		t.Fatalf("len(users) = %d, want 2", len(users))
+	}
+	if users[0].Username != "amy" || users[1].Username != "zack" {
+		t.Errorf("List order = [%q, %q], want [amy, zack]", users[0].Username, users[1].Username)
+	}
+}
+
+func TestUserRepo_List_EmptyWhenNoUsers(t *testing.T) {
+	repo := newTestDB(t)
+	users, err := repo.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(users) != 0 {
+		t.Errorf("len(users) = %d, want 0", len(users))
+	}
+}
+
+func TestUserRepo_Delete_RemovesUser(t *testing.T) {
+	repo := newTestDB(t)
+	ctx := context.Background()
+
+	u, err := repo.CreateUser(ctx, "jane", "correct-horse-battery-staple", RoleOperator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Delete(ctx, u.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, err := repo.Authenticate(ctx, "jane", "correct-horse-battery-staple"); err != ErrUserNotFound {
+		t.Errorf("Authenticate after Delete: err = %v, want ErrUserNotFound", err)
+	}
+}
+
+func TestUserRepo_Delete_UnknownIDReturnsErrUserNotFound(t *testing.T) {
+	repo := newTestDB(t)
+	if err := repo.Delete(context.Background(), "does-not-exist"); err != ErrUserNotFound {
+		t.Errorf("err = %v, want ErrUserNotFound", err)
+	}
+}
+
 func TestUserRepo_ChangePassword(t *testing.T) {
 	repo := newTestDB(t)
 	ctx := context.Background()
@@ -211,6 +268,39 @@ func TestSessionRepo_Revoke(t *testing.T) {
 	}
 	if _, err := sessions.Validate(ctx, token); err != ErrSessionInvalid {
 		t.Errorf("err = %v, want ErrSessionInvalid after revoke", err)
+	}
+}
+
+func TestSessionRepo_RevokeAllForUser_RemovesOnlyThatUsersSessions(t *testing.T) {
+	users, sessions := newTestSessionRepo(t, time.Hour, 12*time.Hour)
+	ctx := context.Background()
+
+	jane, err := users.CreateUser(ctx, "jane", "correct-horse-battery-staple", RoleOperator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bob, err := users.CreateUser(ctx, "bob", "correct-horse-battery-staple", RoleOperator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	janeToken, err := sessions.Create(ctx, jane.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bobToken, err := sessions.Create(ctx, bob.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := sessions.RevokeAllForUser(ctx, jane.ID); err != nil {
+		t.Fatalf("RevokeAllForUser: %v", err)
+	}
+
+	if _, err := sessions.Validate(ctx, janeToken); err != ErrSessionInvalid {
+		t.Errorf("jane's session: err = %v, want ErrSessionInvalid", err)
+	}
+	if _, err := sessions.Validate(ctx, bobToken); err != nil {
+		t.Errorf("bob's session should be untouched, got err = %v", err)
 	}
 }
 

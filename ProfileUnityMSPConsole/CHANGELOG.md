@@ -928,4 +928,40 @@ early.
   button correctly surfaces a clear error (without touching the form's
   Save state) when SMTP isn't configured yet.
 
+Post-Phase-8 follow-up: added a **Users** screen (new left-nav entry) so
+an operator can add and remove other console login accounts from the
+UI — until now the only way in was the single bootstrapped account plus
+self-service Change Password, with no way to add a second account at
+all.
+
+- New `auth.UserRepo.List`/`Delete` methods and a new
+  `auth.SessionRepo.RevokeAllForUser`, backing three new endpoints
+  (`GET/POST /api/users`, `DELETE /api/users/{id}`,
+  `internal/httpapi/users.go`) wired with the same session+CSRF
+  protection as every other mutating route.
+- Every account created here is a plain operator — there's no role
+  picker, since nothing in this app enforces any difference between the
+  existing operator/viewer roles today; adding one without any actual
+  effect would only be misleading.
+- Two hard server-side guards on delete, neither of which existed
+  before this: an operator can't delete their own account, and can't
+  delete the last remaining account — either would make the console
+  impossible to sign into, with no way back short of the database-reset
+  procedure in the manual's Troubleshooting section. The frontend also
+  hides the delete button on the signed-in operator's own row, but the
+  server-side checks are what actually matter.
+- Deleting an account now immediately invalidates any of its active
+  sessions. `sessions.user_id` declares `ON DELETE CASCADE`, but this
+  database never enables `PRAGMA foreign_keys`, so that constraint was
+  never actually enforced — `RevokeAllForUser` closes that gap
+  explicitly rather than relying on it.
+- `/api/auth/me` (and login) now also returns the signed-in account's
+  `id`, needed by the Users screen to identify "this is you."
+- Verified end-to-end against the built server: created a second
+  account, signed in as it to confirm it actually works, confirmed only
+  the other account's row (never the signed-in operator's own) has a
+  delete button, deleted it, and confirmed both that its row disappears
+  and that a direct API call attempting to delete your own account (and,
+  via a dedicated unit test, the last remaining account) is rejected.
+
 No further phases remain beyond Phase 8.

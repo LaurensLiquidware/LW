@@ -8,6 +8,7 @@
     "history": "Geschiedenis",
     "reports": "Rapporten",
     "settings": "Instellingen",
+    "users": "Gebruikers",
     "about": "Over"
   },
   "login": {
@@ -201,5 +202,21 @@
     "mismatch": "Nieuw wachtwoord en bevestiging komen niet overeen.",
     "wrongCurrent": "Huidig wachtwoord is onjuist.",
     "error": "Wachtwoord wijzigen is mislukt. Probeer het opnieuw."
+  },
+  "users": {
+    "addUser": "Gebruiker Toevoegen",
+    "username": "Gebruikersnaam",
+    "password": "Wachtwoord",
+    "passwordHint": "minimaal 12 tekens",
+    "role": "Rol",
+    "createdAt": "Aangemaakt",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "deleteConfirmTitle": "Gebruiker Verwijderen",
+    "deleteConfirmMessage": "{{username}} verwijderen? Deze persoon kan dan niet meer inloggen en elke actieve sessie eindigt onmiddellijk. Dit kan niet ongedaan worden gemaakt.",
+    "noUsers": "Nog Geen Gebruikers",
+    "saveError": "Gebruiker Aanmaken Mislukt",
+    "usernameTaken": "Deze gebruikersnaam is al in gebruik."
   }
 }
