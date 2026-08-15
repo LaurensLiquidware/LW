@@ -25,4 +25,10 @@ export class SettingsService {
   testEmail(req: TestEmailRequest): Promise<void> {
     return firstValueFrom(this.http.post<void>('/api/settings/test-email', req));
   }
+
+  /** Sends last calendar month's portfolio report by email immediately,
+   * using the saved settings, bypassing the scheduled send day. */
+  sendReportNow(): Promise<{ year: number; month: number }> {
+    return firstValueFrom(this.http.post<{ year: number; month: number }>('/api/settings/send-report-now', {}));
+  }
 }

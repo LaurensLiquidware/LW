@@ -170,6 +170,34 @@ func (s *Scheduler) checkAndSendAt(ctx context.Context, now time.Time) {
 	s.recordOutcome(now, year, month, "sent", nil)
 }
 
+// SendNow builds and emails last calendar month's portfolio report
+// immediately, bypassing the day-of-month gate -- for an
+// operator-triggered "Send Now" button on the Settings screen. It marks
+// the month as sent (reportemail.Repo.MarkSent) on success, exactly like
+// the automatic scheduled send, so the scheduler won't duplicate it
+// later in the month once the configured send day arrives.
+func (s *Scheduler) SendNow(ctx context.Context) (year, month int, err error) {
+	cur := s.current()
+	if !cur.enabled() {
+		return 0, 0, fmt.Errorf("SMTP is not configured")
+	}
+	if len(cur.recipients) == 0 {
+		return 0, 0, fmt.Errorf("no report recipients configured")
+	}
+
+	now := time.Now().In(cur.location)
+	year, month = previousMonth(now)
+	if err := s.send(ctx, year, month, cur); err != nil {
+		return 0, 0, fmt.Errorf("send %04d-%02d report: %w", year, month, err)
+	}
+	if err := s.emails.MarkSent(ctx, year, month, cur.recipients, time.Now()); err != nil {
+		slog.Error(fmt.Sprintf("reportmail: sent %04d-%02d via Send Now but failed to record it: %v", year, month, err))
+	}
+	slog.Info(fmt.Sprintf("reportmail: Send Now emailed the %04d-%02d portfolio report to %v", year, month, cur.recipients))
+	s.recordOutcome(now, year, month, "sent", nil)
+	return year, month, nil
+}
+
 // send builds and emails the portfolio PDF for one month.
 func (s *Scheduler) send(ctx context.Context, year, month int, cur *liveConfig) error {
 	days, from, to := monthRange(year, month)

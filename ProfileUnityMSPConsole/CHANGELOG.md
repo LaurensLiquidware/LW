@@ -902,4 +902,30 @@ Post-Phase-8 follow-up: Settings screen SMTP fixes.
   previously-saved non-standard port is kept as an extra option rather
   than silently replaced.
 
+Post-Phase-8 follow-up: added a **Send Now** button to the Monthly
+Portfolio Report card on the Settings screen, so an operator can trigger
+the report email immediately instead of waiting for the scheduled send
+day — useful for verifying SMTP/recipients actually work, or sending
+early.
+
+- `reportmail.Scheduler.SendNow` reuses the automatic scheduler's own
+  `send`/`previousMonth` logic to build and email last calendar month's
+  report on demand, bypassing the day-of-month gate. It still marks the
+  month as sent (same as the automatic path), so the scheduler won't
+  re-send it later once the configured day arrives.
+- New `POST /api/settings/send-report-now` endpoint (`SendReportNowHandler`
+  in `internal/httpapi/settings.go`), wired the same way as every other
+  mutating settings route (session + CSRF).
+- Since this emails every configured recipient immediately — unlike Send
+  Test Email, which only ever goes to an address just typed into the
+  form — the button asks for confirmation first, the same treatment this
+  screen's tenant-deletion confirm dialog already established as this
+  codebase's pattern for "an action with a real effect outside this
+  screen."
+- Verified end-to-end against a real local SMTP listener: configuring
+  SMTP + recipients, saving, then Send Now actually delivers an email
+  with the expected subject and PDF attachment for last month, and the
+  button correctly surfaces a clear error (without touching the form's
+  Save state) when SMTP isn't configured yet.
+
 No further phases remain beyond Phase 8.

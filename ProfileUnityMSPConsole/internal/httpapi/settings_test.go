@@ -1,18 +1,89 @@
 package httpapi
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"profileunity-msp-console/internal/mailer"
 	"profileunity-msp-console/internal/tlscert"
 )
+
+// startFakeSMTPServer runs a minimal single-connection-at-a-time SMTP
+// server, good enough to prove SendReportNowHandler actually sends real
+// SMTP rather than just exercising its own decision logic -- mirrors
+// internal/reportmail's own fakeSMTPServer test fixture.
+func startFakeSMTPServer(t *testing.T) mailer.Config {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { ln.Close() })
+
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer conn.Close()
+				w := bufio.NewWriter(conn)
+				writeLine := func(s string) { w.WriteString(s + "\r\n"); w.Flush() }
+				reader := textproto.NewReader(bufio.NewReader(conn))
+				writeLine("220 localhost ESMTP fake")
+				for {
+					line, err := reader.ReadLine()
+					if err != nil {
+						return
+					}
+					switch {
+					case strings.HasPrefix(line, "EHLO"), strings.HasPrefix(line, "HELO"):
+						writeLine("250 localhost")
+					case strings.HasPrefix(line, "MAIL FROM"), strings.HasPrefix(line, "RCPT TO"):
+						writeLine("250 OK")
+					case line == "DATA":
+						writeLine("354 End with <CRLF>.<CRLF>")
+						for {
+							dline, err := reader.ReadLine()
+							if err != nil || dline == "." {
+								break
+							}
+						}
+						writeLine("250 OK")
+					case line == "QUIT":
+						writeLine("221 Bye")
+						return
+					default:
+						writeLine("500 unrecognized")
+					}
+				}
+			}()
+		}
+	}()
+
+	host, portStr, err := net.SplitHostPort(ln.Addr().String())
+	if err != nil {
+		t.Fatalf("split addr: %v", err)
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		t.Fatalf("parse port: %v", err)
+	}
+	return mailer.Config{Host: host, Port: port, From: "reports@example.com", Security: "none"}
+}
 
 // generateTestCertPEM generates a fresh self-signed cert/key pair (via
 // tlscert.EnsureSelfSigned into a temp dir) and returns its PEM bytes —
@@ -180,6 +251,58 @@ func TestUpdateSettingsHandler_RejectsInvalidSettings(t *testing.T) {
 	UpdateSettingsHandler(deps.settings)(rec, settingsPutRequest(body))
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400 for an SMTP host without a from address", rec.Code)
+	}
+}
+
+func TestSendReportNowHandler_SendsAndReturnsLastMonth(t *testing.T) {
+	deps := newTestDeps(t)
+	smtp := startFakeSMTPServer(t)
+	deps.settings.ReportMail.SetConfig(smtp, []string{"msp@liquidware.eu"}, 1, time.UTC)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/settings/send-report-now", nil)
+	rec := httptest.NewRecorder()
+	SendReportNowHandler(deps.settings)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body: %s", rec.Code, rec.Body.String())
+	}
+	var result struct {
+		Year  int `json:"year"`
+		Month int `json:"month"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.Year == 0 || result.Month == 0 {
+		t.Errorf("year/month = %d-%02d, want the last calendar month", result.Year, result.Month)
+	}
+}
+
+func TestSendReportNowHandler_RejectsWhenSMTPNotConfigured(t *testing.T) {
+	deps := newTestDeps(t)
+	// newTestDeps seeds ReportMail with an empty mailer.Config -- SMTP
+	// disabled -- and no recipients, matching a fresh install.
+
+	req := httptest.NewRequest(http.MethodPost, "/api/settings/send-report-now", nil)
+	rec := httptest.NewRecorder()
+	SendReportNowHandler(deps.settings)(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 when SMTP isn't configured, body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSendReportNowHandler_RejectsWhenNoRecipients(t *testing.T) {
+	deps := newTestDeps(t)
+	smtp := startFakeSMTPServer(t)
+	deps.settings.ReportMail.SetConfig(smtp, nil, 1, time.UTC)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/settings/send-report-now", nil)
+	rec := httptest.NewRecorder()
+	SendReportNowHandler(deps.settings)(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 when no recipients are configured, body: %s", rec.Code, rec.Body.String())
 	}
 }
 

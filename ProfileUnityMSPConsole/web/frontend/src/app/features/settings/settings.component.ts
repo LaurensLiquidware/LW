@@ -1,7 +1,7 @@
 import { Component, OnInit, WritableSignal, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -9,6 +9,8 @@ import { PasswordModule } from 'primeng/password';
 import { SelectModule } from 'primeng/select';
 import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
+import { ConfirmationService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 
 import { SettingsService } from '../../core/settings.service';
 import { Settings } from '../../core/models/settings';
@@ -83,13 +85,17 @@ function smtpCrossFieldValidator(): ValidatorFn {
         SelectModule,
         CardModule,
         MessageModule,
+        ConfirmDialogModule,
     ],
+    providers: [ConfirmationService],
     changeDetection: ChangeDetectionStrategy.Eager,
     templateUrl: './settings.component.html',
 })
 export class SettingsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly settingsService = inject(SettingsService);
+  private readonly confirmation = inject(ConfirmationService);
+  private readonly transloco = inject(TranslocoService);
 
   readonly securityOptions = [
     { label: 'starttls', value: 'starttls' },
@@ -152,6 +158,9 @@ export class SettingsComponent implements OnInit {
   readonly testingEmail = signal(false);
   readonly testEmailTo = signal('');
   readonly testEmailResult = signal<'ok' | 'error' | null>(null);
+
+  readonly sendingReportNow = signal(false);
+  readonly sendReportNowResult = signal<'ok' | 'error' | null>(null);
 
   readonly uploadingCert = signal(false);
   readonly certUploadError = signal<string | null>(null);
@@ -307,6 +316,37 @@ export class SettingsComponent implements OnInit {
       this.testEmailResult.set('error');
     } finally {
       this.testingEmail.set(false);
+    }
+  }
+
+  /** Confirms before sending, since unlike Test Email (which only ever
+   * goes to an address the operator just typed in) this emails every
+   * configured report recipient immediately -- the same treatment this
+   * codebase gives tenant deletion, the one other action here with a
+   * real effect outside this screen. */
+  confirmSendReportNow(): void {
+    this.confirmation.confirm({
+      header: this.transloco.translate('settings.sendReportNowConfirmTitle'),
+      message: this.transloco.translate('settings.sendReportNowConfirmMessage'),
+      acceptLabel: this.transloco.translate('settings.sendReportNow'),
+      rejectLabel: this.transloco.translate('settings.cancel'),
+      accept: () => this.sendReportNow(),
+    });
+  }
+
+  private async sendReportNow(): Promise<void> {
+    if (this.sendingReportNow()) {
+      return;
+    }
+    this.sendingReportNow.set(true);
+    this.sendReportNowResult.set(null);
+    try {
+      await this.settingsService.sendReportNow();
+      this.sendReportNowResult.set('ok');
+    } catch {
+      this.sendReportNowResult.set('error');
+    } finally {
+      this.sendingReportNow.set(false);
     }
   }
 

@@ -280,6 +280,81 @@ func TestSetConfig_TakesEffectOnTheNextCheck(t *testing.T) {
 	}
 }
 
+func TestSendNow_SendsRegardlessOfConfiguredDay(t *testing.T) {
+	srv := startFakeSMTPServer(t)
+	// Configured send day is far in the future -- SendNow must ignore it.
+	s := newTestScheduler(t, srv.smtpConfig(t), 28, []string{"msp@liquidware.eu"})
+
+	wantYear, wantMonth := previousMonth(time.Now().UTC())
+
+	gotYear, gotMonth, err := s.SendNow(context.Background())
+	if err != nil {
+		t.Fatalf("SendNow: %v", err)
+	}
+	if gotYear != wantYear || gotMonth != wantMonth {
+		t.Errorf("SendNow returned %d-%02d, want %d-%02d (last calendar month)", gotYear, gotMonth, wantYear, wantMonth)
+	}
+
+	select {
+	case body := <-srv.got:
+		if !strings.Contains(body, "Content-Type: application/pdf") {
+			t.Errorf("sent message missing the PDF attachment:\n%s", body)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("SendNow never sent a message")
+	}
+}
+
+func TestSendNow_MarksSentSoTheSchedulerDoesNotDuplicateIt(t *testing.T) {
+	srv := startFakeSMTPServer(t)
+	// Day 1 -- today is always on/after the configured day, so a later
+	// checkAndSendAt would send were it not for MarkSent having already
+	// recorded this month.
+	s := newTestScheduler(t, srv.smtpConfig(t), 1, []string{"msp@liquidware.eu"})
+
+	if _, _, err := s.SendNow(context.Background()); err != nil {
+		t.Fatalf("SendNow: %v", err)
+	}
+	select {
+	case <-srv.got:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SendNow never sent a message")
+	}
+
+	s.checkAndSendAt(context.Background(), time.Now().UTC())
+	select {
+	case body := <-srv.got:
+		t.Fatalf("scheduler resent the month SendNow already sent:\n%s", body)
+	case <-time.After(200 * time.Millisecond):
+	}
+	if got := s.Status().LastOutcome; got != "already_sent" {
+		t.Errorf("LastOutcome = %q, want already_sent", got)
+	}
+}
+
+func TestSendNow_ErrorsWhenSMTPNotConfigured(t *testing.T) {
+	s := newTestScheduler(t, mailer.Config{}, 1, []string{"msp@liquidware.eu"})
+
+	if _, _, err := s.SendNow(context.Background()); err == nil {
+		t.Fatal("SendNow with no SMTP host configured: want error, got nil")
+	}
+}
+
+func TestSendNow_ErrorsWhenNoRecipients(t *testing.T) {
+	srv := startFakeSMTPServer(t)
+	s := newTestScheduler(t, srv.smtpConfig(t), 1, nil)
+
+	if _, _, err := s.SendNow(context.Background()); err == nil {
+		t.Fatal("SendNow with no recipients configured: want error, got nil")
+	}
+
+	select {
+	case body := <-srv.got:
+		t.Fatalf("SendNow sent a message with no recipients configured:\n%s", body)
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
 func TestPreviousMonth_HandlesJanuaryRollover(t *testing.T) {
 	year, month := previousMonth(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 	if year != 2025 || month != 12 {

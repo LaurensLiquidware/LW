@@ -84,6 +84,14 @@
             <span class="lwl-micro">{{ 'settings.reportEmailDay' | transloco }}</span>
             <p-inputnumber formControlName="reportEmailDay" [min]="1" [max]="28" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
           </label>
+          <div class="flex justify-end">
+            <p-button type="button" severity="secondary" [outlined]="true" [label]="'settings.sendReportNow' | transloco" [loading]="sendingReportNow()" (onClick)="confirmSendReportNow()" />
+          </div>
+          @if (sendReportNowResult() === 'ok') {
+            <p-message severity="success" styleClass="w-full">{{ 'settings.sendReportNowOk' | transloco }}</p-message>
+          } @else if (sendReportNowResult() === 'error') {
+            <p-message severity="error" styleClass="w-full">{{ 'settings.sendReportNowError' | transloco }}</p-message>
+          }
         </div>
       </p-card>
 
@@ -169,5 +177,7 @@
         </div>
       </div>
     </p-card>
+
+    <p-confirmdialog />
   }
 </div>

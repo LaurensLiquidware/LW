@@ -338,6 +338,14 @@ the feature entirely — nothing is scheduled or sent — and turning it on
 from the Settings screen takes effect on the very next check, no
 restart.
 
+The Settings screen's **Send Now** button sends that same last-month
+report immediately, without waiting for the send day — useful to verify
+SMTP and recipients are actually working, or to send the report early.
+It asks for confirmation first, since (unlike Send Test Email) it emails
+every configured recipient, not just an address typed in for a test, and
+it counts as that month's send — the automatic scheduled send won't
+duplicate it later in the month.
+
 ## About screen
 
 Reachable from the nav — opens as a popup rather than navigating away,

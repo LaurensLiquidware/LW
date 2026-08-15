@@ -218,6 +218,23 @@ func applyLive(deps SettingsDeps, s settings.Settings) {
 	}, s.ReportRecipients, s.ReportEmailDay, loc)
 }
 
+// SendReportNowHandler triggers an immediate send of last calendar
+// month's portfolio report email, bypassing the scheduled send day --
+// the Settings screen's "Send Now" button. Both of SendNow's failure
+// modes (SMTP not configured, no recipients) are configuration problems
+// the operator needs to fix on this same screen, so both surface as 400
+// with SendNow's own descriptive message.
+func SendReportNowHandler(deps SettingsDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		year, month, err := deps.ReportMail.SendNow(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]int{"year": year, "month": month})
+	}
+}
+
 // tlsCertUploadRequest is the POST /api/settings/tls-cert request body:
 // a PEM-encoded certificate and matching private key, pasted or read
 // from a local file by the browser before submitting.
