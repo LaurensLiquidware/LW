@@ -876,4 +876,30 @@ text next to it.
 - Window height bumped slightly (260px) to fit the new logo and link
   rows without cramping.
 
+Post-Phase-8 follow-up: Settings screen SMTP fixes.
+
+- Saving SMTP settings silently appeared to do nothing while "Send Test
+  Email" worked with the identical values. Root cause: once an SMTP
+  host is set, `internal/settings.Settings.Validate()` requires a From
+  address and at least one report recipient before it will persist
+  anything, rejecting the PUT with a 400 and its reason in the response
+  body — but the Settings screen's `save()` discarded that body and
+  always showed the generic "Could not save settings.", so an operator
+  who filled in just the relay fields had no way to know why the save
+  was rejected (the DB row was untouched, which is why the fields
+  looked "reverted" after a reload). The test-email endpoint has no
+  such validation, which is why it always worked regardless.
+  - The Settings form now carries the same cross-field rule
+    client-side: the Save button disables and an inline hint appears
+    under the From Address / Recipients fields the moment an SMTP host
+    is set without them, instead of a rejected round trip.
+  - On a 400 response, the real backend message is now shown verbatim
+    in the error banner instead of the generic fallback.
+- Added a Port dropdown (25 / 465 / 587) in place of the free-text
+  number field, and picking a Security mode now sets the conventional
+  port for it (`starttls` → 587, `tls` → 465, `none` → 25) — the port
+  stays editable afterward for a relay using something else, and a
+  previously-saved non-standard port is kept as an extra option rather
+  than silently replaced.
+
 No further phases remain beyond Phase 8.

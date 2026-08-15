@@ -1,5 +1,6 @@
 import { Component, OnInit, WritableSignal, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
+import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { TranslocoModule } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -37,6 +38,30 @@ function buildTimezoneOptions(): string[] {
   return Array.from(zones).sort();
 }
 
+/** Mirrors internal/settings.Settings.Validate's SMTP cross-field rule
+ * exactly, so an operator sees why Save is disabled before submitting
+ * instead of getting a 400 back after the fact: once an SMTP host is
+ * set, a From address and at least one report recipient become
+ * required; with no host, neither may be set either. */
+function smtpCrossFieldValidator(): ValidatorFn {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const host: string = group.get('smtpHost')?.value ?? '';
+    const from: string = group.get('smtpFrom')?.value ?? '';
+    const recipients: string = group.get('reportRecipients')?.value ?? '';
+    if (host !== '') {
+      if (from === '') {
+        return { smtpFromRequired: true };
+      }
+      if (recipients.trim() === '') {
+        return { reportRecipientsRequired: true };
+      }
+    } else if (from !== '' || recipients.trim() !== '') {
+      return { smtpHostRequired: true };
+    }
+    return null;
+  };
+}
+
 /**
  * Everything on this screen is optional to fill in at bootstrap time
  * (see PUMC_* in .env.example) and safe to change here afterward — SMTP/
@@ -72,6 +97,35 @@ export class SettingsComponent implements OnInit {
     { label: 'none', value: 'none' },
   ];
 
+  /** The conventional port for each security mode -- selecting a
+   * security mode patches the port to match, since that's what almost
+   * every SMTP relay actually expects; the port field stays editable
+   * afterward for the rare relay that uses something else. */
+  private readonly defaultPortForSecurity: Record<'starttls' | 'tls' | 'none', number> = {
+    starttls: 587,
+    tls: 465,
+    none: 25,
+  };
+
+  private static readonly STANDARD_SMTP_PORTS = [25, 465, 587];
+
+  /** The dropdown's option list -- normally just the three standard
+   * ports, but widened to also include whatever port is currently
+   * loaded/typed if it's a non-standard one, so an existing custom
+   * port never silently vanishes from the list. */
+  readonly smtpPortOptions = signal(SettingsComponent.STANDARD_SMTP_PORTS.map((port) => ({ label: String(port), value: port })));
+
+  private ensureSmtpPortOption(port: number): void {
+    if (SettingsComponent.STANDARD_SMTP_PORTS.includes(port)) {
+      return;
+    }
+    this.smtpPortOptions.update((options) =>
+      options.some((o) => o.value === port)
+        ? options
+        : [...options, { label: String(port), value: port }].sort((a, b) => a.value - b.value),
+    );
+  }
+
   /** Every IANA timezone name the browser's ICU data knows about (~400
    * entries), so the Timezone field is a real dropdown instead of a
    * free-text box an operator could mistype. Falls back to a short
@@ -89,6 +143,9 @@ export class SettingsComponent implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly saveError = signal<string | null>(null);
+  /** Whether saveError holds a raw backend message (already in English,
+   * shown as-is) rather than a transloco key. */
+  readonly saveErrorIsRaw = signal(false);
   readonly saveOk = signal(false);
   readonly current = signal<Settings | null>(null);
 
@@ -116,7 +173,7 @@ export class SettingsComponent implements OnInit {
     collectionTenantTimeoutSeconds: [30, [Validators.min(1)]],
     sessionIdleTimeoutMinutes: [30, [Validators.min(1)]],
     sessionAbsoluteTimeoutHours: [12, [Validators.min(1)]],
-  });
+  }, { validators: smtpCrossFieldValidator() });
 
   get existingSmtpPasswordSet(): boolean {
     return this.current()?.smtpPasswordSet ?? false;
@@ -138,6 +195,15 @@ export class SettingsComponent implements OnInit {
     }
   }
 
+  /** Fires only on the operator actually picking a security mode (not on
+   * a programmatic reset/patch, since PrimeNG's onChange only reflects
+   * real user interaction) -- sets the port to that mode's conventional
+   * default. The port field stays a normal control afterward, so it can
+   * still be overridden for a relay that uses a non-standard port. */
+  onSecurityChange(event: { value: 'starttls' | 'tls' | 'none' }): void {
+    this.form.patchValue({ smtpPort: this.defaultPortForSecurity[event.value] });
+  }
+
   async ngOnInit(): Promise<void> {
     await this.reload();
   }
@@ -147,6 +213,7 @@ export class SettingsComponent implements OnInit {
     try {
       const s = await this.settingsService.get();
       this.current.set(s);
+      this.ensureSmtpPortOption(s.smtpPort);
       this.form.reset({
         smtpHost: s.smtpHost,
         smtpPort: s.smtpPort,
@@ -200,8 +267,19 @@ export class SettingsComponent implements OnInit {
       this.current.set(updated);
       this.form.patchValue({ smtpPassword: '' });
       this.saveOk.set(true);
-    } catch {
-      this.saveError.set('settings.saveError');
+    } catch (err) {
+      // A 400 here is Settings.Validate() rejecting the payload (see
+      // internal/settings/settings.go) -- its message says exactly what's
+      // wrong (e.g. a missing From address), so show it verbatim instead
+      // of a generic "could not save" that leaves the operator guessing.
+      const detail = err instanceof HttpErrorResponse && err.status === 400 && typeof err.error === 'string' ? err.error.trim() : '';
+      if (detail) {
+        this.saveError.set(detail);
+        this.saveErrorIsRaw.set(true);
+      } else {
+        this.saveError.set('settings.saveError');
+        this.saveErrorIsRaw.set(false);
+      }
     } finally {
       this.saving.set(false);
     }

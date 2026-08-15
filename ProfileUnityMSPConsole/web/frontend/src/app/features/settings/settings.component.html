@@ -6,7 +6,7 @@
   } @else {
     <form [formGroup]="form" (ngSubmit)="save()" class="flex flex-col gap-4">
       @if (saveError()) {
-        <p-message severity="error" styleClass="w-full">{{ saveError()! | transloco }}</p-message>
+        <p-message severity="error" styleClass="w-full">{{ saveErrorIsRaw() ? saveError()! : (saveError()! | transloco) }}</p-message>
       }
       @if (saveOk()) {
         <p-message severity="success" styleClass="w-full">{{ 'settings.saved' | transloco }}</p-message>
@@ -21,13 +21,16 @@
             </label>
             <label class="flex flex-col gap-1" style="width: 8rem;">
               <span class="lwl-micro">{{ 'settings.smtpPort' | transloco }}</span>
-              <p-inputnumber formControlName="smtpPort" [useGrouping]="false" styleClass="w-full" inputStyleClass="w-full" />
+              <p-select formControlName="smtpPort" [options]="smtpPortOptions()" optionLabel="label" optionValue="value" styleClass="w-full" />
             </label>
             <label class="flex flex-col gap-1" style="width: 14rem;">
               <span class="lwl-micro">{{ 'settings.smtpSecurity' | transloco }}</span>
-              <p-select formControlName="smtpSecurity" [options]="securityOptions" optionLabel="label" optionValue="value" styleClass="w-full" />
+              <p-select formControlName="smtpSecurity" [options]="securityOptions" optionLabel="label" optionValue="value" styleClass="w-full" (onChange)="onSecurityChange($event)" />
             </label>
           </div>
+          @if (form.errors?.['smtpHostRequired']) {
+            <p-message severity="warn" styleClass="w-full">{{ 'settings.smtpHostRequiredHint' | transloco }}</p-message>
+          }
 
           <div class="flex flex-wrap items-start gap-3">
             <label class="flex flex-1 flex-col gap-1">
@@ -48,6 +51,9 @@
           <label class="flex flex-col gap-1">
             <span class="lwl-micro">{{ 'settings.smtpFrom' | transloco }}</span>
             <input pInputText formControlName="smtpFrom" placeholder="reports@example.com" />
+            @if (form.errors?.['smtpFromRequired']) {
+              <span class="lwl-micro" style="color: var(--color-danger, #dc2626);">{{ 'settings.smtpFromRequiredHint' | transloco }}</span>
+            }
           </label>
 
           <div class="flex flex-wrap items-end gap-3">
@@ -70,6 +76,9 @@
           <label class="flex flex-col gap-1">
             <span class="lwl-micro">{{ 'settings.reportRecipients' | transloco }} — {{ 'settings.reportRecipientsHint' | transloco }}</span>
             <input pInputText formControlName="reportRecipients" placeholder="msp@liquidware.eu" />
+            @if (form.errors?.['reportRecipientsRequired']) {
+              <span class="lwl-micro" style="color: var(--color-danger, #dc2626);">{{ 'settings.reportRecipientsRequiredHint' | transloco }}</span>
+            }
           </label>
           <label class="flex flex-col gap-1" style="width: 14rem;">
             <span class="lwl-micro">{{ 'settings.reportEmailDay' | transloco }}</span>
