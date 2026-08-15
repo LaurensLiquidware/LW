@@ -846,4 +846,23 @@ factor set. Fixed by explicitly sizing the window
 (`mw.SetSize(walk.Size{Width: 420, Height: 210})`) to fit its actual
 content.
 
+Post-Phase-8 follow-up: the tray launcher now shows the actual
+Liquidware wordmark and a clickable link straight to the console.
+
+- The window previously only had the hex-drop mark as its title-bar
+  icon and a plain text title — added the real Liquidware wordmark
+  (rasterized from the same `web/frontend/src/assets/images/logo-primary.svg`
+  the login screen uses, embedded as a PNG) above the title text.
+- Added a clickable link (`https://<host>:<port>`, resolved from
+  `PUMC_HTTP_ADDR`/`.env` the same way the log viewer resolves its log
+  file) that opens the console directly in the default browser —
+  `PUMC_HTTP_ADDR`'s default host, `0.0.0.0` (all interfaces), isn't
+  itself browsable, so that (and an empty host) is shown/opened as
+  `localhost` instead, which is always correct from the same machine
+  the launcher runs on.
+- New shared `config.DefaultHTTPAddr` constant (mirroring
+  `DefaultLogFile`) so this doesn't duplicate the literal.
+- Window height bumped slightly (260px) to fit the new logo and link
+  rows without cramping.
+
 No further phases remain beyond Phase 8.

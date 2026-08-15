@@ -10,8 +10,10 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,6 +29,9 @@ import (
 //go:embed icon.ico
 var iconBytes []byte
 
+//go:embed logo.png
+var logoBytes []byte
+
 const (
 	appTitle            = "ProfileUnity MSP Licensing Console"
 	serverExeName       = "profileunity-msp-console-server.exe"
@@ -39,7 +44,9 @@ const (
 type app struct {
 	installDir string
 	serverPath string
+	serverURL  string
 	icon       *walk.Icon
+	logo       *walk.Bitmap
 
 	mw         *walk.MainWindow
 	statusText *walk.TextLabel
@@ -81,12 +88,18 @@ func main() {
 	a := &app{
 		installDir: installDir,
 		serverPath: filepath.Join(installDir, serverExeName),
+		serverURL:  resolveServerURL(installDir),
 	}
 
 	if icon, err := loadEmbeddedIcon(); err != nil {
 		warnDialog("load icon", err)
 	} else {
 		a.icon = icon
+	}
+	if logo, err := loadEmbeddedLogo(); err != nil {
+		warnDialog("load logo", err)
+	} else {
+		a.logo = logo
 	}
 
 	if err := a.buildMainWindow(); err != nil {
@@ -149,6 +162,18 @@ func loadEmbeddedIcon() (*walk.Icon, error) {
 	return walk.NewIconFromFile(path)
 }
 
+// loadEmbeddedLogo decodes the embedded Liquidware wordmark PNG and
+// wraps it as a walk.Bitmap for display in an ImageView -- unlike the
+// icon, walk can build a Bitmap directly from a decoded image.Image, no
+// temp file needed.
+func loadEmbeddedLogo() (*walk.Bitmap, error) {
+	img, err := png.Decode(bytes.NewReader(logoBytes))
+	if err != nil {
+		return nil, err
+	}
+	return walk.NewBitmapFromImage(img)
+}
+
 func (a *app) buildMainWindow() error {
 	mw, err := walk.NewMainWindow()
 	if err != nil {
@@ -160,14 +185,24 @@ func (a *app) buildMainWindow() error {
 		mw.SetIcon(a.icon)
 	}
 	mw.SetLayout(walk.NewVBoxLayout())
-	mw.SetMinMaxSize(walk.Size{Width: 360, Height: 180}, walk.Size{})
+	mw.SetMinMaxSize(walk.Size{Width: 360, Height: 220}, walk.Size{})
 	// walk.MainWindow has no "size to content" default -- without an
 	// explicit initial size it opens at whatever default is much larger
 	// than this window needs, and VBoxLayout spreads the leftover space
 	// evenly across every child since none of them set a stretch factor
 	// (hence big gaps between the title/status/buttons instead of a
 	// snug window).
-	mw.SetSize(walk.Size{Width: 420, Height: 210})
+	mw.SetSize(walk.Size{Width: 420, Height: 260})
+
+	if a.logo != nil {
+		logoView, err := walk.NewImageView(mw)
+		if err != nil {
+			return err
+		}
+		if err := logoView.SetImage(a.logo); err != nil {
+			return err
+		}
+	}
 
 	titleLabel, err := walk.NewTextLabel(mw)
 	if err != nil {
@@ -179,6 +214,15 @@ func (a *app) buildMainWindow() error {
 	if err != nil {
 		return err
 	}
+
+	serverLink, err := walk.NewLinkLabel(mw)
+	if err != nil {
+		return err
+	}
+	serverLink.SetText(fmt.Sprintf(`<a href="%s">%s</a>`, a.serverURL, a.serverURL))
+	serverLink.LinkActivated().Attach(func(link *walk.LinkLabelLink) {
+		openInBrowser(link.URL())
+	})
 
 	buttonRow, err := walk.NewComposite(mw)
 	if err != nil {
@@ -271,6 +315,13 @@ func (a *app) buildNotifyIcon() error {
 	}
 
 	return ni.SetVisible(true)
+}
+
+// openInBrowser launches url in the user's default browser via the
+// standard Windows technique for a GUI app that isn't itself a shell
+// association handler.
+func openInBrowser(url string) {
+	exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 }
 
 func (a *app) showWindow() {

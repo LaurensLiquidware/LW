@@ -94,8 +94,9 @@ The Windows zip contains two executables:
 
 - **`profileunity-msp-console.exe`** — a small tray launcher. This is
   what you double-click. It starts `profileunity-msp-console-server.exe`
-  as a background process, shows Start/Stop/Restart buttons and a
-  status indicator, and collapses to a system tray icon while running —
+  as a background process, shows Start/Stop/Restart buttons, a status
+  indicator, and a clickable link straight to the console in your
+  browser, and collapses to a system tray icon while running —
   click the tray icon (or the window's [x] button) to hide it, right-click
   the tray icon for a menu (Show, Start, Stop, Restart, Show Log, Exit).
   **Show Log** opens a window that live-tails the server's log file as

@@ -169,7 +169,7 @@ var validSMTPSecurity = map[string]bool{"starttls": true, "tls": true, "none": t
 func Load() (Config, error) {
 	environment := firstNonEmpty(os.Getenv(envEnvironment), "development")
 	cfg := Config{
-		HTTPAddr:           firstNonEmpty(os.Getenv(envHTTPAddr), "0.0.0.0:8443"),
+		HTTPAddr:           firstNonEmpty(os.Getenv(envHTTPAddr), DefaultHTTPAddr),
 		Environment:        environment,
 		DBDriver:           firstNonEmpty(os.Getenv(envDBDriver), "sqlite"),
 		DBDSN:              firstNonEmpty(os.Getenv(envDBDSN), "./profileunity-msp-console.db"),
@@ -341,6 +341,12 @@ const (
 // file for its "Show Log" viewer without importing the full config
 // loader) can resolve the same default without duplicating the literal.
 const DefaultLogFile = "./profileunity-msp-console.log"
+
+// DefaultHTTPAddr is HTTPAddr's default when PUMC_HTTP_ADDR is unset.
+// Exported for the same reason as DefaultLogFile -- cmd/tray resolves
+// the console's own URL for its clickable link without duplicating
+// this literal.
+const DefaultHTTPAddr = "0.0.0.0:8443"
 
 // defaultBootstrapAdmin applies the built-in default only when *both*
 // raw env values are empty, so setting exactly one still falls through
