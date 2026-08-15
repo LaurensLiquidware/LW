@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.3 — unreleased
+
+- **Monthly report PDF**: relabeled "Maximum users at month end:" to
+  "Maximum users:" (tenant section) and "Total maximum users at month
+  end:" to "Total maximum users:" (portfolio summary), matching how
+  the Reports screen already displays this field ("Maximum Users",
+  no "at month end" suffix). The underlying data/field names are
+  unchanged — display text only.
+
 ## 0.2.2 — unreleased
 
 - **Login screen**: made the sign-in card more compact — narrower
