@@ -135,6 +135,13 @@ func fmtAvg(v *float64) string {
 	return fmt.Sprintf("%.1f", *v)
 }
 
+func fmtProduct(v string) string {
+	if v == "" {
+		return "unknown"
+	}
+	return v
+}
+
 func newReportPDF(title string) *fpdf.Fpdf {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.AddUTF8FontFromBytes(reportFontFamily, "", dejaVuSansRegular)
@@ -175,6 +182,7 @@ func writeTenantReportBody(pdf *fpdf.Fpdf, r dashboard.TenantMonthlyReport) {
 	writeStatLine(pdf, "Average used licenses:", fmtAvg(r.AverageUsed))
 	writeStatLine(pdf, "Entitled at month end:", fmtInt(r.EntitledAtMonthEnd))
 	writeStatLine(pdf, "Maximum users at month end:", fmtInt(r.MaximumUsersAtMonthEnd))
+	writeStatLine(pdf, "Product:", fmtProduct(r.LicenseProductAtMonthEnd))
 	pdf.Ln(2)
 
 	if len(r.EntitlementChanges) == 0 {

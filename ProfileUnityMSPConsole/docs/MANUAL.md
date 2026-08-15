@@ -265,8 +265,11 @@ filterable, showing:
 - **Data**: whether the figures above can currently be trusted — see
   [Understanding the status language](#understanding-the-status-language)
   below; this is the single most important column on the screen.
-- **License Mode**, **Console Version**, **Last Successful Collection**:
-  reported as-is from the tenant's most recent successful poll.
+- **License Mode**, **Product**, **Console Version**, **Last Successful
+  Collection**: reported as-is from the tenant's most recent successful
+  poll. Product is ProfileUnity's own license product name (e.g.
+  "ProU+FlexApp") — useful when an MSP's tenants are licensed under
+  different ProfileUnity products.
 
 Use the search box to filter by display name, hostname, license mode, or
 license product; click a column header to sort by it.
@@ -338,11 +341,12 @@ Every report leads with an explicit **coverage** badge:
   the numeric figures shown alongside this badge aren't meaningful.
 
 Below the coverage badge: days collected vs. days in the month, peak and
-average used-license count, entitled-license count as of month end, and
-a list of any entitlement changes detected during that month. The
-portfolio view additionally breaks down coverage and figures per tenant
-in a table, so you can see at a glance which customers had a clean month
-and which didn't.
+average used-license count, entitled-license count as of month end, the
+ProfileUnity license product as of month end, and a list of any
+entitlement changes detected during that month. The portfolio view
+additionally breaks down coverage and figures per tenant in a table, so
+you can see at a glance which customers had a clean month and which
+didn't.
 
 ### Automatic monthly report emails
 

@@ -465,6 +465,7 @@ func TestNewRouter_TenantMonthlyReportEndpoint(t *testing.T) {
 	if _, err := deps.dashboard.Repos.Snapshots.Upsert(t.Context(), snapshot.Snapshot{
 		TenantID: tn.ID, CollectionDate: "2026-08-14", CollectedAtUTC: time.Now().UTC(),
 		Status: snapshot.StatusSuccess, TotalLicenses: intPtrTest(5), UsedLicenses: intPtrTest(1),
+		LicenseProduct: "ProU+FlexApp",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -478,6 +479,9 @@ func TestNewRouter_TenantMonthlyReportEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"daysCollected":1`) {
 		t.Errorf("expected daysCollected=1 in the response, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"licenseProductAtMonthEnd":"ProU+FlexApp"`) {
+		t.Errorf("expected licenseProductAtMonthEnd in the response, got %s", rec.Body.String())
 	}
 }
 

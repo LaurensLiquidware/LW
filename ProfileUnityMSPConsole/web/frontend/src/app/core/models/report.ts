@@ -17,6 +17,7 @@ export interface TenantMonthlyReport {
   averageUsed: number | null;
   entitledAtMonthEnd: number | null;
   maximumUsersAtMonthEnd: number | null;
+  licenseProductAtMonthEnd?: string;
   entitlementChanges: EntitlementChange[];
 }
 

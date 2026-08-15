@@ -60,6 +60,12 @@ type TenantMonthlyReport struct {
 	// nil if there was none.
 	MaximumUsersAtMonthEnd *int
 
+	// LicenseProductAtMonthEnd is LicenseProduct from the last successful
+	// collection in the month, "" if there was none -- same "last known
+	// value this month" convention as EntitledAtMonthEnd/
+	// MaximumUsersAtMonthEnd.
+	LicenseProductAtMonthEnd string
+
 	EntitlementChanges []EntitlementChange
 }
 
@@ -102,6 +108,9 @@ func BuildTenantMonthlyReport(t tenant.Tenant, year, month, daysInMonth int, mon
 		if s.TotalLicenses != nil {
 			v := *s.TotalLicenses
 			r.MaximumUsersAtMonthEnd = &v
+		}
+		if s.LicenseProduct != "" {
+			r.LicenseProductAtMonthEnd = s.LicenseProduct
 		}
 	}
 	r.DaysNeverAttempted = daysInMonth - r.DaysCollected - r.DaysFailed

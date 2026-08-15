@@ -33,6 +33,7 @@
         <th pSortableColumn="expiryRunwayDays">{{ 'dashboard.runway' | transloco }} <p-sortIcon field="expiryRunwayDays" /></th>
         <th>{{ 'dashboard.data' | transloco }}</th>
         <th>{{ 'dashboard.licenseMode' | transloco }}</th>
+        <th>{{ 'dashboard.licenseProduct' | transloco }}</th>
         <th>{{ 'dashboard.consoleVersion' | transloco }}</th>
         <th pSortableColumn="lastSuccessAtUtc">{{ 'dashboard.lastSuccess' | transloco }} <p-sortIcon field="lastSuccessAtUtc" /></th>
       </tr>
@@ -46,13 +47,14 @@
         <td class="lwl-cell">{{ row.expiryRunwayDays !== null ? row.expiryRunwayDays : '—' }}</td>
         <td><app-status-badge kind="data" [value]="row.dataStatus" /></td>
         <td class="lwl-cell">{{ row.licenseMode || '—' }}</td>
+        <td class="lwl-cell">{{ row.licenseProduct || '—' }}</td>
         <td class="lwl-cell">{{ row.consoleVersion || '—' }}</td>
         <td class="lwl-micro">{{ row.lastSuccessAtUtc || '—' }}</td>
       </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="9" class="lwl-muted text-center">{{ 'dashboard.noTenants' | transloco }}</td>
+        <td colspan="10" class="lwl-muted text-center">{{ 'dashboard.noTenants' | transloco }}</td>
       </tr>
     </ng-template>
   </p-table>

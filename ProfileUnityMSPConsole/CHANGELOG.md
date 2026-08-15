@@ -1,6 +1,35 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.2.0 — unreleased
+
+Surfaces ProfileUnity's own license **Product** name (e.g.
+"ProU+FlexApp") everywhere License Mode is already shown — it was
+already being collected and stored on every poll, and the Dashboard API
+was already returning it, but nothing displayed it.
+
+- **Dashboard**: added a **Product** column right next to License Mode.
+  The API (`/api/dashboard`) already returned `licenseProduct` and the
+  search box already filtered by it — this was a pure UI gap, and also
+  fixes a pre-existing mismatch where the manual described the search
+  box as filtering by license product with no column to show what
+  matched.
+- **Monthly Reports (JSON + PDF, tenant and portfolio)**: added
+  `licenseProductAtMonthEnd` — the license product as of the last
+  successful collection in the reporting month, using the same "last
+  known value this month" convention as `entitledAtMonthEnd`/
+  `maximumUsersAtMonthEnd`. This was a genuine gap: report data never
+  carried it at all. Shows as a metric tile on the tenant report view, a
+  column in the portfolio's per-tenant detail table, and a line in both
+  PDF exports (which the portfolio PDF picks up automatically, since it
+  reuses the same per-tenant rendering).
+- No database migration needed — `license_product` has been a stored
+  snapshot column since Phase 3; this only threads an already-collected
+  value through to two more places it wasn't reaching yet.
+- Verified end-to-end against the built server: a snapshot with a real
+  `LicenseProduct` value shows up correctly in the Dashboard column, the
+  tenant/portfolio report JSON, and both PDF exports.
+
+## 0.1.0
 
 Phase 1 (Skeleton) of the build plan:
 
