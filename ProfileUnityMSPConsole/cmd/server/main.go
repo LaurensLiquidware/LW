@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // embed the IANA zone database so time.LoadLocation works without OS-provided zoneinfo (notably on Windows)
 
 	"profileunity-msp-console/internal/auth"
 	"profileunity-msp-console/internal/config"

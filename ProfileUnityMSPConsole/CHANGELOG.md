@@ -685,4 +685,24 @@ number; added "Maximum Users" alongside it.
   per-tenant portfolio table) in both languages.
 - Updated `dashboard` unit tests for the corrected values.
 
+Post-Phase-8 follow-up: fixed "Could not save settings" when picking a
+non-UTC Timezone on Windows.
+
+- Root cause: `Settings.Validate()` calls `time.LoadLocation` to check
+  the Timezone field, which resolves IANA zone names by reading
+  zoneinfo files from the OS (`/usr/share/zoneinfo` on Linux, or a
+  `ZONEINFO`/`%GOROOT%` lookup on Windows) — a plain Windows deployment
+  has none of these, so anything other than `"UTC"` failed to resolve
+  and the save was rejected with a 400, surfaced to the operator as
+  "Could not save settings." This was invisible before the Timezone
+  field became a real dropdown (today's earlier follow-ups): as a
+  free-text input defaulting to the `UTC` placeholder, nobody had
+  reason to type a different zone, so the gap never got exercised on a
+  real Windows install.
+- Fixed by blank-importing `time/tzdata` in `cmd/server/main.go`, which
+  embeds the full IANA zone database directly in the compiled binary —
+  `time.LoadLocation` now works the same on Windows, a minimal Linux
+  container, or anywhere else, independent of what the host OS has
+  installed.
+
 No further phases remain beyond Phase 8.
