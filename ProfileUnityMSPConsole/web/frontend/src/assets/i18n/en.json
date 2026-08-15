@@ -1,0 +1,222 @@
+{
+  "app": {
+    "title": "ProfileUnity MSP Licensing Console"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tenants": "Tenants",
+    "history": "History",
+    "reports": "Reports",
+    "settings": "Settings",
+    "users": "Users",
+    "about": "About"
+  },
+  "login": {
+    "heading": "Sign In",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign In",
+    "invalidCredentials": "Incorrect Username or Password",
+    "genericError": "An error has occurred",
+    "sessionExpired": "Your session has expired. Sign in again.",
+    "togglePassword": "Toggle Password Visibility"
+  },
+  "header": {
+    "signOut": "Sign Out",
+    "language": "Language",
+    "changePassword": "Change Password"
+  },
+  "comingSoon": {
+    "message": "Coming Soon"
+  },
+  "about": {
+    "heading": "About",
+    "version": "Version",
+    "notice": "This is a Liquidware Sparks Tool — a community/field-contributed utility, not a Liquidware commercial product. It is provided outside Liquidware's standard product development lifecycle, \"AS IS\" with no warranty, support, or maintenance, and used at your own risk.",
+    "licenseLink": "Sparks Tool License and Disclaimer (Spark_License.pdf)",
+    "sbomLink": "Software Bill of Materials (bom.cdx.json)",
+    "sbomDescription": "A CycloneDX 1.6 inventory of third-party components, provided so your security team can review it against your own policy.",
+    "developer": "Developed by Laurens van Duijn"
+  },
+  "tenants": {
+    "addTenant": "Add Tenant",
+    "editTenant": "Edit Tenant",
+    "displayName": "Display Name",
+    "hostname": "Hostname",
+    "port": "Port",
+    "username": "Username",
+    "password": "Password",
+    "passwordUnchangedHint": "leave blank to keep the stored password",
+    "tlsSkipVerify": "Skip TLS Certificate Verification",
+    "tlsSkipVerifyWarning": "Only disable certificate verification for consoles you trust on a private network. This is a deliberate compromise, not a default.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "tags": "Tags",
+    "tagsHint": "comma-separated",
+    "notes": "Notes",
+    "testConnection": "Test Connection",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete Tenant",
+    "deleteConfirmMessage": "Delete {{displayName}}? This also deletes its collection history. This cannot be undone.",
+    "noTenants": "No Tenants Registered Yet",
+    "saveError": "Could Not Save Tenant"
+  },
+  "dashboard": {
+    "search": "Search Tenants",
+    "usage": "Usage",
+    "utilization": "Utilization",
+    "expiry": "Expiry",
+    "runway": "Days Left",
+    "data": "Data",
+    "licenseMode": "License Mode",
+    "consoleVersion": "Console Version",
+    "lastSuccess": "Last Successful Collection",
+    "noTenants": "No Tenants Registered Yet",
+    "collectNow": "Collect Now",
+    "collectNowError": "Collection failed to run. Check the server logs for details."
+  },
+  "history": {
+    "perTenant": "Per Tenant",
+    "portfolio": "Portfolio",
+    "selectTenant": "Select a Tenant",
+    "loading": "Loading…",
+    "noData": "No Collection History Yet",
+    "used": "Used",
+    "entitled": "Entitled",
+    "totalUsed": "Total Used",
+    "totalEntitled": "Total Entitled",
+    "entitlementChanges": "Entitlement Changes"
+  },
+  "alerts": {
+    "title": "Alerts",
+    "none": "No alerts right now.",
+    "reason": {
+      "usage_poor": "At/over license limit",
+      "expiry_expired": "Support expired",
+      "expiry_expiring_soon": "Support expiring soon",
+      "data_not_ok": "Data cannot be trusted"
+    }
+  },
+  "reports": {
+    "perTenant": "Per Tenant",
+    "portfolio": "Portfolio",
+    "selectTenant": "Select a Tenant",
+    "selectMonth": "Select a Month",
+    "loading": "Loading…",
+    "noData": "No Data For This Month",
+    "downloadPdf": "Download PDF",
+    "coverage": "Data Coverage",
+    "daysCollected": "Days Collected",
+    "daysFailed": "Days Failed",
+    "daysNeverAttempted": "Days Never Attempted",
+    "peakUsed": "Peak Used",
+    "averageUsed": "Average Used",
+    "entitledAtMonthEnd": "Entitled At Month End",
+    "maximumUsersAtMonthEnd": "Maximum Users",
+    "entitlementChanges": "Entitlement Changes",
+    "noEntitlementChanges": "No entitlement changes this month.",
+    "tenantsRegistered": "Tenants Registered",
+    "perTenantDetail": "Per-Tenant Detail"
+  },
+  "status": {
+    "usage": {
+      "good": "Good",
+      "fair": "Fair",
+      "poor": "Poor",
+      "unknown": "Unknown"
+    },
+    "expiry": {
+      "ok": "OK",
+      "expiring_soon": "Expiring Soon",
+      "expired": "Expired",
+      "unknown": "Unknown"
+    },
+    "data": {
+      "ok": "Current",
+      "stale": "Stale",
+      "failing": "Collection Failing",
+      "never_collected": "Never Collected"
+    },
+    "coverage": {
+      "complete": "Complete",
+      "partial": "Partial",
+      "none": "No Data"
+    }
+  },
+  "settings": {
+    "loading": "Loading…",
+    "saved": "Settings saved.",
+    "saveError": "Could not save settings.",
+    "save": "Save",
+    "smtpHeading": "Email (SMTP)",
+    "smtpHost": "SMTP Host",
+    "smtpPort": "Port",
+    "smtpSecurity": "Security",
+    "smtpUsername": "Username",
+    "smtpPassword": "Password",
+    "smtpPasswordUnchangedHint": "leave blank to keep the stored password",
+    "smtpFrom": "From Address",
+    "smtpFromRequiredHint": "Required once an SMTP host is set.",
+    "smtpHostRequiredHint": "An SMTP host is required when a From address or report recipients are set.",
+    "testEmailTo": "Send a Test Email To",
+    "sendTestEmail": "Send Test Email",
+    "testEmailOk": "Test email sent.",
+    "testEmailError": "Could not send the test email. Check the settings above.",
+    "reportHeading": "Monthly Portfolio Report",
+    "reportRecipients": "Recipients",
+    "reportRecipientsHint": "comma-separated",
+    "reportRecipientsRequiredHint": "At least one recipient is required once an SMTP host is set.",
+    "reportEmailDay": "Send Day of Month",
+    "sendReportNow": "Send Now",
+    "sendReportNowConfirmTitle": "Send the Portfolio Report Now?",
+    "sendReportNowConfirmMessage": "This immediately emails last month's portfolio report to every recipient configured above.",
+    "sendReportNowOk": "Report sent.",
+    "sendReportNowError": "Could not send the report. Check the settings above and the server logs for details.",
+    "cancel": "Cancel",
+    "collectionHeading": "Collection",
+    "collectionInterval": "Interval (minutes)",
+    "collectionTimezone": "Timezone",
+    "collectionConcurrency": "Max Concurrent Tenants",
+    "collectionTenantTimeout": "Per-Tenant Timeout (seconds)",
+    "sessionHeading": "Operator Sessions",
+    "sessionIdleTimeout": "Idle Timeout (minutes)",
+    "sessionAbsoluteTimeout": "Absolute Timeout (hours)",
+    "tlsHeading": "TLS Certificate",
+    "tlsCertCurrent": "Current certificate",
+    "tlsCertSelfSigned": "self-signed",
+    "tlsCertExpires": "expires",
+    "tlsCertFile": "Certificate File (PEM)",
+    "tlsKeyFile": "Private Key File (PEM)",
+    "tlsUpload": "Upload and Activate",
+    "tlsCertUploadError": "Could not activate that certificate — check that the certificate and key are a matching PEM pair."
+  },
+  "changePassword": {
+    "title": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password (at least 12 characters)",
+    "confirmPassword": "Confirm New Password",
+    "save": "Save",
+    "cancel": "Cancel",
+    "mismatch": "New password and confirmation do not match.",
+    "wrongCurrent": "Current password is incorrect.",
+    "error": "Could not change password. Please try again."
+  },
+  "users": {
+    "addUser": "Add User",
+    "username": "Username",
+    "password": "Password",
+    "passwordHint": "at least 12 characters",
+    "role": "Role",
+    "createdAt": "Created",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete User",
+    "deleteConfirmMessage": "Delete {{username}}? They will no longer be able to sign in, and any active session of theirs ends immediately. This cannot be undone.",
+    "noUsers": "No Users Yet",
+    "saveError": "Could Not Create User",
+    "usernameTaken": "That username is already taken."
+  }
+}

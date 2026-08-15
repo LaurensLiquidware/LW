@@ -1,0 +1,36 @@
+/* "Fancy" nav buttons instead of plain text links: rounded, icon + label,
+   a hover state, and a stronger highlight when the route is active. Kept
+   here rather than in styles/tokens.css, which is copied verbatim from
+   the design-system reference and not a place for one-off component CSS. */
+.lwl-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: var(--radius-lg);
+  padding: 0.625rem 0.75rem;
+  color: var(--p-text-color);
+  text-decoration: none;
+  font-weight: var(--weight-medium);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.lwl-nav-item:hover {
+  background: var(--highlight);
+}
+
+.lwl-nav-item.active {
+  background: var(--highlight);
+  color: var(--p-primary-color);
+  font-weight: var(--weight-semibold);
+}
+
+.lwl-nav-item .pi {
+  font-size: 1.1rem;
+}

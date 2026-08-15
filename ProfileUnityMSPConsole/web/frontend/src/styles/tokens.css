@@ -1,0 +1,222 @@
+/* ============================================================================
+   Liquidware design tokens, copied verbatim from the style-guide bundle's
+   colors_and_type.css (docs/design-system-reference/liquidware-ui/), minus
+   the @font-face rules (see fonts.css) and with paths adjusted for this
+   app's asset layout. Values are not invented or approximated — see the
+   project brief §8: "Use the tokens as given — do not invent or
+   approximate brand colours."
+   ============================================================================ */
+
+:root {
+  /* === Brand =============================================================== */
+  --lwl-flame: #03a9f4;          /* the droplet/flame accent in the wordmark */
+  --lwl-mark-circle: #0b72ba;    /* the circular app-icon background */
+  --lwl-wordmark-gray: #636466;  /* "Liquidware" wordmark on light bg */
+
+  /* === Primary (brand blue) scale ========================================= */
+  --p-primary-50:  #f2f8fc;
+  --p-primary-100: #c2ddef;
+  --p-primary-200: #91c2e2;
+  --p-primary-300: #61a8d5;
+  --p-primary-400: #308dc9;
+  --p-primary-500: #0072bc;   /* base brand blue */
+  --p-primary-600: #0061a0;   /* primary action color (light scheme) */
+  --p-primary-700: #005084;   /* hover */
+  --p-primary-800: #003f67;   /* active */
+  --p-primary-900: #002e4b;
+  --p-primary-950: #001d2f;   /* login page backdrop */
+
+  /* === Surface (neutral) scale = Tailwind "zinc" ========================== */
+  --p-surface-0:   #ffffff;
+  --p-surface-50:  #fafafa;
+  --p-surface-100: #f4f4f5;
+  --p-surface-200: #e4e4e7;
+  --p-surface-300: #d4d4d8;
+  --p-surface-400: #a1a1aa;
+  --p-surface-500: #71717a;
+  --p-surface-600: #52525b;
+  --p-surface-700: #3f3f46;
+  --p-surface-800: #27272a;
+  --p-surface-900: #18181b;
+  --p-surface-950: #09090b;
+
+  /* === Semantic status: Good / Fair / Poor (GFP) ========================== */
+  --good-color:        #16a34a;
+  --good-color-hover:  #15803d;
+  --good-chart-color:  #22c55e;
+  --fair-color:        #ca8a04;
+  --fair-color-hover:  #a16207;
+  --fair-chart-color:  #eab308;
+  --poor-color:        #dc2626;
+  --poor-color-hover:  #b91c1c;
+  --poor-chart-color:  #ef4444;
+
+  /* === Data-table heatmap cells =========================================== */
+  --cell-warn:   #FFFF99;
+  --cell-elev:   #FFCC66;
+  --cell-crit:   #ff6666;
+  --cell-good:   #01DF01;
+
+  /* === UX letter-grade scale ============================================== */
+  --grade-aplus: #00d000;
+  --grade-a:     #15c015;
+  --grade-aminus:#01DF01;
+  --grade-b:     #c8f000;
+  --grade-bplus: #FFFF99;
+  --grade-c:     #FFCC66;
+  --grade-d:     #ff9966;
+  --grade-f:     #ff6666;
+
+  /* === Links ============================================================== */
+  --link-color: var(--p-primary-500);
+  --link-color-dark: #4aa3e0;
+
+  /* === Semantic surface roles (light scheme = default) ==================== */
+  --p-content-background: var(--p-surface-50);
+  --p-card-background:    var(--p-surface-50);
+  --p-text-color:         var(--p-surface-800);
+  --p-text-hover-color:   var(--p-surface-900);
+  --p-text-muted-color:   var(--p-surface-500);
+  --p-text-hover-muted-color: var(--p-surface-600);
+  --p-primary-color:      var(--p-primary-600);
+  --p-primary-hover-color: var(--p-primary-700);
+  --p-primary-active-color: var(--p-primary-800);
+  --highlight:            #cdeefd;
+  --frame-border-color:   var(--p-surface-300);
+
+  /* === App chrome ========================================================= */
+  --header-height: 48px;
+  --header-bg: var(--p-primary-600);
+  --header-font-size: 16px;
+  --search-width: 40rem;
+
+  /* === Radii (PrimeNG borderRadius scale) ================================= */
+  --radius-none: 0;
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+
+  /* === Elevation / shadow ================================================= */
+  --box-shadow:
+    0 0 1px color-mix(in srgb, var(--p-surface-700), transparent 20%),
+    0 1px 2px color-mix(in srgb, var(--p-surface-900), transparent 90%);
+  --card-shadow:
+    0 0 1px color-mix(in srgb, black, transparent 40%),
+    0 1px 2px color-mix(in srgb, black, transparent 80%);
+  --widget-shadow:
+    0 1px 1px var(--p-surface-400),
+    0 0 1px var(--p-surface-500);
+
+  /* === Glass / frost (context menus, overlays) ============================ */
+  --frost-bg: rgba(255, 255, 255, 0.75);
+  --frost-border: 1px solid rgba(0, 0, 0, 0.1);
+  --frost-blur: blur(5px);
+
+  /* === Spacing rhythm ===================================================== */
+  --gap-grid: 1rem;
+  --card-width: 350px;
+  --card-height: 17.5rem;
+  --nav-width: 250px;
+
+  /* === Form field density ================================================= */
+  --field-pad-x: 0.5rem;
+  --field-pad-y: 0.25rem;
+
+  /* === Type tokens ========================================================= */
+  --font-sans: 'Inter var', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+
+  --text-xs:   0.75rem;
+  --text-sm:   0.857rem;
+  --text-base: 1rem;
+  --text-md:   1.143rem;
+  --text-lg:   1.25rem;
+  --text-xl:   1.5rem;
+  --text-2xl:  1.714rem;
+  --text-3xl:  2rem;
+  --text-4xl:  2.5rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+}
+
+/* Base html font-size is 14px, so 1rem = 14px — both Tailwind's and
+   PrimeNG's rem-based values assume this (project brief §8). */
+html {
+  font-size: 14px;
+}
+
+/* ---- Dark scheme overrides ------------------------------------------------ */
+.dark {
+  --p-content-background: var(--p-surface-950);
+  --p-card-background: color-mix(in srgb, var(--p-primary-600), transparent 80%);
+  --p-text-color: var(--p-surface-100);
+  --p-text-muted-color: var(--p-surface-400);
+  --highlight: var(--p-primary-900);
+  --frame-border-color: var(--p-surface-700);
+  --header-bg: color-mix(in srgb, var(--p-primary-500), transparent 50%);
+
+  --good-color: #4ade80;
+  --fair-color: #facc15;
+  --poor-color: #f87171;
+
+  --box-shadow:
+    0 0 1px color-mix(in srgb, var(--p-primary-400), transparent 20%),
+    0 1px 2px color-mix(in srgb, var(--p-primary-500), transparent 80%);
+  --frost-bg: rgba(0, 0, 0, 0.75);
+  --frost-border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================================
+   Semantic type classes — copied verbatim from the style guide.
+   ============================================================================ */
+.lwl-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  color: var(--p-text-color);
+  font-feature-settings: 'cv05' 1;
+}
+
+.lwl-card-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--p-text-color);
+  line-height: var(--leading-tight);
+}
+
+.lwl-metric-label {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+}
+
+.lwl-metric-value {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-2xl);
+  color: var(--p-primary-color);
+}
+
+.lwl-muted {
+  color: var(--p-text-muted-color);
+}
+
+.lwl-micro {
+  font-size: var(--text-xs);
+  color: var(--p-text-muted-color);
+}
+
+.lwl-cell {
+  font-size: var(--text-sm);
+  color: var(--p-text-color);
+}

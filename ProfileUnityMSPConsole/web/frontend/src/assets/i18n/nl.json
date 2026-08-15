@@ -1,0 +1,222 @@
+{
+  "app": {
+    "title": "ProfileUnity MSP Licensing Console"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "tenants": "Klanten",
+    "history": "Geschiedenis",
+    "reports": "Rapporten",
+    "settings": "Instellingen",
+    "users": "Gebruikers",
+    "about": "Over"
+  },
+  "login": {
+    "heading": "Inloggen",
+    "username": "Gebruikersnaam",
+    "password": "Wachtwoord",
+    "submit": "Inloggen",
+    "invalidCredentials": "Onjuiste gebruikersnaam of wachtwoord",
+    "genericError": "Er is een fout opgetreden",
+    "sessionExpired": "Je sessie is verlopen. Log opnieuw in.",
+    "togglePassword": "Wachtwoord Zichtbaarheid Wisselen"
+  },
+  "header": {
+    "signOut": "Uitloggen",
+    "language": "Taal",
+    "changePassword": "Wachtwoord Wijzigen"
+  },
+  "comingSoon": {
+    "message": "Binnenkort beschikbaar"
+  },
+  "about": {
+    "heading": "Over",
+    "version": "Versie",
+    "notice": "Dit is een Liquidware Sparks Tool — een door de community/het veld bijgedragen hulpmiddel, geen commercieel Liquidware-product. Het wordt geleverd buiten de standaard productontwikkelingscyclus van Liquidware, \"AS IS\" zonder garantie, support of onderhoud, en gebruik is op eigen risico.",
+    "licenseLink": "Sparks Tool-licentie en disclaimer (Spark_License.pdf)",
+    "sbomLink": "Software Bill of Materials (bom.cdx.json)",
+    "sbomDescription": "Een CycloneDX 1.6-inventarisatie van componenten van derden, zodat uw beveiligingsteam dit tegen uw eigen beleid kan toetsen.",
+    "developer": "Ontwikkeld door Laurens van Duijn"
+  },
+  "tenants": {
+    "addTenant": "Klant Toevoegen",
+    "editTenant": "Klant Bewerken",
+    "displayName": "Weergavenaam",
+    "hostname": "Hostnaam",
+    "port": "Poort",
+    "username": "Gebruikersnaam",
+    "password": "Wachtwoord",
+    "passwordUnchangedHint": "leeg laten om het opgeslagen wachtwoord te behouden",
+    "tlsSkipVerify": "TLS-certificaatverificatie Overslaan",
+    "tlsSkipVerifyWarning": "Schakel certificaatverificatie alleen uit voor consoles die u vertrouwt op een privénetwerk. Dit is een bewust compromis, geen standaardinstelling.",
+    "enabled": "Ingeschakeld",
+    "disabled": "Uitgeschakeld",
+    "tags": "Labels",
+    "tagsHint": "kommagescheiden",
+    "notes": "Notities",
+    "testConnection": "Verbinding Testen",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "deleteConfirmTitle": "Klant Verwijderen",
+    "deleteConfirmMessage": "{{displayName}} verwijderen? Dit verwijdert ook de verzamelgeschiedenis. Dit kan niet ongedaan worden gemaakt.",
+    "noTenants": "Nog Geen Klanten Geregistreerd",
+    "saveError": "Klant Opslaan Mislukt"
+  },
+  "dashboard": {
+    "search": "Klanten Zoeken",
+    "usage": "Gebruik",
+    "utilization": "Bezetting",
+    "expiry": "Vervaldatum",
+    "runway": "Dagen Resterend",
+    "data": "Gegevens",
+    "licenseMode": "Licentiemodus",
+    "consoleVersion": "Consoleversie",
+    "lastSuccess": "Laatste Succesvolle Verzameling",
+    "noTenants": "Nog Geen Klanten Geregistreerd",
+    "collectNow": "Nu Verzamelen",
+    "collectNowError": "Verzameling kon niet worden uitgevoerd. Controleer de serverlogs voor details."
+  },
+  "history": {
+    "perTenant": "Per Klant",
+    "portfolio": "Portfolio",
+    "selectTenant": "Selecteer Een Klant",
+    "loading": "Laden…",
+    "noData": "Nog Geen Verzamelgeschiedenis",
+    "used": "Gebruikt",
+    "entitled": "Toegekend",
+    "totalUsed": "Totaal Gebruikt",
+    "totalEntitled": "Totaal Toegekend",
+    "entitlementChanges": "Wijzigingen In Toewijzing"
+  },
+  "alerts": {
+    "title": "Meldingen",
+    "none": "Momenteel geen meldingen.",
+    "reason": {
+      "usage_poor": "Op of over de licentielimiet",
+      "expiry_expired": "Support verlopen",
+      "expiry_expiring_soon": "Support verloopt binnenkort",
+      "data_not_ok": "Gegevens niet betrouwbaar"
+    }
+  },
+  "reports": {
+    "perTenant": "Per Klant",
+    "portfolio": "Portfolio",
+    "selectTenant": "Selecteer Een Klant",
+    "selectMonth": "Selecteer Een Maand",
+    "loading": "Laden…",
+    "noData": "Geen Gegevens Voor Deze Maand",
+    "downloadPdf": "PDF Downloaden",
+    "coverage": "Gegevensdekking",
+    "daysCollected": "Dagen Verzameld",
+    "daysFailed": "Dagen Mislukt",
+    "daysNeverAttempted": "Dagen Nooit Geprobeerd",
+    "peakUsed": "Piekgebruik",
+    "averageUsed": "Gemiddeld Gebruik",
+    "entitledAtMonthEnd": "Toegekend Aan Einde Maand",
+    "maximumUsersAtMonthEnd": "Maximum Aantal Gebruikers",
+    "entitlementChanges": "Wijzigingen In Toewijzing",
+    "noEntitlementChanges": "Geen wijzigingen in toewijzing deze maand.",
+    "tenantsRegistered": "Klanten Geregistreerd",
+    "perTenantDetail": "Detail Per Klant"
+  },
+  "status": {
+    "usage": {
+      "good": "Goed",
+      "fair": "Matig",
+      "poor": "Slecht",
+      "unknown": "Onbekend"
+    },
+    "expiry": {
+      "ok": "OK",
+      "expiring_soon": "Verloopt Binnenkort",
+      "expired": "Verlopen",
+      "unknown": "Onbekend"
+    },
+    "data": {
+      "ok": "Actueel",
+      "stale": "Verouderd",
+      "failing": "Verzameling Mislukt",
+      "never_collected": "Nog Niet Verzameld"
+    },
+    "coverage": {
+      "complete": "Volledig",
+      "partial": "Gedeeltelijk",
+      "none": "Geen Gegevens"
+    }
+  },
+  "settings": {
+    "loading": "Laden…",
+    "saved": "Instellingen opgeslagen.",
+    "saveError": "Instellingen konden niet worden opgeslagen.",
+    "save": "Opslaan",
+    "smtpHeading": "E-mail (SMTP)",
+    "smtpHost": "SMTP-host",
+    "smtpPort": "Poort",
+    "smtpSecurity": "Beveiliging",
+    "smtpUsername": "Gebruikersnaam",
+    "smtpPassword": "Wachtwoord",
+    "smtpPasswordUnchangedHint": "leeg laten om het opgeslagen wachtwoord te behouden",
+    "smtpFrom": "Afzenderadres",
+    "smtpFromRequiredHint": "Verplicht zodra een SMTP-host is ingesteld.",
+    "smtpHostRequiredHint": "Een SMTP-host is verplicht wanneer een afzenderadres of rapportontvangers zijn ingesteld.",
+    "testEmailTo": "Stuur een testmail naar",
+    "sendTestEmail": "Testmail Versturen",
+    "testEmailOk": "Testmail verstuurd.",
+    "testEmailError": "Testmail kon niet worden verstuurd. Controleer de instellingen hierboven.",
+    "reportHeading": "Maandelijks Portfoliorapport",
+    "reportRecipients": "Ontvangers",
+    "reportRecipientsHint": "kommagescheiden",
+    "reportRecipientsRequiredHint": "Ten minste één ontvanger is verplicht zodra een SMTP-host is ingesteld.",
+    "reportEmailDay": "Verstuurdag van de Maand",
+    "sendReportNow": "Nu Versturen",
+    "sendReportNowConfirmTitle": "Portfoliorapport Nu Versturen?",
+    "sendReportNowConfirmMessage": "Dit verstuurt direct het portfoliorapport van vorige maand naar elke hierboven ingestelde ontvanger.",
+    "sendReportNowOk": "Rapport verstuurd.",
+    "sendReportNowError": "Het rapport kon niet worden verstuurd. Controleer de instellingen hierboven en de serverlogs voor details.",
+    "cancel": "Annuleren",
+    "collectionHeading": "Verzameling",
+    "collectionInterval": "Interval (minuten)",
+    "collectionTimezone": "Tijdzone",
+    "collectionConcurrency": "Max. Gelijktijdige Klanten",
+    "collectionTenantTimeout": "Time-out per Klant (seconden)",
+    "sessionHeading": "Operatorsessies",
+    "sessionIdleTimeout": "Time-out bij Inactiviteit (minuten)",
+    "sessionAbsoluteTimeout": "Absolute Time-out (uren)",
+    "tlsHeading": "TLS-certificaat",
+    "tlsCertCurrent": "Huidig certificaat",
+    "tlsCertSelfSigned": "zelfondertekend",
+    "tlsCertExpires": "verloopt op",
+    "tlsCertFile": "Certificaatbestand (PEM)",
+    "tlsKeyFile": "Privésleutelbestand (PEM)",
+    "tlsUpload": "Uploaden en Activeren",
+    "tlsCertUploadError": "Dit certificaat kon niet worden geactiveerd — controleer of certificaat en sleutel een overeenkomend PEM-paar zijn."
+  },
+  "changePassword": {
+    "title": "Wachtwoord Wijzigen",
+    "currentPassword": "Huidig Wachtwoord",
+    "newPassword": "Nieuw Wachtwoord (minimaal 12 tekens)",
+    "confirmPassword": "Bevestig Nieuw Wachtwoord",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "mismatch": "Nieuw wachtwoord en bevestiging komen niet overeen.",
+    "wrongCurrent": "Huidig wachtwoord is onjuist.",
+    "error": "Wachtwoord wijzigen is mislukt. Probeer het opnieuw."
+  },
+  "users": {
+    "addUser": "Gebruiker Toevoegen",
+    "username": "Gebruikersnaam",
+    "password": "Wachtwoord",
+    "passwordHint": "minimaal 12 tekens",
+    "role": "Rol",
+    "createdAt": "Aangemaakt",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "deleteConfirmTitle": "Gebruiker Verwijderen",
+    "deleteConfirmMessage": "{{username}} verwijderen? Deze persoon kan dan niet meer inloggen en elke actieve sessie eindigt onmiddellijk. Dit kan niet ongedaan worden gemaakt.",
+    "noUsers": "Nog Geen Gebruikers",
+    "saveError": "Gebruiker Aanmaken Mislukt",
+    "usernameTaken": "Deze gebruikersnaam is al in gebruik."
+  }
+}

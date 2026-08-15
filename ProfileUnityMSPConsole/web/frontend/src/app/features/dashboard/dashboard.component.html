@@ -1,0 +1,59 @@
+<div class="flex flex-col gap-4 p-6">
+  <div class="flex items-center justify-between">
+    <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'nav.dashboard' | transloco }}</h1>
+    <div class="flex items-center gap-3">
+      <p-button
+        [label]="'dashboard.collectNow' | transloco"
+        icon="pi pi-refresh"
+        [loading]="collecting()"
+        (onClick)="collectNow()"
+      />
+      <input
+        pInputText
+        [placeholder]="'dashboard.search' | transloco"
+        (input)="applyGlobalFilter($any($event.target).value)"
+      />
+    </div>
+  </div>
+
+  @if (collectError()) {
+    <p-message severity="error" styleClass="w-full">{{ collectError()! | transloco }}</p-message>
+  }
+
+  <p-table #table [value]="rows()" [loading]="loading()" dataKey="tenant.id" [rows]="20" [paginator]="rows().length > 20"
+    [globalFilterFields]="['tenant.displayName', 'tenant.hostname', 'licenseMode', 'licenseProduct']"
+    sortField="tenant.displayName" [sortOrder]="1"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="tenant.displayName">{{ 'tenants.displayName' | transloco }} <p-sortIcon field="tenant.displayName" /></th>
+        <th>{{ 'dashboard.usage' | transloco }}</th>
+        <th pSortableColumn="utilizationPercent">{{ 'dashboard.utilization' | transloco }} <p-sortIcon field="utilizationPercent" /></th>
+        <th>{{ 'dashboard.expiry' | transloco }}</th>
+        <th pSortableColumn="expiryRunwayDays">{{ 'dashboard.runway' | transloco }} <p-sortIcon field="expiryRunwayDays" /></th>
+        <th>{{ 'dashboard.data' | transloco }}</th>
+        <th>{{ 'dashboard.licenseMode' | transloco }}</th>
+        <th>{{ 'dashboard.consoleVersion' | transloco }}</th>
+        <th pSortableColumn="lastSuccessAtUtc">{{ 'dashboard.lastSuccess' | transloco }} <p-sortIcon field="lastSuccessAtUtc" /></th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-row>
+      <tr>
+        <td>{{ row.tenant.displayName }}</td>
+        <td><app-status-badge kind="usage" [value]="row.usageStatus" /></td>
+        <td class="lwl-cell">{{ row.utilizationPercent !== null ? (row.utilizationPercent * 100 | number: '1.0-0') + '%' : '—' }}</td>
+        <td><app-status-badge kind="expiry" [value]="row.expiryStatus" /></td>
+        <td class="lwl-cell">{{ row.expiryRunwayDays !== null ? row.expiryRunwayDays : '—' }}</td>
+        <td><app-status-badge kind="data" [value]="row.dataStatus" /></td>
+        <td class="lwl-cell">{{ row.licenseMode || '—' }}</td>
+        <td class="lwl-cell">{{ row.consoleVersion || '—' }}</td>
+        <td class="lwl-micro">{{ row.lastSuccessAtUtc || '—' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="9" class="lwl-muted text-center">{{ 'dashboard.noTenants' | transloco }}</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

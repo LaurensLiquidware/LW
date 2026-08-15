@@ -1,0 +1,14 @@
+{ "WebMessageType": 2, "Type": "success", "Message": "", "MessageKey": null, "Tag": [ {
+  "RegisteredTo":   "Over Limit Customer",
+  "LicenseMode":    "NamedUser",
+  "LicenseProduct": "ProU+FlexApp",
+  "SupportEnds":    "01/15/2026",
+  "TotalLicenses":  "10",
+  "UsedLicenses":   "14",
+  "Evaluation":     "No",
+  "ConsoleVersion": "6.9.5.9678 3038806 2026-07-01",
+  "IsTrialExpired": "true",
+  "IsTrial":        "true",
+  "IsProUOnly":     "false",
+  "IsFlexOnly":     "false"
+} ] }

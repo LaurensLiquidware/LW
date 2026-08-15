@@ -1,0 +1,141 @@
+name: ProfileUnity MSP Console CI
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "ProfileUnityMSPConsole/**"
+      - ".github/workflows/profileunity-msp-console-ci.yml"
+  pull_request:
+    paths:
+      - "ProfileUnityMSPConsole/**"
+      - ".github/workflows/profileunity-msp-console-ci.yml"
+
+defaults:
+  run:
+    working-directory: ProfileUnityMSPConsole
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ProfileUnityMSPConsole/web/frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: ProfileUnityMSPConsole/web/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync version and legal files
+        run: |
+          ./scripts/sync-version.sh
+          ./scripts/sync-legal.sh
+
+      # Explicit packages, not ./... — web/frontend/node_modules ships at
+      # least one vendored .go file with no go.mod to bound it out.
+      - name: Vet
+        run: go vet ./cmd/... ./internal/... ./web
+
+      - name: Build
+        run: go build ./cmd/... ./internal/... ./web
+
+      - name: Test
+        run: go test ./cmd/... ./internal/... ./web
+
+      # Every build also produces a Windows binary, with the Liquidware
+      # icon/version info embedded via scripts/build-windows.sh, so a
+      # Windows regression (or a broken icon/version resource) fails CI
+      # the same way a Linux one would.
+      - name: Install goversioninfo
+        run: |
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Build Windows binary
+        run: ./scripts/build-windows.sh
+
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: profileunity-msp-console-windows-amd64
+          path: ProfileUnityMSPConsole/profileunity-msp-console.exe
+          retention-days: 14
+
+  # Enforces project brief §11.8: SBOM stays current, and both dependency
+  # trees are CVE-clean. Unlike scripts/release.sh's local/offline mode
+  # (which warns instead of failing when govulncheck can't reach
+  # vuln.go.dev — some sandboxes block that host), GitHub-hosted runners
+  # have normal internet access, so this job hard-fails on any finding.
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ProfileUnityMSPConsole/web/frontend/package-lock.json
+
+      - name: Install SBOM/CVE tooling
+        run: |
+          go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install frontend dependencies
+        working-directory: ProfileUnityMSPConsole/web/frontend
+        run: npm ci
+
+      # cmd/server transitively go:embeds web/dist, VERSION_EMBED, and
+      # Spark_License.pdf -- without these, `go list`/cyclonedx-gomod's
+      # module-graph scan fails outright ("no matching files found").
+      - name: Build frontend
+        working-directory: ProfileUnityMSPConsole/web/frontend
+        run: npm run build
+
+      - name: Sync version and legal files
+        run: |
+          ./scripts/sync-version.sh
+          ./scripts/sync-legal.sh
+
+      - name: npm audit (production dependencies only)
+        working-directory: ProfileUnityMSPConsole/web/frontend
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: govulncheck (Go dependencies)
+        run: govulncheck ./cmd/... ./internal/... ./web
+
+      - name: Regenerate SBOM and notices
+        run: |
+          ./scripts/generate-sbom.sh
+          python3 ./scripts/generate-notices.py bom.cdx.json THIRD-PARTY-NOTICES.txt
+
+      - name: Verify checked-in SBOM/notices are current
+        run: |
+          # generate-sbom.sh stamps a fresh serialNumber/timestamp every run,
+          # which would make this diff fail even with an unchanged dependency
+          # tree — compare component lists only, not the whole file.
+          diff <(jq -S '.components' bom.cdx.json) <(git show HEAD:ProfileUnityMSPConsole/bom.cdx.json | jq -S '.components') || {
+            echo "::error::bom.cdx.json's component list is out of date. Run ./scripts/generate-sbom.sh and ./scripts/generate-notices.py and commit the result." >&2
+            exit 1
+          }
+          diff THIRD-PARTY-NOTICES.txt <(git show HEAD:ProfileUnityMSPConsole/THIRD-PARTY-NOTICES.txt) || {
+            echo "::error::THIRD-PARTY-NOTICES.txt is out of date. Run ./scripts/generate-notices.py and commit the result." >&2
+            exit 1
+          }
