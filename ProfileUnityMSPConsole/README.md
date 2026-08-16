@@ -427,6 +427,68 @@ otherwise — and can be set explicitly to override that default in either
 environment, e.g. to turn on debug logging temporarily in a production
 install while troubleshooting.
 
+## Demo data
+
+Dropping a `demo.db` file next to the real database (same directory as
+`PUMC_DB_DSN`) makes a fresh install come up populated with ten fictional
+MSP tenants and six months of daily license history, instead of an empty
+one — useful for demos, screenshots, UI development, and onboarding
+without pointing at a real customer environment or waiting six months for
+a collector to build history.
+
+**Generating it:**
+
+```
+go run ./cmd/gendemodb --out ./demo.db
+```
+
+Flags: `--out` (default `./demo.db`), `--seed` (fixed default, override for
+a different but still-reproducible run), `--tenants` (default/max 10 — the
+roster is a fixed set of named storylines, not randomly generated
+entries), `--months` (default 6), `--end-date` (default today, `YYYY-MM-DD`
+— history is generated *relative to this date*, so a regenerated file is
+always "the last N months").
+
+**Placing it:** put the generated file in the same directory as the real
+database (next to wherever `PUMC_DB_DSN` points, `./profileunity-msp-console.db`
+by default) and restart the server. It's detected automatically — no
+config change needed. A startup log line makes it unmissable when demo
+mode is active.
+
+**Disabling it** without removing the file: set `PUMC_DEMO_MODE=off`. The
+server then always uses the real database regardless of whether `demo.db`
+is present.
+
+**Removing it:** delete `demo.db` (and any `demo.db-wal`/`demo.db-shm`
+files that may have appeared alongside it during use — sqlite's WAL mode
+creates these while a database is open). The install then behaves exactly
+as it did before demo.db was ever added.
+
+**What demo mode changes:** the background collection scheduler is
+disabled entirely, and the "Collect Now"/"Test Connection" actions return
+a demo-mode error instead of attempting a network call — demo tenants'
+hostnames (`*.example.com`) are fictional and must never actually be
+dialed. PDF report exports carry a "DEMO DATA" watermark, and a persistent
+badge in the app's header makes demo mode visually obvious everywhere.
+Every screen otherwise renders demo data through the exact same query
+paths as real data — there is no separate demo UI.
+
+**`demo.db` is disposable and must never be treated as a backup.** It is
+never migrated in place — if its schema doesn't match what a newer binary
+expects, the server refuses to start with a clear message rather than
+silently upgrading (and thereby permanently changing) what's supposed to
+be a reproducible, regenerable artifact. Regenerate it with `cmd/gendemodb`
+or remove it.
+
+**Staleness:** since history is generated relative to `--end-date`
+(defaulting to the day it's generated), a `demo.db` built today will read
+as "6 months ending today" forever — it does not advance on its own.
+Regenerate it per release (see the release process) so the shipped
+artifact always looks current when someone first opens it.
+
+`demo.db` itself is not committed to this repository — it's built as a
+release artifact, not a checked-in file.
+
 ## Compliance
 
 This project is built against the Sparks Tool Project Review Checklist

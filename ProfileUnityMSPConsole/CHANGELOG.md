@@ -1,6 +1,59 @@
 # Changelog
 
-## 0.2.3 — unreleased
+## 0.4.0 — unreleased
+
+- **Tray launcher**: added a **Change Port...** button (main window) and
+  matching tray-menu item, so you can run multiple instances side by side
+  on different ports (e.g. a production install on the default `8443` and
+  a separate demo copy on `8444`) without hand-editing `.env`. Writes the
+  new `PUMC_HTTP_ADDR` to that install's own `.env` and, if the server is
+  currently running, offers to restart it immediately so the new port
+  takes effect. Every other per-instance resource (database, log, TLS
+  cert, credential key) was already isolated per install folder — this
+  was the one missing piece for running two copies side by side.
+  - `internal/dotenv`: added `SetValue`, the first write path for `.env`
+    files (previously read-only) — replaces or appends one key's line
+    while preserving everything else (comments, blank lines, other keys)
+    verbatim.
+  - Also fixes a latent staleness bug in how the tray's "Open Console"
+    link is computed: the old `dotenv.Load`-based approach only reflected
+    a `.env` value the *first* time it was read per process, so
+    refreshing the link after a port change would have kept showing the
+    old port. The new `currentHTTPAddr` reads the file fresh every call.
+
+## 0.3.0 — unreleased
+
+- **Demo data**: a `demo.db` sidecar file, dropped next to the real
+  database, makes a fresh install come up populated with ten fictional MSP
+  tenants and six months of daily license history — for demos,
+  screenshots, UI development, and onboarding, with no need to point at a
+  real customer environment or wait six months for a collector to build
+  history.
+  - New `cmd/gendemodb` tool builds `demo.db` by running the real
+    migrations and writing through the real `tenant.Repo`/`snapshot.Repo`
+    methods, so it can never drift from what the app itself expects.
+    Deterministic given `--seed` (fixed default); `--tenants`, `--months`,
+    `--end-date` control scope. Not committed to this repo — built as a
+    release artifact (see `scripts/release.sh`) and regenerated per
+    release, since its history is relative to generation time.
+  - Detection is automatic: if `demo.db` exists next to the configured
+    database, the server uses it instead, logs an unmissable startup
+    warning, and never migrates it — a schema mismatch or corrupt file
+    fails loudly rather than silently upgrading a disposable artifact or
+    falling back to the real database. `PUMC_DEMO_MODE=off` forces the
+    real database regardless.
+  - Safety rails: the background collection scheduler is disabled
+    entirely in demo mode, and "Collect Now"/"Test Connection" return a
+    demo-mode error instead of attempting a network call — demo tenants'
+    hostnames are fictional (`*.example.com`) and must never actually be
+    dialed. PDF report exports carry a "DEMO DATA" watermark. A small
+    persistent badge in the header makes demo mode visually obvious.
+  - Every screen renders demo data through the exact same query paths as
+    real data — there is no separate demo UI or `if demo` branching
+    through the application beyond database selection and the rails
+    above.
+
+## 0.2.3
 
 - **Monthly report PDF**: relabeled "Maximum users at month end:" to
   "Maximum users:" (tenant section) and "Total maximum users at month
@@ -9,13 +62,13 @@
   no "at month end" suffix). The underlying data/field names are
   unchanged — display text only.
 
-## 0.2.2 — unreleased
+## 0.2.2
 
 - **Login screen**: made the sign-in card more compact — narrower
   (640px → 400px), smaller logo, tighter padding/spacing. Purely a
   layout change; no functional difference.
 
-## 0.2.1 — unreleased
+## 0.2.1
 
 Two small fixes: `docs/MANUAL.md` accuracy, and Test Connection now
 surfaces license data it was already fetching but discarding.
@@ -44,7 +97,7 @@ surfaces license data it was already fetching but discarding.
   (which already own over-limit/expiring-soon detection from real
   collection history).
 
-## 0.2.0 — unreleased
+## 0.2.0
 
 Surfaces ProfileUnity's own license **Product** name (e.g.
 "ProU+FlexApp") everywhere License Mode is already shown — it was

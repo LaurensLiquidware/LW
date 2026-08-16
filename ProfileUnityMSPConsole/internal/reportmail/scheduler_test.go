@@ -128,7 +128,7 @@ func newTestScheduler(t *testing.T, smtp mailer.Config, day int, recipients []st
 	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshot.NewRepo(sqlDB)}
 	emails := reportemail.NewRepo(sqlDB)
 
-	return New(repos, emails, smtp, recipients, day, time.UTC)
+	return New(repos, emails, smtp, recipients, day, time.UTC, false)
 }
 
 func TestCheckAndSendAt_SendsOnTheConfiguredDay(t *testing.T) {

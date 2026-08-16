@@ -4,10 +4,23 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	_ "modernc.org/sqlite"
 )
+
+// DemoSidecarFilename is the name a drop-in demo database must use --
+// checked for as a sibling of the configured production DSN. See
+// DemoSidecarPath and cmd/gendemodb.
+const DemoSidecarFilename = "demo.db"
+
+// DemoSidecarPath returns where a demo.db sidecar file would live next to
+// dsn -- the same directory, filename DemoSidecarFilename. Only meaningful
+// for the sqlite driver, where dsn is a filesystem path.
+func DemoSidecarPath(dsn string) string {
+	return filepath.Join(filepath.Dir(dsn), DemoSidecarFilename)
+}
 
 // Open opens the configured database, applies any pending migrations, and
 // returns a ready-to-use connection pool.

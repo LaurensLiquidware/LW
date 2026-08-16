@@ -24,7 +24,9 @@
   "header": {
     "signOut": "Uitloggen",
     "language": "Taal",
-    "changePassword": "Wachtwoord Wijzigen"
+    "changePassword": "Wachtwoord Wijzigen",
+    "demoMode": "DEMOGEGEVENS",
+    "demoModeHint": "Deze console draait op demo.db, een voorbeelddatabase -- er wordt geen echte klantdata getoond en het ophalen van gegevens is uitgeschakeld."
   },
   "comingSoon": {
     "message": "Binnenkort beschikbaar"

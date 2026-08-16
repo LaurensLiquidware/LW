@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -65,11 +66,14 @@ func run() error {
 
 	slog.Info(fmt.Sprintf("profileunity-msp-console %s starting (environment=%s, log_level=%s, log_file=%s)", version.Version, cfg.Environment, cfg.LogLevel, cfg.LogFile))
 
-	sqlDB, err := db.Open(cfg.DBDriver, cfg.DBDSN)
+	sqlDB, demoMode, err := openDatabase(cfg)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
 	defer sqlDB.Close()
+	if demoMode {
+		slog.Warn(fmt.Sprintf("DEMO MODE: running against %s -- no real tenant data is being read or written; set %s=off to force the real database", db.DemoSidecarPath(cfg.DBDSN), "PUMC_DEMO_MODE"))
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -150,9 +154,13 @@ func run() error {
 		}
 	}
 
-	go sched.Run(ctx)
+	if demoMode {
+		slog.Info("DEMO MODE: the collection scheduler is disabled -- demo tenants' hostnames are fictional and must never be polled")
+	} else {
+		go sched.Run(ctx)
+	}
 
-	authDeps := httpapi.AuthDeps{Users: userRepo, Sessions: sessionRepo, Secure: true}
+	authDeps := httpapi.AuthDeps{Users: userRepo, Sessions: sessionRepo, Secure: true, DemoMode: demoMode}
 	tenantDeps := httpapi.TenantDeps{Tenants: tenantRepo}
 	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo}
 
@@ -168,7 +176,7 @@ func run() error {
 		From:     current.SMTPFrom,
 		Security: current.SMTPSecurity,
 	}
-	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), reportMailSmtp, current.ReportRecipients, current.ReportEmailDay, collectionLocation)
+	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), reportMailSmtp, current.ReportRecipients, current.ReportEmailDay, collectionLocation, demoMode)
 	go reportMailSched.Run(ctx)
 	if current.ReportEmailEnabled() {
 		slog.Info(fmt.Sprintf("monthly portfolio report emailing enabled: day %d of each month, to %v", current.ReportEmailDay, current.ReportRecipients))
@@ -178,12 +186,12 @@ func run() error {
 
 	dashboardDeps := httpapi.DashboardDeps{Repos: repos, Location: collectionLocation}
 	historyDeps := httpapi.HistoryDeps{Repos: repos}
-	reportDeps := httpapi.ReportDeps{Repos: repos}
+	reportDeps := httpapi.ReportDeps{Repos: repos, DemoMode: demoMode}
 	alertDeps := httpapi.AlertDeps{Repos: repos, Location: collectionLocation}
 	schedulerStatus := func() httpapi.SchedulerStatus {
 		return schedulerStatusFor(sched.Status())
 	}
-	collectionDeps := httpapi.CollectionDeps{Scheduler: sched, Status: schedulerStatus}
+	collectionDeps := httpapi.CollectionDeps{Scheduler: sched, Status: schedulerStatus, DemoMode: demoMode}
 	settingsDeps := httpapi.SettingsDeps{
 		Store:      settingsStore,
 		Sessions:   sessionRepo,
@@ -225,6 +233,33 @@ func run() error {
 		}
 		return nil
 	}
+}
+
+// openDatabase opens either the configured production database, or a
+// demo.db sidecar file next to it, and reports which. Detection only
+// applies to the sqlite driver (postgres has no single-file DSN for a
+// sidecar to sit next to, and isn't implemented yet regardless).
+// PUMC_DEMO_MODE=off forces the real database even when demo.db is
+// present. A demo database is opened via db.OpenDemo, which never
+// migrates it and fails loudly on a corrupt file or a schema mismatch --
+// this function never falls back to the real database on that error.
+func openDatabase(cfg config.Config) (sqlDB *sql.DB, demoMode bool, err error) {
+	if cfg.DBDriver != "sqlite" || cfg.DemoModeDisabled() {
+		sqlDB, err = db.Open(cfg.DBDriver, cfg.DBDSN)
+		return sqlDB, false, err
+	}
+
+	demoPath := db.DemoSidecarPath(cfg.DBDSN)
+	if _, statErr := os.Stat(demoPath); statErr != nil {
+		sqlDB, err = db.Open(cfg.DBDriver, cfg.DBDSN)
+		return sqlDB, false, err
+	}
+
+	sqlDB, err = db.OpenDemo(demoPath)
+	if err != nil {
+		return nil, false, err
+	}
+	return sqlDB, true, nil
 }
 
 // bootstrapAdmin creates the first operator account from

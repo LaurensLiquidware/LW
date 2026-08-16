@@ -15,6 +15,11 @@ import (
 // ReportDeps bundles what the report handlers need.
 type ReportDeps struct {
 	Repos dashboard.Repos
+
+	// DemoMode watermarks PDF exports (see reportpdf.RenderTenantReportPDF/
+	// RenderPortfolioReportPDF) whenever running against a demo.db
+	// sidecar database.
+	DemoMode bool
 }
 
 // monthRange parses "year"/"month" query parameters (both required,
@@ -69,17 +74,17 @@ func toTenantReportDTO(r dashboard.TenantMonthlyReport) tenantMonthlyReportDTO {
 		changes = append(changes, entitlementChangeReportDTO{Date: c.Date, FromTotal: c.FromTotal, ToTotal: c.ToTotal})
 	}
 	return tenantMonthlyReportDTO{
-		Tenant:             toDTO(r.Tenant),
-		Year:               r.Year,
-		Month:              r.Month,
-		DaysInMonth:        r.DaysInMonth,
-		DaysCollected:      r.DaysCollected,
-		DaysFailed:         r.DaysFailed,
-		DaysNeverAttempted: r.DaysNeverAttempted,
-		Coverage:           string(r.Coverage),
-		PeakUsed:           r.PeakUsed,
-		PeakUsedDate:       r.PeakUsedDate,
-		AverageUsed:        r.AverageUsed,
+		Tenant:                   toDTO(r.Tenant),
+		Year:                     r.Year,
+		Month:                    r.Month,
+		DaysInMonth:              r.DaysInMonth,
+		DaysCollected:            r.DaysCollected,
+		DaysFailed:               r.DaysFailed,
+		DaysNeverAttempted:       r.DaysNeverAttempted,
+		Coverage:                 string(r.Coverage),
+		PeakUsed:                 r.PeakUsed,
+		PeakUsedDate:             r.PeakUsedDate,
+		AverageUsed:              r.AverageUsed,
 		EntitledAtMonthEnd:       r.EntitledAtMonthEnd,
 		MaximumUsersAtMonthEnd:   r.MaximumUsersAtMonthEnd,
 		LicenseProductAtMonthEnd: r.LicenseProductAtMonthEnd,
@@ -137,7 +142,7 @@ func TenantMonthlyReportPDFHandler(deps ReportDeps) http.HandlerFunc {
 			return
 		}
 
-		pdf := reportpdf.RenderTenantReportPDF(report)
+		pdf := reportpdf.RenderTenantReportPDF(report, deps.DemoMode)
 		w.Header().Set("Content-Type", "application/pdf")
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s-%04d-%02d.pdf"`, reportpdf.SafeFilenamePart(report.Tenant.DisplayName), report.Year, report.Month))
 		if err := pdf.Output(w); err != nil {
@@ -166,12 +171,12 @@ func toPortfolioReportDTO(r dashboard.PortfolioMonthlyReport) portfolioMonthlyRe
 		tenantReports = append(tenantReports, toTenantReportDTO(tr))
 	}
 	return portfolioMonthlyReportDTO{
-		Year:                    r.Year,
-		Month:                   r.Month,
-		TenantsRegistered:       r.TenantsRegistered,
-		PeakTotalUsed:           r.PeakTotalUsed,
-		PeakTotalUsedDate:       r.PeakTotalUsedDate,
-		AverageTotalUsed:        r.AverageTotalUsed,
+		Year:                        r.Year,
+		Month:                       r.Month,
+		TenantsRegistered:           r.TenantsRegistered,
+		PeakTotalUsed:               r.PeakTotalUsed,
+		PeakTotalUsedDate:           r.PeakTotalUsedDate,
+		AverageTotalUsed:            r.AverageTotalUsed,
 		TotalEntitledAtMonthEnd:     r.TotalEntitledAtMonthEnd,
 		TotalMaximumUsersAtMonthEnd: r.TotalMaximumUsersAtMonthEnd,
 		TenantReports:               tenantReports,
@@ -211,7 +216,7 @@ func PortfolioMonthlyReportPDFHandler(deps ReportDeps) http.HandlerFunc {
 			return
 		}
 
-		pdf := reportpdf.RenderPortfolioReportPDF(report)
+		pdf := reportpdf.RenderPortfolioReportPDF(report, deps.DemoMode)
 		w.Header().Set("Content-Type", "application/pdf")
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="portfolio-%04d-%02d.pdf"`, report.Year, report.Month))
 		if err := pdf.Output(w); err != nil {

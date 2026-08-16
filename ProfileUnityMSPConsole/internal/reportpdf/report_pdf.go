@@ -90,7 +90,7 @@ func newBrandedHeaderFunc(pdf *fpdf.Fpdf, title string) func() {
 
 // newBrandedFooterFunc returns an fpdf footer callback: a thin brand-blue
 // rule and a muted page-number line, repeated on every page.
-func newBrandedFooterFunc(pdf *fpdf.Fpdf) func() {
+func newBrandedFooterFunc(pdf *fpdf.Fpdf, demoMode bool) func() {
 	return func() {
 		pageWidth, pageHeight := pdf.GetPageSize()
 		y := pageHeight - 15
@@ -101,7 +101,7 @@ func newBrandedFooterFunc(pdf *fpdf.Fpdf) func() {
 		pdf.SetTextColor(130, 130, 130)
 		pdf.SetFont(reportFontFamily, "", 8)
 		pdf.SetXY(18, y+2)
-		pdf.CellFormat(pageWidth-36, 5, fmt.Sprintf("ProfileUnity MSP Licensing Console — Page %d of {nb}", pdf.PageNo()), "", 0, "L", false, 0, "")
+		pdf.CellFormat(pageWidth-36, 5, footerText(pdf.PageNo(), demoMode), "", 0, "L", false, 0, "")
 		pdf.SetTextColor(0, 0, 0)
 	}
 }
@@ -142,7 +142,36 @@ func fmtProduct(v string) string {
 	return v
 }
 
-func newReportPDF(title string) *fpdf.Fpdf {
+// demoWatermark is appended to a report's header title and substituted
+// into its footer whenever it's rendered from a demo.db sidecar database
+// (see cmd/server/main.go's DemoMode plumbing) -- a demo report forwarded
+// to a customer as real is a foreseeable accident this exists to prevent.
+const demoWatermark = "DEMO DATA — not a real customer report"
+
+// reportTitle appends demoWatermark to title when demoMode is set. Pure
+// and unexported so it's testable directly, the same way this file tests
+// coverageLabel/fmtInt/fmtAvg/fmtProduct, rather than only by parsing
+// rendered PDF bytes (which, for an embedded UTF-8 TrueType font, aren't
+// literal ASCII in the content stream).
+func reportTitle(title string, demoMode bool) string {
+	if demoMode {
+		return title + " — " + demoWatermark
+	}
+	return title
+}
+
+// footerText builds the per-page footer line, substituting demoWatermark
+// for the normal product name whenever demoMode is set. See reportTitle's
+// doc comment for why this is a separate pure function.
+func footerText(pageNo int, demoMode bool) string {
+	if demoMode {
+		return fmt.Sprintf("%s — Page %d of {nb}", demoWatermark, pageNo)
+	}
+	return fmt.Sprintf("ProfileUnity MSP Licensing Console — Page %d of {nb}", pageNo)
+}
+
+func newReportPDF(title string, demoMode bool) *fpdf.Fpdf {
+	title = reportTitle(title, demoMode)
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.AddUTF8FontFromBytes(reportFontFamily, "", dejaVuSansRegular)
 	pdf.AddUTF8FontFromBytes(reportFontFamily, "B", dejaVuSansBold)
@@ -152,7 +181,7 @@ func newReportPDF(title string) *fpdf.Fpdf {
 	pdf.SetAutoPageBreak(true, 22)
 	pdf.AliasNbPages("{nb}")
 	pdf.SetHeaderFunc(newBrandedHeaderFunc(pdf, title))
-	pdf.SetFooterFunc(newBrandedFooterFunc(pdf))
+	pdf.SetFooterFunc(newBrandedFooterFunc(pdf, demoMode))
 	pdf.AddPage()
 	return pdf
 }
@@ -198,18 +227,21 @@ func writeTenantReportBody(pdf *fpdf.Fpdf, r dashboard.TenantMonthlyReport) {
 	pdf.Ln(4)
 }
 
-// RenderTenantReportPDF renders a single tenant's monthly report.
-func RenderTenantReportPDF(r dashboard.TenantMonthlyReport) *fpdf.Fpdf {
-	pdf := newReportPDF(fmt.Sprintf("Monthly Report — %s", r.Tenant.DisplayName))
+// RenderTenantReportPDF renders a single tenant's monthly report. demoMode
+// watermarks the header/footer with demoWatermark -- set it whenever r was
+// built from a demo.db sidecar database.
+func RenderTenantReportPDF(r dashboard.TenantMonthlyReport, demoMode bool) *fpdf.Fpdf {
+	pdf := newReportPDF(fmt.Sprintf("Monthly Report — %s", r.Tenant.DisplayName), demoMode)
 	writeTenantReportBody(pdf, r)
 	return pdf
 }
 
 // RenderPortfolioReportPDF renders the MSP-wide summary followed by each
 // tenant's own detail section, so a single download (or emailed
-// attachment) covers everything an operator needs for the month.
-func RenderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport) *fpdf.Fpdf {
-	pdf := newReportPDF(fmt.Sprintf("Monthly Portfolio Report — %04d-%02d", r.Year, r.Month))
+// attachment) covers everything an operator needs for the month. demoMode
+// watermarks the header/footer, same as RenderTenantReportPDF.
+func RenderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport, demoMode bool) *fpdf.Fpdf {
+	pdf := newReportPDF(fmt.Sprintf("Monthly Portfolio Report — %04d-%02d", r.Year, r.Month), demoMode)
 
 	writeSectionHeading(pdf, "Portfolio summary")
 	writeStatLine(pdf, "Tenants registered:", fmt.Sprintf("%d", r.TenantsRegistered))

@@ -106,7 +106,7 @@ func emptyTenantReport() dashboard.TenantMonthlyReport {
 }
 
 func TestRenderTenantReportPDF_ProducesValidOutput(t *testing.T) {
-	pdf := RenderTenantReportPDF(fullTenantReport())
+	pdf := RenderTenantReportPDF(fullTenantReport(), false)
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		t.Fatalf("Output() error = %v", err)
@@ -123,7 +123,7 @@ func TestRenderTenantReportPDF_ProducesValidOutput(t *testing.T) {
 }
 
 func TestRenderTenantReportPDF_NoDataDoesNotPanic(t *testing.T) {
-	pdf := RenderTenantReportPDF(emptyTenantReport())
+	pdf := RenderTenantReportPDF(emptyTenantReport(), false)
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		t.Fatalf("Output() error = %v", err)
@@ -153,7 +153,7 @@ func TestRenderPortfolioReportPDF_ProducesValidOutput(t *testing.T) {
 		TenantReports:               []dashboard.TenantMonthlyReport{fullTenantReport(), emptyTenantReport()},
 	}
 
-	pdf := RenderPortfolioReportPDF(r)
+	pdf := RenderPortfolioReportPDF(r, false)
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		t.Fatalf("Output() error = %v", err)
@@ -166,5 +166,45 @@ func TestRenderPortfolioReportPDF_ProducesValidOutput(t *testing.T) {
 	}
 	if !strings.HasPrefix(buf.String(), "%PDF") {
 		t.Fatalf("rendered output does not start with %%PDF magic bytes: %q", buf.String()[:min(20, buf.Len())])
+	}
+}
+
+func TestReportTitle(t *testing.T) {
+	if got := reportTitle("Monthly Report — Acme", false); got != "Monthly Report — Acme" {
+		t.Errorf("reportTitle(..., false) = %q, want no watermark appended", got)
+	}
+	want := "Monthly Report — Acme — " + demoWatermark
+	if got := reportTitle("Monthly Report — Acme", true); got != want {
+		t.Errorf("reportTitle(..., true) = %q, want %q", got, want)
+	}
+}
+
+func TestFooterText(t *testing.T) {
+	if got := footerText(3, false); got != "ProfileUnity MSP Licensing Console — Page 3 of {nb}" {
+		t.Errorf("footerText(3, false) = %q, want the normal product-name footer", got)
+	}
+	want := demoWatermark + " — Page 3 of {nb}"
+	if got := footerText(3, true); got != want {
+		t.Errorf("footerText(3, true) = %q, want %q", got, want)
+	}
+}
+
+// TestRenderTenantReportPDF_DemoModeStillProducesValidOutput is a smoke
+// test only -- reportTitle/footerText above cover the actual watermark
+// content; rendered PDF bytes for an embedded UTF-8 TrueType font aren't
+// literal ASCII in the content stream, so they can't be substring-matched
+// here without shelling out to an external tool (deliberately avoided for
+// this package, see report_pdf_test.go's other Render* tests).
+func TestRenderTenantReportPDF_DemoModeStillProducesValidOutput(t *testing.T) {
+	pdf := RenderTenantReportPDF(fullTenantReport(), true)
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		t.Fatalf("Output() error = %v", err)
+	}
+	if pdf.Err() {
+		t.Fatalf("pdf.Err() = true, want false; details: %v", pdf.Error())
+	}
+	if buf.Len() == 0 {
+		t.Fatal("rendered PDF is empty")
 	}
 }

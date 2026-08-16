@@ -112,3 +112,12 @@ cp "$manual_pdf" "$windows_stage/MANUAL.pdf"
 cp .env.example Spark_License.pdf bom.cdx.json THIRD-PARTY-NOTICES.txt CHANGELOG.md "$windows_stage/"
 (cd "$zip_dir" && zip -qr "$repo_root/$windows_zip" "profileunity-msp-console-${version}-windows-amd64")
 echo "release: wrote $windows_zip"
+
+echo "== extra: regenerate demo.db (separate release artifact, not bundled in the zips above) =="
+# demo.db is disposable and staleness-sensitive (its history is relative to
+# generation time) -- always regenerate a fresh one per release rather than
+# reuse a stale copy. Not committed to the repo; see README.md's "Demo
+# data" section for what this file is and how operators use it.
+rm -f demo.db
+go run ./cmd/gendemodb --out demo.db
+echo "release: wrote demo.db"

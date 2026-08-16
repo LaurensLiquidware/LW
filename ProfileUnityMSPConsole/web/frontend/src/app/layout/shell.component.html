@@ -14,6 +14,13 @@
           style="border: 1px solid var(--p-surface-0); color: var(--p-surface-0);"
         >v{{ version() }}-beta</span>
       }
+      @if (session.user()?.demoMode) {
+        <span
+          class="rounded-full px-2 py-0.5 text-xs font-bold"
+          style="background: var(--p-orange-500); color: var(--p-surface-0);"
+          [title]="'header.demoModeHint' | transloco"
+        >{{ 'header.demoMode' | transloco }}</span>
+      }
     </div>
 
     <div class="flex items-center gap-4">

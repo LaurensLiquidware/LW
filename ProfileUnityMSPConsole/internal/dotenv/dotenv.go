@@ -79,6 +79,43 @@ func Load(path string) error {
 	return nil
 }
 
+// SetValue updates path's KEY=VALUE line to value, preserving every other
+// line (including comments and blank lines) verbatim, and creates path if
+// it doesn't exist yet. If key already appears (matched the same way
+// Parse extracts it -- first "=" on the line, trimmed), that line is
+// replaced in place; otherwise a new "KEY=VALUE" line is appended.
+func SetValue(path, key, value string) error {
+	var lines []string
+	if data, err := os.ReadFile(path); err == nil {
+		lines = strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+		if len(lines) == 1 && lines[0] == "" {
+			lines = nil
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	newLine := key + "=" + value
+	replaced := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		k, _, ok := strings.Cut(trimmed, "=")
+		if ok && strings.TrimSpace(k) == key {
+			lines[i] = newLine
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		lines = append(lines, newLine)
+	}
+
+	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o600)
+}
+
 func unquote(v string) string {
 	if len(v) >= 2 {
 		if (v[0] == '"' && v[len(v)-1] == '"') || (v[0] == '\'' && v[len(v)-1] == '\'') {

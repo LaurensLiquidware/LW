@@ -24,7 +24,9 @@
   "header": {
     "signOut": "Sign Out",
     "language": "Language",
-    "changePassword": "Change Password"
+    "changePassword": "Change Password",
+    "demoMode": "DEMO DATA",
+    "demoModeHint": "This console is running against demo.db, a sample database -- no real tenant data is shown, and outbound collection is disabled."
   },
   "comingSoon": {
     "message": "Coming Soon"
