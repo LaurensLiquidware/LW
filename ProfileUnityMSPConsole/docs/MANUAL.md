@@ -122,12 +122,16 @@ put each copy
 in its own folder with its own `.env`. Since every data file (database,
 log, TLS certificate, credential key) and the listen port are all
 resolved relative to that folder, two installs in two different folders
-never collide — no shared state to separate manually. Use **Change
-Port...** (button or tray menu) on the second copy to give it a different
-port than the default `8443`, e.g. `8444`; it writes to that copy's own
-`.env` and, if the server is currently running, offers to restart it
-immediately so the new port takes effect. The current port is shown at
-the top of the dialog.
+never collide — no shared state to separate manually. If the second
+copy's folder has a `demo.db` sitting next to its database, the launcher
+seeds that copy to port `8444` automatically the first time it notices it
+(only if that copy's port hasn't already been configured) — its window
+title, tray tooltip, and dialogs then read "... — Demo Mode" for as long
+as that install has a `demo.db`. Otherwise, use **Change Port...** (button
+or tray menu) to give a copy a different port than the default `8443`; it
+writes to that copy's own `.env` and, if the server is currently running,
+offers to restart it immediately so the new port takes effect. The
+current port is shown at the top of the dialog.
 
 ## Configuration reference
 

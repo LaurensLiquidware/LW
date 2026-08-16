@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.0 — unreleased
+
+- **Tray launcher auto-detects `demo.db`**: the first time it notices a
+  `demo.db` sidecar for an install with no port already configured, it
+  seeds that install's port to `8444` instead of the normal `8443` —
+  so a demo copy and a production copy can run side by side out of the
+  box, without needing to run **Change Port...** by hand. It never
+  overrides a port already chosen (manually, or by this same feature on
+  an earlier run). While a `demo.db` is present, the window title, tray
+  tooltip, and dialogs all read "... — Demo Mode".
+  - `internal/config`: exported `DefaultDBDSN` (mirroring the existing
+    `DefaultHTTPAddr`) so `cmd/tray` can resolve where a `demo.db`
+    sidecar would live without duplicating the literal.
+  - Also fixed a stale doc claim in README.md's "Demo data" section: a
+    schema-mismatched `demo.db` falls back to the real database (see
+    0.5.1) rather than refusing to start the server, as it read before.
+
 ## 0.5.2 — unreleased
 
 - **Login screen**: removed the redundant visible label above the

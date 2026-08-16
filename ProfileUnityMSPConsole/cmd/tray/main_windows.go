@@ -45,8 +45,15 @@ type app struct {
 	installDir string
 	serverPath string
 	serverURL  string
-	icon       *walk.Icon
-	logo       *walk.Bitmap
+	// title is appTitle, with " — Demo Mode" appended whenever a demo.db
+	// sidecar is detected for this install at startup (see
+	// applyDemoDefaults/demoDBPresent in serverurl.go) -- shown wherever
+	// the app's name would otherwise appear, so it's obvious at a glance
+	// which of possibly several running instances (e.g. a production
+	// copy on 8443 alongside a demo copy on 8444) this one is.
+	title string
+	icon  *walk.Icon
+	logo  *walk.Bitmap
 
 	mw            *walk.MainWindow
 	statusText    *walk.TextLabel
@@ -87,10 +94,22 @@ func main() {
 	}
 	installDir := filepath.Dir(exePath)
 
+	// A demo.db sidecar, if present, seeds this install's port to 8444
+	// the first time it's noticed (never overriding a port already
+	// chosen) -- must run before resolveServerURL below, since it can
+	// change what that resolves to.
+	applyDemoDefaults(installDir)
+
+	title := appTitle
+	if demoDBPresent(installDir) {
+		title += " — Demo Mode"
+	}
+
 	a := &app{
 		installDir: installDir,
 		serverPath: filepath.Join(installDir, serverExeName),
 		serverURL:  resolveServerURL(installDir),
+		title:      title,
 	}
 
 	if icon, err := loadEmbeddedIcon(); err != nil {
@@ -182,7 +201,7 @@ func (a *app) buildMainWindow() error {
 		return err
 	}
 	a.mw = mw
-	mw.SetTitle(appTitle)
+	mw.SetTitle(a.title)
 	if a.icon != nil {
 		mw.SetIcon(a.icon)
 	}
@@ -211,7 +230,7 @@ func (a *app) buildMainWindow() error {
 	if err != nil {
 		return err
 	}
-	titleLabel.SetText(appTitle)
+	titleLabel.SetText(a.title)
 
 	a.statusText, err = walk.NewTextLabel(mw)
 	if err != nil {
@@ -305,7 +324,7 @@ func (a *app) buildNotifyIcon() error {
 	if a.icon != nil {
 		ni.SetIcon(a.icon)
 	}
-	ni.SetToolTip(appTitle)
+	ni.SetToolTip(a.title)
 
 	ni.MouseDown().Attach(func(x, y int, button walk.MouseButton) {
 		if button == walk.LeftButton {
@@ -448,7 +467,7 @@ func (a *app) setRunningState(running bool) {
 		a.stopBtn.SetEnabled(true)
 		a.restartBtn.SetEnabled(true)
 		if a.notifyIcon != nil {
-			a.notifyIcon.SetToolTip(appTitle + " (Running)")
+			a.notifyIcon.SetToolTip(a.title + " (Running)")
 		}
 	} else {
 		a.statusText.SetText("Status: Stopped")
@@ -456,20 +475,20 @@ func (a *app) setRunningState(running bool) {
 		a.stopBtn.SetEnabled(false)
 		a.restartBtn.SetEnabled(false)
 		if a.notifyIcon != nil {
-			a.notifyIcon.SetToolTip(appTitle + " (Stopped)")
+			a.notifyIcon.SetToolTip(a.title + " (Stopped)")
 		}
 	}
 }
 
 func (a *app) reportError(message string) {
 	if a.notifyIcon != nil {
-		a.notifyIcon.ShowError(appTitle, message)
+		a.notifyIcon.ShowError(a.title, message)
 		return
 	}
 	// No tray icon to balloon from (e.g. buildNotifyIcon itself failed) --
 	// fall back to a message box so this is still visible rather than
 	// only going to a console that doesn't exist.
-	showMessageBox(appTitle, message, windows.MB_ICONERROR)
+	showMessageBox(a.title, message, windows.MB_ICONERROR)
 }
 
 // showLog opens (or focuses) the log viewer window and, the first time
@@ -493,7 +512,7 @@ func (a *app) buildLogWindow() error {
 	if err != nil {
 		return err
 	}
-	lw.SetTitle(appTitle + " — Log")
+	lw.SetTitle(a.title + " — Log")
 	if a.icon != nil {
 		lw.SetIcon(a.icon)
 	}

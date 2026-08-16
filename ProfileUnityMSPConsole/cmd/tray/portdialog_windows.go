@@ -35,7 +35,7 @@ func (a *app) changePort() {
 		return
 	}
 	defer dlg.Dispose()
-	dlg.SetTitle(appTitle + " — Change Port")
+	dlg.SetTitle(a.title + " — Change Port")
 	dlg.SetLayout(walk.NewVBoxLayout())
 	dlg.SetMinMaxSize(walk.Size{Width: 320, Height: 160}, walk.Size{})
 
@@ -111,7 +111,7 @@ func (a *app) changePort() {
 		return
 	}
 
-	if walk.MsgBox(a.mw, appTitle, "Port changed. Restart the server now to use the new port?", walk.MsgBoxYesNo|walk.MsgBoxIconQuestion) == walk.DlgCmdYes {
+	if walk.MsgBox(a.mw, a.title, "Port changed. Restart the server now to use the new port?", walk.MsgBoxYesNo|walk.MsgBoxIconQuestion) == walk.DlgCmdYes {
 		a.restart()
 	}
 }

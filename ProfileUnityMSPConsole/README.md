@@ -453,7 +453,14 @@ always "the last N months").
 database (next to wherever `PUMC_DB_DSN` points, `./profileunity-msp-console.db`
 by default) and restart the server. It's detected automatically — no
 config change needed. A startup log line makes it unmissable when demo
-mode is active.
+mode is active. On Windows, the tray launcher (`profileunity-msp-console.exe`)
+detects it too: the first time it notices a `demo.db` for an install with
+no port already configured, it seeds that install to listen on **8444**
+instead of the normal **8443** — so a demo copy and a production copy can
+run side by side out of the box (see "Starting on Windows" in
+`docs/MANUAL.md` for the **Change Port** button, which still works
+normally afterward) — and its window title, tray tooltip, and dialogs all
+read "... — Demo Mode" for as long as that install has a demo.db.
 
 **Disabling it** without removing the file: set `PUMC_DEMO_MODE=off`. The
 server then always uses the real database regardless of whether `demo.db`
@@ -475,10 +482,11 @@ paths as real data — there is no separate demo UI.
 
 **`demo.db` is disposable and must never be treated as a backup.** It is
 never migrated in place — if its schema doesn't match what a newer binary
-expects, the server refuses to start with a clear message rather than
+expects (e.g. after an update that added a migration), the server logs a
+clear error and falls back to the real database instead, rather than
 silently upgrading (and thereby permanently changing) what's supposed to
 be a reproducible, regenerable artifact. Regenerate it with `cmd/gendemodb`
-or remove it.
+or remove it to use demo mode again.
 
 **Staleness:** since history is generated relative to `--end-date`
 (defaulting to the day it's generated), a `demo.db` built today will read

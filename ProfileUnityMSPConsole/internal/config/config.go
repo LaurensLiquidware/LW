@@ -186,7 +186,7 @@ func Load() (Config, error) {
 		HTTPAddr:           firstNonEmpty(os.Getenv(envHTTPAddr), DefaultHTTPAddr),
 		Environment:        environment,
 		DBDriver:           firstNonEmpty(os.Getenv(envDBDriver), "sqlite"),
-		DBDSN:              firstNonEmpty(os.Getenv(envDBDSN), "./profileunity-msp-console.db"),
+		DBDSN:              firstNonEmpty(os.Getenv(envDBDSN), DefaultDBDSN),
 		LogLevel:           firstNonEmpty(os.Getenv(envLogLevel), defaultLogLevel(environment)),
 		LogFile:            firstNonEmpty(os.Getenv(envLogFile), DefaultLogFile),
 		CollectionTimezone: firstNonEmpty(os.Getenv(envCollectionTimezone), "UTC"),
@@ -362,6 +362,12 @@ const DefaultLogFile = "./profileunity-msp-console.log"
 // the console's own URL for its clickable link without duplicating
 // this literal.
 const DefaultHTTPAddr = "0.0.0.0:8443"
+
+// DefaultDBDSN is DBDSN's default when PUMC_DB_DSN is unset. Exported
+// for the same reason as DefaultLogFile/DefaultHTTPAddr -- cmd/tray
+// resolves where a demo.db sidecar would live for this install without
+// duplicating this literal.
+const DefaultDBDSN = "./profileunity-msp-console.db"
 
 // defaultBootstrapAdmin applies the built-in default only when *both*
 // raw env values are empty, so setting exactly one still falls through
