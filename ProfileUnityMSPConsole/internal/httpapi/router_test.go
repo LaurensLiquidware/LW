@@ -59,7 +59,7 @@ func newTestDeps(t *testing.T) testDeps {
 	}); err != nil {
 		t.Fatalf("seed settings: %v", err)
 	}
-	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), mailer.Config{}, nil, 1, time.UTC)
+	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), mailer.Config{}, nil, 1, time.UTC, false)
 
 	return testDeps{
 		auth: AuthDeps{

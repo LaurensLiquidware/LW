@@ -61,8 +61,9 @@ func (c *liveConfig) enabled() bool {
 // email the previous month's portfolio report, and sends it at most
 // once per month.
 type Scheduler struct {
-	repos  dashboard.Repos
-	emails *reportemail.Repo
+	repos    dashboard.Repos
+	emails   *reportemail.Repo
+	demoMode bool
 
 	cfg atomic.Pointer[liveConfig]
 
@@ -74,9 +75,14 @@ type Scheduler struct {
 // regardless of whether SMTP is configured yet — checkAndSendAt no-ops
 // with outcome "disabled" whenever the current config's SMTP host is
 // empty, so enabling the feature later via SetConfig takes effect on the
-// very next check without needing to start a new goroutine.
-func New(repos dashboard.Repos, emails *reportemail.Repo, smtp mailer.Config, recipients []string, day int, location *time.Location) *Scheduler {
-	s := &Scheduler{repos: repos, emails: emails}
+// very next check without needing to start a new goroutine. demoMode
+// watermarks any PDF this scheduler ever renders/emails (see send) —
+// running against a demo.db sidecar database doesn't itself disable
+// report-email (SMTP just stays unconfigured by convention), but if an
+// operator enables it anyway against demo data, the watermark still
+// applies.
+func New(repos dashboard.Repos, emails *reportemail.Repo, smtp mailer.Config, recipients []string, day int, location *time.Location, demoMode bool) *Scheduler {
+	s := &Scheduler{repos: repos, emails: emails, demoMode: demoMode}
 	s.SetConfig(smtp, recipients, day, location)
 	return s
 }
@@ -207,7 +213,7 @@ func (s *Scheduler) send(ctx context.Context, year, month int, cur *liveConfig) 
 		return fmt.Errorf("build report: %w", err)
 	}
 
-	pdf := reportpdf.RenderPortfolioReportPDF(report)
+	pdf := reportpdf.RenderPortfolioReportPDF(report, s.demoMode)
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		return fmt.Errorf("render PDF: %w", err)

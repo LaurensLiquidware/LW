@@ -22,6 +22,12 @@ type AuthDeps struct {
 	Users    *auth.UserRepo
 	Sessions *auth.SessionRepo
 	Secure   bool
+
+	// DemoMode is true when the server is running against a demo.db
+	// sidecar file (see cmd/server/main.go's openDatabase). Surfaced to
+	// the frontend via userResponse so the shell chrome can show a
+	// persistent "DEMO DATA" badge.
+	DemoMode bool
 }
 
 type loginRequest struct {
@@ -38,6 +44,7 @@ type userResponse struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
+	DemoMode bool   `json:"demoMode"`
 }
 
 // CSRFHandler issues a fresh CSRF cookie and returns its value, so the
@@ -90,7 +97,7 @@ func LoginHandler(deps AuthDeps) http.HandlerFunc {
 			SameSite: http.SameSiteStrictMode,
 		})
 
-		writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Username: user.Username, Role: string(user.Role)})
+		writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Username: user.Username, Role: string(user.Role), DemoMode: deps.DemoMode})
 	}
 }
 
@@ -127,7 +134,7 @@ func MeHandler(deps AuthDeps) http.HandlerFunc {
 			http.Error(w, "not authenticated", http.StatusUnauthorized)
 			return
 		}
-		writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Username: user.Username, Role: string(user.Role)})
+		writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Username: user.Username, Role: string(user.Role), DemoMode: deps.DemoMode})
 	}
 }
 
@@ -184,6 +191,24 @@ func RequireSession(sessions *auth.SessionRepo, handler http.Handler) http.Handl
 		}
 		ctx := context.WithValue(r.Context(), userContextKey{}, session.UserID)
 		handler.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// DisallowInDemoMode wraps handler, returning a 403 with a clear demo-mode
+// message instead of invoking it, whenever demoMode is true. Used to block
+// the two endpoints that make outbound network calls to a tenant's own
+// host (manual "Collect Now" and "Test Connection") — demo tenants' hosts
+// are fictional and must never be dialed, and this must hold regardless of
+// whether the background scheduler is also disabled (see
+// cmd/server/main.go). Composed the same way as RequireSession/RequireCSRF
+// at the route registration in router.go, rather than threading a flag
+// through each handler's own deps struct.
+func DisallowInDemoMode(demoMode bool, handler http.Handler) http.Handler {
+	if !demoMode {
+		return handler
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "demo mode: outbound connections to tenant hosts are disabled", http.StatusForbidden)
 	})
 }
 

@@ -13,6 +13,12 @@ import (
 type CollectionDeps struct {
 	Scheduler *scheduler.Scheduler
 	Status    func() SchedulerStatus
+
+	// DemoMode is true when running against a demo.db sidecar file. See
+	// DisallowInDemoMode, which uses this to block CollectNowHandler
+	// (wired in router.go) so demo tenants' fictional hostnames are never
+	// polled.
+	DemoMode bool
 }
 
 // CollectNowHandler triggers an immediate collection pass across every

@@ -124,6 +124,19 @@ type Config struct {
 	// previous month's portfolio report is sent, e.g. 1 to send on the
 	// 1st for the month that just ended.
 	ReportEmailDay int
+
+	// DemoModeOverride is PUMC_DEMO_MODE's raw value, lowercased and
+	// trimmed. "off" forces the real database even when a demo.db sidecar
+	// file is present next to DBDSN; anything else (including unset)
+	// leaves demo-file auto-detection enabled. See cmd/server/main.go's
+	// demo-database detection, which reads this alongside DBDSN/DBDriver.
+	DemoModeOverride string
+}
+
+// DemoModeDisabled reports whether PUMC_DEMO_MODE=off was set, forcing the
+// real database even when a demo.db sidecar file is present.
+func (c Config) DemoModeDisabled() bool {
+	return c.DemoModeOverride == "off"
 }
 
 // ReportEmailEnabled reports whether the monthly report-email feature is
@@ -133,32 +146,33 @@ func (c Config) ReportEmailEnabled() bool {
 }
 
 const (
-	envHTTPAddr                = "PUMC_HTTP_ADDR"
-	envEnvironment             = "PUMC_ENVIRONMENT"
-	envDBDriver                = "PUMC_DB_DRIVER"
-	envDBDSN                   = "PUMC_DB_DSN"
-	envLogLevel                = "PUMC_LOG_LEVEL"
-	envLogFile                 = "PUMC_LOG_FILE"
-	envCollectionInterval      = "PUMC_COLLECTION_INTERVAL"
-	envCollectionTimezone      = "PUMC_COLLECTION_TIMEZONE"
-	envCollectionConcurrency   = "PUMC_COLLECTION_CONCURRENCY"
-	envCollectionTenantTimeout = "PUMC_COLLECTION_TENANT_TIMEOUT"
+	envHTTPAddr                    = "PUMC_HTTP_ADDR"
+	envEnvironment                 = "PUMC_ENVIRONMENT"
+	envDBDriver                    = "PUMC_DB_DRIVER"
+	envDBDSN                       = "PUMC_DB_DSN"
+	envLogLevel                    = "PUMC_LOG_LEVEL"
+	envLogFile                     = "PUMC_LOG_FILE"
+	envCollectionInterval          = "PUMC_COLLECTION_INTERVAL"
+	envCollectionTimezone          = "PUMC_COLLECTION_TIMEZONE"
+	envCollectionConcurrency       = "PUMC_COLLECTION_CONCURRENCY"
+	envCollectionTenantTimeout     = "PUMC_COLLECTION_TENANT_TIMEOUT"
 	envCredentialEncryptionKey     = "PUMC_CREDENTIAL_ENCRYPTION_KEY"
 	envCredentialEncryptionKeyFile = "PUMC_CREDENTIAL_ENCRYPTION_KEY_FILE"
-	envSessionIdleTimeout      = "PUMC_SESSION_IDLE_TIMEOUT"
-	envSessionAbsoluteTimeout  = "PUMC_SESSION_ABSOLUTE_TIMEOUT"
-	envBootstrapAdminUsername  = "PUMC_BOOTSTRAP_ADMIN_USERNAME"
-	envBootstrapAdminPassword  = "PUMC_BOOTSTRAP_ADMIN_PASSWORD"
-	envTLSCertFile             = "PUMC_TLS_CERT_FILE"
-	envTLSKeyFile              = "PUMC_TLS_KEY_FILE"
-	envSMTPHost                = "PUMC_SMTP_HOST"
-	envSMTPPort                = "PUMC_SMTP_PORT"
-	envSMTPUsername            = "PUMC_SMTP_USERNAME"
-	envSMTPPassword            = "PUMC_SMTP_PASSWORD"
-	envSMTPFrom                = "PUMC_SMTP_FROM"
-	envSMTPSecurity            = "PUMC_SMTP_SECURITY"
-	envReportRecipients        = "PUMC_REPORT_RECIPIENTS"
-	envReportEmailDay          = "PUMC_REPORT_EMAIL_DAY"
+	envSessionIdleTimeout          = "PUMC_SESSION_IDLE_TIMEOUT"
+	envSessionAbsoluteTimeout      = "PUMC_SESSION_ABSOLUTE_TIMEOUT"
+	envBootstrapAdminUsername      = "PUMC_BOOTSTRAP_ADMIN_USERNAME"
+	envBootstrapAdminPassword      = "PUMC_BOOTSTRAP_ADMIN_PASSWORD"
+	envTLSCertFile                 = "PUMC_TLS_CERT_FILE"
+	envTLSKeyFile                  = "PUMC_TLS_KEY_FILE"
+	envSMTPHost                    = "PUMC_SMTP_HOST"
+	envSMTPPort                    = "PUMC_SMTP_PORT"
+	envSMTPUsername                = "PUMC_SMTP_USERNAME"
+	envSMTPPassword                = "PUMC_SMTP_PASSWORD"
+	envSMTPFrom                    = "PUMC_SMTP_FROM"
+	envSMTPSecurity                = "PUMC_SMTP_SECURITY"
+	envReportRecipients            = "PUMC_REPORT_RECIPIENTS"
+	envReportEmailDay              = "PUMC_REPORT_EMAIL_DAY"
+	envDemoMode                    = "PUMC_DEMO_MODE"
 )
 
 var validDBDrivers = map[string]bool{"sqlite": true, "postgres": true}
@@ -176,6 +190,7 @@ func Load() (Config, error) {
 		LogLevel:           firstNonEmpty(os.Getenv(envLogLevel), defaultLogLevel(environment)),
 		LogFile:            firstNonEmpty(os.Getenv(envLogFile), DefaultLogFile),
 		CollectionTimezone: firstNonEmpty(os.Getenv(envCollectionTimezone), "UTC"),
+		DemoModeOverride:   strings.ToLower(strings.TrimSpace(os.Getenv(envDemoMode))),
 	}
 
 	interval, err := parseDurationDefault(os.Getenv(envCollectionInterval), time.Hour)

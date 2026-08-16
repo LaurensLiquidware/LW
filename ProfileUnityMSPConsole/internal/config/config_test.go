@@ -395,3 +395,39 @@ func TestLoad_RejectsOutOfRangeReportEmailDay(t *testing.T) {
 		}
 	})
 }
+
+func TestLoad_DemoModeOverride_UnsetLeavesDetectionEnabled(t *testing.T) {
+	withEnv(t, map[string]string{envDemoMode: ""}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.DemoModeDisabled() {
+			t.Error("DemoModeDisabled() = true, want false when PUMC_DEMO_MODE is unset")
+		}
+	})
+}
+
+func TestLoad_DemoModeOverride_OffDisablesDetection(t *testing.T) {
+	withEnv(t, map[string]string{envDemoMode: "off"}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !cfg.DemoModeDisabled() {
+			t.Error("DemoModeDisabled() = false, want true when PUMC_DEMO_MODE=off")
+		}
+	})
+}
+
+func TestLoad_DemoModeOverride_CaseInsensitive(t *testing.T) {
+	withEnv(t, map[string]string{envDemoMode: "OFF"}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !cfg.DemoModeDisabled() {
+			t.Error("DemoModeDisabled() = false, want true when PUMC_DEMO_MODE=OFF (case-insensitive)")
+		}
+	})
+}
