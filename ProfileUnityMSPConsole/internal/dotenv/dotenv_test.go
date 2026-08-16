@@ -88,3 +88,95 @@ func TestLoad_RealEnvVarWins(t *testing.T) {
 		t.Errorf("PUMC_TEST_DOTENV_B = %q, want %q (real env must win)", got, "from-real-env")
 	}
 }
+
+func TestSetValue_CreatesFileWhenMissing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".env")
+	if err := SetValue(path, "PUMC_HTTP_ADDR", "0.0.0.0:8444"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	kv, err := loadFile(t, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kv["PUMC_HTTP_ADDR"] != "0.0.0.0:8444" {
+		t.Errorf("PUMC_HTTP_ADDR = %q, want %q", kv["PUMC_HTTP_ADDR"], "0.0.0.0:8444")
+	}
+}
+
+func TestSetValue_ReplacesExistingKeyInPlace(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".env")
+	original := "# a comment\nPUMC_ENVIRONMENT=production\nPUMC_HTTP_ADDR=0.0.0.0:8443\nPUMC_LOG_LEVEL=info\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SetValue(path, "PUMC_HTTP_ADDR", "0.0.0.0:8444"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	kv, err := loadFile(t, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kv["PUMC_HTTP_ADDR"] != "0.0.0.0:8444" {
+		t.Errorf("PUMC_HTTP_ADDR = %q, want %q", kv["PUMC_HTTP_ADDR"], "0.0.0.0:8444")
+	}
+	if kv["PUMC_ENVIRONMENT"] != "production" || kv["PUMC_LOG_LEVEL"] != "info" {
+		t.Errorf("other keys were disturbed: %v", kv)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "# a comment") {
+		t.Error("comment line was dropped")
+	}
+}
+
+func TestSetValue_AppendsNewKeyWhenAbsent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".env")
+	if err := os.WriteFile(path, []byte("PUMC_ENVIRONMENT=production\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SetValue(path, "PUMC_HTTP_ADDR", "0.0.0.0:8444"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	kv, err := loadFile(t, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kv["PUMC_HTTP_ADDR"] != "0.0.0.0:8444" {
+		t.Errorf("PUMC_HTTP_ADDR = %q, want %q", kv["PUMC_HTTP_ADDR"], "0.0.0.0:8444")
+	}
+	if kv["PUMC_ENVIRONMENT"] != "production" {
+		t.Errorf("existing key was disturbed: %v", kv)
+	}
+}
+
+func TestSetValue_RoundTripsWithLoad(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".env")
+	if err := SetValue(path, "PUMC_TEST_DOTENV_C", "round-trip-value"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	os.Unsetenv("PUMC_TEST_DOTENV_C")
+	if err := Load(path); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := os.Getenv("PUMC_TEST_DOTENV_C"); got != "round-trip-value" {
+		t.Errorf("PUMC_TEST_DOTENV_C = %q, want %q", got, "round-trip-value")
+	}
+}
+
+func loadFile(t *testing.T, path string) (map[string]string, error) {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return Parse(f)
+}

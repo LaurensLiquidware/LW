@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0 — unreleased
+
+- **Tray launcher**: added a **Change Port...** button (main window) and
+  matching tray-menu item, so you can run multiple instances side by side
+  on different ports (e.g. a production install on the default `8443` and
+  a separate demo copy on `8444`) without hand-editing `.env`. Writes the
+  new `PUMC_HTTP_ADDR` to that install's own `.env` and, if the server is
+  currently running, offers to restart it immediately so the new port
+  takes effect. Every other per-instance resource (database, log, TLS
+  cert, credential key) was already isolated per install folder — this
+  was the one missing piece for running two copies side by side.
+  - `internal/dotenv`: added `SetValue`, the first write path for `.env`
+    files (previously read-only) — replaces or appends one key's line
+    while preserving everything else (comments, blank lines, other keys)
+    verbatim.
+  - Also fixes a latent staleness bug in how the tray's "Open Console"
+    link is computed: the old `dotenv.Load`-based approach only reflected
+    a `.env` value the *first* time it was read per process, so
+    refreshing the link after a port change would have kept showing the
+    old port. The new `currentHTTPAddr` reads the file fresh every call.
+
 ## 0.3.0 — unreleased
 
 - **Demo data**: a `demo.db` sidecar file, dropped next to the real

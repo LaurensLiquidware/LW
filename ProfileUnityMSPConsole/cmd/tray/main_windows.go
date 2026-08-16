@@ -48,12 +48,14 @@ type app struct {
 	icon       *walk.Icon
 	logo       *walk.Bitmap
 
-	mw         *walk.MainWindow
-	statusText *walk.TextLabel
-	startBtn   *walk.PushButton
-	stopBtn    *walk.PushButton
-	restartBtn *walk.PushButton
-	notifyIcon *walk.NotifyIcon
+	mw            *walk.MainWindow
+	statusText    *walk.TextLabel
+	serverLink    *walk.LinkLabel
+	startBtn      *walk.PushButton
+	stopBtn       *walk.PushButton
+	restartBtn    *walk.PushButton
+	changePortBtn *walk.PushButton
+	notifyIcon    *walk.NotifyIcon
 
 	logWindow    *walk.MainWindow
 	logEdit      *walk.TextEdit
@@ -185,14 +187,15 @@ func (a *app) buildMainWindow() error {
 		mw.SetIcon(a.icon)
 	}
 	mw.SetLayout(walk.NewVBoxLayout())
-	mw.SetMinMaxSize(walk.Size{Width: 360, Height: 220}, walk.Size{})
+	mw.SetMinMaxSize(walk.Size{Width: 420, Height: 220}, walk.Size{})
 	// walk.MainWindow has no "size to content" default -- without an
 	// explicit initial size it opens at whatever default is much larger
 	// than this window needs, and VBoxLayout spreads the leftover space
 	// evenly across every child since none of them set a stretch factor
 	// (hence big gaps between the title/status/buttons instead of a
-	// snug window).
-	mw.SetSize(walk.Size{Width: 420, Height: 260})
+	// snug window). Widened from 420 to 500 to fit the fourth
+	// ("Change Port...") button in the row without crowding.
+	mw.SetSize(walk.Size{Width: 500, Height: 260})
 
 	if a.logo != nil {
 		logoView, err := walk.NewImageView(mw)
@@ -215,12 +218,12 @@ func (a *app) buildMainWindow() error {
 		return err
 	}
 
-	serverLink, err := walk.NewLinkLabel(mw)
+	a.serverLink, err = walk.NewLinkLabel(mw)
 	if err != nil {
 		return err
 	}
-	serverLink.SetText(fmt.Sprintf(`<a href="%s">%s</a>`, a.serverURL, a.serverURL))
-	serverLink.LinkActivated().Attach(func(link *walk.LinkLabelLink) {
+	a.serverLink.SetText(fmt.Sprintf(`<a href="%s">%s</a>`, a.serverURL, a.serverURL))
+	a.serverLink.LinkActivated().Attach(func(link *walk.LinkLabelLink) {
 		openInBrowser(link.URL())
 	})
 
@@ -250,6 +253,13 @@ func (a *app) buildMainWindow() error {
 	}
 	a.restartBtn.SetText("Restart")
 	a.restartBtn.Clicked().Attach(func() { a.restart() })
+
+	a.changePortBtn, err = walk.NewPushButton(buttonRow)
+	if err != nil {
+		return err
+	}
+	a.changePortBtn.SetText("Change Port...")
+	a.changePortBtn.Clicked().Attach(func() { a.changePort() })
 
 	logBtn, err := walk.NewPushButton(mw)
 	if err != nil {
@@ -305,6 +315,9 @@ func (a *app) buildNotifyIcon() error {
 		return err
 	}
 	if err := menuItem("Restart", func() { a.restart() }); err != nil {
+		return err
+	}
+	if err := menuItem("Change Port...", func() { a.changePort() }); err != nil {
 		return err
 	}
 	if err := menuItem("Show Log", func() { a.showLog() }); err != nil {
