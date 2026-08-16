@@ -2,6 +2,8 @@ package reportpdf
 
 import (
 	"bytes"
+	"image"
+	"image/png"
 	"strings"
 	"testing"
 
@@ -106,7 +108,7 @@ func emptyTenantReport() dashboard.TenantMonthlyReport {
 }
 
 func TestRenderTenantReportPDF_ProducesValidOutput(t *testing.T) {
-	pdf := RenderTenantReportPDF(fullTenantReport(), false)
+	pdf := RenderTenantReportPDF(fullTenantReport(), false, Branding{})
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		t.Fatalf("Output() error = %v", err)
@@ -123,7 +125,7 @@ func TestRenderTenantReportPDF_ProducesValidOutput(t *testing.T) {
 }
 
 func TestRenderTenantReportPDF_NoDataDoesNotPanic(t *testing.T) {
-	pdf := RenderTenantReportPDF(emptyTenantReport(), false)
+	pdf := RenderTenantReportPDF(emptyTenantReport(), false, Branding{})
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		t.Fatalf("Output() error = %v", err)
@@ -153,7 +155,7 @@ func TestRenderPortfolioReportPDF_ProducesValidOutput(t *testing.T) {
 		TenantReports:               []dashboard.TenantMonthlyReport{fullTenantReport(), emptyTenantReport()},
 	}
 
-	pdf := RenderPortfolioReportPDF(r, false)
+	pdf := RenderPortfolioReportPDF(r, false, Branding{})
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		t.Fatalf("Output() error = %v", err)
@@ -196,7 +198,73 @@ func TestFooterText(t *testing.T) {
 // here without shelling out to an external tool (deliberately avoided for
 // this package, see report_pdf_test.go's other Render* tests).
 func TestRenderTenantReportPDF_DemoModeStillProducesValidOutput(t *testing.T) {
-	pdf := RenderTenantReportPDF(fullTenantReport(), true)
+	pdf := RenderTenantReportPDF(fullTenantReport(), true, Branding{})
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		t.Fatalf("Output() error = %v", err)
+	}
+	if pdf.Err() {
+		t.Fatalf("pdf.Err() = true, want false; details: %v", pdf.Error())
+	}
+	if buf.Len() == 0 {
+		t.Fatal("rendered PDF is empty")
+	}
+}
+
+// tinyPNG returns a minimal valid PNG's bytes, standing in for an
+// uploaded MSP logo.
+func tinyPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 8, 2))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("png.Encode() error = %v", err)
+	}
+	return buf.Bytes()
+}
+
+// TestRenderTenantReportPDF_WithBrandingProducesValidOutput covers all
+// three MSP-branding combinations (name only, logo only, both) -- see
+// newBrandedHeaderFunc/drawMSPBranding, drawn alongside Liquidware's own
+// header branding, never replacing it.
+func TestRenderTenantReportPDF_WithBrandingProducesValidOutput(t *testing.T) {
+	logo := tinyPNG(t)
+	cases := []struct {
+		name     string
+		branding Branding
+	}{
+		{"name only", Branding{CompanyName: "Acme MSP"}},
+		{"logo only", Branding{LogoImage: logo, LogoImageType: "png"}},
+		{"name and logo", Branding{CompanyName: "Acme MSP", LogoImage: logo, LogoImageType: "png"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			pdf := RenderTenantReportPDF(fullTenantReport(), false, c.branding)
+			var buf bytes.Buffer
+			if err := pdf.Output(&buf); err != nil {
+				t.Fatalf("Output() error = %v", err)
+			}
+			if pdf.Err() {
+				t.Fatalf("pdf.Err() = true, want false; details: %v", pdf.Error())
+			}
+			if buf.Len() == 0 {
+				t.Fatal("rendered PDF is empty")
+			}
+		})
+	}
+}
+
+// TestRenderPortfolioReportPDF_WithBrandingProducesValidOutput mirrors
+// TestRenderTenantReportPDF_WithBrandingProducesValidOutput for the
+// portfolio renderer, which draws the same header on every page,
+// including the per-tenant detail pages.
+func TestRenderPortfolioReportPDF_WithBrandingProducesValidOutput(t *testing.T) {
+	branding := Branding{CompanyName: "Acme MSP", LogoImage: tinyPNG(t), LogoImageType: "png"}
+	r := dashboard.PortfolioMonthlyReport{
+		Year: 2025, Month: 6,
+		TenantReports: []dashboard.TenantMonthlyReport{fullTenantReport()},
+	}
+	pdf := RenderPortfolioReportPDF(r, false, branding)
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		t.Fatalf("Output() error = %v", err)

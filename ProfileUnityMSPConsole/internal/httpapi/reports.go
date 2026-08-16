@@ -20,6 +20,12 @@ type ReportDeps struct {
 	// RenderPortfolioReportPDF) whenever running against a demo.db
 	// sidecar database.
 	DemoMode bool
+
+	// Branding returns the MSP operator's current company name/logo,
+	// drawn alongside Liquidware's own PDF header branding. A function,
+	// not a static value, so a branding change from the Settings screen
+	// takes effect on the very next report download with no restart.
+	Branding func() reportpdf.Branding
 }
 
 // monthRange parses "year"/"month" query parameters (both required,
@@ -142,7 +148,7 @@ func TenantMonthlyReportPDFHandler(deps ReportDeps) http.HandlerFunc {
 			return
 		}
 
-		pdf := reportpdf.RenderTenantReportPDF(report, deps.DemoMode)
+		pdf := reportpdf.RenderTenantReportPDF(report, deps.DemoMode, deps.Branding())
 		w.Header().Set("Content-Type", "application/pdf")
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s-%04d-%02d.pdf"`, reportpdf.SafeFilenamePart(report.Tenant.DisplayName), report.Year, report.Month))
 		if err := pdf.Output(w); err != nil {
@@ -216,7 +222,7 @@ func PortfolioMonthlyReportPDFHandler(deps ReportDeps) http.HandlerFunc {
 			return
 		}
 
-		pdf := reportpdf.RenderPortfolioReportPDF(report, deps.DemoMode)
+		pdf := reportpdf.RenderPortfolioReportPDF(report, deps.DemoMode, deps.Branding())
 		w.Header().Set("Content-Type", "application/pdf")
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="portfolio-%04d-%02d.pdf"`, report.Year, report.Month))
 		if err := pdf.Output(w); err != nil {

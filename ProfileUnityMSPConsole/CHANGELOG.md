@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.0 — unreleased
+
+- **MSP company branding**: added a **Company Branding** section under
+  Settings where an MSP operator can set their own company name and
+  upload their own logo (PNG or JPEG, up to 2 MB) — both now appear on
+  every PDF report (tenant and portfolio monthly reports, plus the
+  automatic monthly emailed attachment), alongside Liquidware's own
+  existing header branding, which is unchanged. The MSP's name/logo are
+  drawn in a second, shorter band directly beneath Liquidware's logo and
+  title, right-aligned, so there's no risk of the two overlapping
+  regardless of the company name's length or the logo's aspect ratio. The
+  Settings screen includes guidance on logo requirements (format, size,
+  and why a light-colored/transparent logo works best on the header's
+  dark blue background).
+  - New `runtime_settings` columns (migration `0006_msp_branding.sql`):
+    `company_name`, `company_logo_image`, `company_logo_image_type`.
+  - New endpoints: `POST /api/settings/logo` (upload, validated via Go's
+    stdlib `image` package — PNG/JPEG only), `DELETE /api/settings/logo`
+    (remove), `GET /api/settings/logo` (serves the raw image for the
+    Settings screen's preview). Company name travels with the main
+    Settings save form; the logo has its own dedicated upload/clear
+    action, mirroring how the TLS certificate is already handled.
+  - A branding change takes effect immediately on the next report
+    download or automatic monthly email — no restart, same live-update
+    pattern already used for SMTP/collection/session settings.
+
 ## 0.4.0 — unreleased
 
 - **Tray launcher**: added a **Change Port...** button (main window) and

@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"image"
+	"image/png"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +20,7 @@ import (
 	"time"
 
 	"profileunity-msp-console/internal/mailer"
+	"profileunity-msp-console/internal/reportpdf"
 	"profileunity-msp-console/internal/tlscert"
 )
 
@@ -257,7 +261,7 @@ func TestUpdateSettingsHandler_RejectsInvalidSettings(t *testing.T) {
 func TestSendReportNowHandler_SendsAndReturnsLastMonth(t *testing.T) {
 	deps := newTestDeps(t)
 	smtp := startFakeSMTPServer(t)
-	deps.settings.ReportMail.SetConfig(smtp, []string{"msp@liquidware.eu"}, 1, time.UTC)
+	deps.settings.ReportMail.SetConfig(smtp, []string{"msp@liquidware.eu"}, 1, time.UTC, reportpdf.Branding{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/settings/send-report-now", nil)
 	rec := httptest.NewRecorder()
@@ -295,7 +299,7 @@ func TestSendReportNowHandler_RejectsWhenSMTPNotConfigured(t *testing.T) {
 func TestSendReportNowHandler_RejectsWhenNoRecipients(t *testing.T) {
 	deps := newTestDeps(t)
 	smtp := startFakeSMTPServer(t)
-	deps.settings.ReportMail.SetConfig(smtp, nil, 1, time.UTC)
+	deps.settings.ReportMail.SetConfig(smtp, nil, 1, time.UTC, reportpdf.Branding{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/settings/send-report-now", nil)
 	rec := httptest.NewRecorder()
@@ -350,5 +354,123 @@ func TestUploadTLSCertHandler_RejectsMismatchedPair(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400 for a mismatched cert/key pair", rec.Code)
+	}
+}
+
+// tinyLogoPNG returns a minimal valid PNG's bytes, standing in for an
+// uploaded MSP logo.
+func tinyLogoPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 8, 2))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("png.Encode: %v", err)
+	}
+	return buf.Bytes()
+}
+
+func TestUploadLogoHandler_StoresValidPNGAndFlipsConfigured(t *testing.T) {
+	deps := newTestDeps(t)
+
+	b, _ := json.Marshal(logoUploadRequest{ImageBase64: base64.StdEncoding.EncodeToString(tinyLogoPNG(t))})
+	req := httptest.NewRequest(http.MethodPost, "/api/settings/logo", bytes.NewReader(b))
+	rec := httptest.NewRecorder()
+	UploadLogoHandler(deps.settings)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body: %s", rec.Code, rec.Body.String())
+	}
+	var dto settingsDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &dto); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !dto.CompanyLogoConfigured {
+		t.Error("CompanyLogoConfigured = false right after a successful upload")
+	}
+
+	stored, ok, err := deps.settings.Store.Load(context.Background())
+	if err != nil || !ok {
+		t.Fatalf("Load: ok=%v err=%v", ok, err)
+	}
+	if len(stored.CompanyLogoImage) == 0 || stored.CompanyLogoImageType != "png" {
+		t.Errorf("logo not persisted: len=%d type=%q", len(stored.CompanyLogoImage), stored.CompanyLogoImageType)
+	}
+}
+
+func TestUploadLogoHandler_RejectsNonImageData(t *testing.T) {
+	deps := newTestDeps(t)
+
+	b, _ := json.Marshal(logoUploadRequest{ImageBase64: base64.StdEncoding.EncodeToString([]byte("not an image"))})
+	req := httptest.NewRequest(http.MethodPost, "/api/settings/logo", bytes.NewReader(b))
+	rec := httptest.NewRecorder()
+	UploadLogoHandler(deps.settings)(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 for non-image data", rec.Code)
+	}
+}
+
+func TestUploadLogoHandler_RejectsOversizedImage(t *testing.T) {
+	deps := newTestDeps(t)
+
+	oversized := make([]byte, maxLogoImageBytes+1)
+	b, _ := json.Marshal(logoUploadRequest{ImageBase64: base64.StdEncoding.EncodeToString(oversized)})
+	req := httptest.NewRequest(http.MethodPost, "/api/settings/logo", bytes.NewReader(b))
+	rec := httptest.NewRecorder()
+	UploadLogoHandler(deps.settings)(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 for an oversized logo", rec.Code)
+	}
+}
+
+func TestClearLogoHandler_RemovesStoredLogo(t *testing.T) {
+	deps := newTestDeps(t)
+	if err := deps.settings.Store.UpdateBranding(context.Background(), "", tinyLogoPNG(t), "png"); err != nil {
+		t.Fatalf("seed UpdateBranding: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/settings/logo", nil)
+	rec := httptest.NewRecorder()
+	ClearLogoHandler(deps.settings)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body: %s", rec.Code, rec.Body.String())
+	}
+	var dto settingsDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &dto); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if dto.CompanyLogoConfigured {
+		t.Error("CompanyLogoConfigured = true right after clearing the logo")
+	}
+}
+
+func TestGetLogoHandler_ServesStoredBytesOr404(t *testing.T) {
+	deps := newTestDeps(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/settings/logo", nil)
+	rec := httptest.NewRecorder()
+	GetLogoHandler(deps.settings)(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404 when no logo is configured", rec.Code)
+	}
+
+	logo := tinyLogoPNG(t)
+	if err := deps.settings.Store.UpdateBranding(context.Background(), "", logo, "png"); err != nil {
+		t.Fatalf("seed UpdateBranding: %v", err)
+	}
+
+	req2 := httptest.NewRequest(http.MethodGet, "/api/settings/logo", nil)
+	rec2 := httptest.NewRecorder()
+	GetLogoHandler(deps.settings)(rec2, req2)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body: %s", rec2.Code, rec2.Body.String())
+	}
+	if rec2.Header().Get("Content-Type") != "image/png" {
+		t.Errorf("Content-Type = %q, want image/png", rec2.Header().Get("Content-Type"))
+	}
+	if !bytes.Equal(rec2.Body.Bytes(), logo) {
+		t.Error("served logo bytes don't match what was stored")
 	}
 }

@@ -167,7 +167,14 @@ export class SettingsComponent implements OnInit {
   readonly certPem = signal('');
   readonly keyPem = signal('');
 
+  readonly uploadingLogo = signal(false);
+  readonly logoUploadError = signal<string | null>(null);
+  private logoBase64 = '';
+  readonly logoFileChosen = signal(false);
+  readonly logoPreviewUrl = signal<string | null>(null);
+
   readonly form = this.fb.nonNullable.group({
+    companyName: [''],
     smtpHost: [''],
     smtpPort: [587, [Validators.min(1), Validators.max(65535)]],
     smtpUsername: [''],
@@ -223,7 +230,9 @@ export class SettingsComponent implements OnInit {
       const s = await this.settingsService.get();
       this.current.set(s);
       this.ensureSmtpPortOption(s.smtpPort);
+      this.logoPreviewUrl.set(s.companyLogoConfigured ? this.settingsService.logoPreviewUrl() : null);
       this.form.reset({
+        companyName: s.companyName,
         smtpHost: s.smtpHost,
         smtpPort: s.smtpPort,
         smtpUsername: s.smtpUsername,
@@ -255,6 +264,7 @@ export class SettingsComponent implements OnInit {
 
     try {
       const updated = await this.settingsService.update({
+        companyName: v.companyName,
         smtpHost: v.smtpHost,
         smtpPort: v.smtpPort,
         smtpUsername: v.smtpUsername,
@@ -384,6 +394,60 @@ export class SettingsComponent implements OnInit {
       this.certUploadError.set('settings.tlsCertUploadError');
     } finally {
       this.uploadingCert.set(false);
+    }
+  }
+
+  onLogoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      // readAsDataURL yields "data:image/png;base64,AAAA..." -- only the
+      // part after the comma is the base64 payload the backend expects.
+      const dataUrl = String(reader.result ?? '');
+      const comma = dataUrl.indexOf(',');
+      this.logoBase64 = comma >= 0 ? dataUrl.slice(comma + 1) : '';
+      this.logoFileChosen.set(this.logoBase64 !== '');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async uploadLogo(): Promise<void> {
+    if (!this.logoBase64 || this.uploadingLogo()) {
+      return;
+    }
+    this.uploadingLogo.set(true);
+    this.logoUploadError.set(null);
+    try {
+      const updated = await this.settingsService.uploadLogo({ imageBase64: this.logoBase64 });
+      this.current.set(updated);
+      this.logoPreviewUrl.set(this.settingsService.logoPreviewUrl());
+      this.logoBase64 = '';
+      this.logoFileChosen.set(false);
+    } catch {
+      this.logoUploadError.set('settings.logoUploadError');
+    } finally {
+      this.uploadingLogo.set(false);
+    }
+  }
+
+  async clearLogo(): Promise<void> {
+    if (this.uploadingLogo()) {
+      return;
+    }
+    this.uploadingLogo.set(true);
+    this.logoUploadError.set(null);
+    try {
+      const updated = await this.settingsService.clearLogo();
+      this.current.set(updated);
+      this.logoPreviewUrl.set(null);
+    } catch {
+      this.logoUploadError.set('settings.logoUploadError');
+    } finally {
+      this.uploadingLogo.set(false);
     }
   }
 }

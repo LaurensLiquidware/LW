@@ -28,6 +28,7 @@ import (
 	"profileunity-msp-console/internal/mailer"
 	"profileunity-msp-console/internal/reportemail"
 	"profileunity-msp-console/internal/reportmail"
+	"profileunity-msp-console/internal/reportpdf"
 	"profileunity-msp-console/internal/scheduler"
 	"profileunity-msp-console/internal/settings"
 	"profileunity-msp-console/internal/snapshot"
@@ -176,7 +177,7 @@ func run() error {
 		From:     current.SMTPFrom,
 		Security: current.SMTPSecurity,
 	}
-	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), reportMailSmtp, current.ReportRecipients, current.ReportEmailDay, collectionLocation, demoMode)
+	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), reportMailSmtp, current.ReportRecipients, current.ReportEmailDay, collectionLocation, demoMode, brandingFrom(current))
 	go reportMailSched.Run(ctx)
 	if current.ReportEmailEnabled() {
 		slog.Info(fmt.Sprintf("monthly portfolio report emailing enabled: day %d of each month, to %v", current.ReportEmailDay, current.ReportRecipients))
@@ -186,7 +187,20 @@ func run() error {
 
 	dashboardDeps := httpapi.DashboardDeps{Repos: repos, Location: collectionLocation}
 	historyDeps := httpapi.HistoryDeps{Repos: repos}
-	reportDeps := httpapi.ReportDeps{Repos: repos, DemoMode: demoMode}
+	reportDeps := httpapi.ReportDeps{
+		Repos:    repos,
+		DemoMode: demoMode,
+		// A closure, not a fixed value, so a branding change from the
+		// Settings screen is reflected on the very next report download
+		// with no restart -- same reasoning as reportMailSched.SetConfig.
+		Branding: func() reportpdf.Branding {
+			s, _, err := settingsStore.Load(context.Background())
+			if err != nil {
+				return reportpdf.Branding{}
+			}
+			return brandingFrom(s)
+		},
+	}
 	alertDeps := httpapi.AlertDeps{Repos: repos, Location: collectionLocation}
 	schedulerStatus := func() httpapi.SchedulerStatus {
 		return schedulerStatusFor(sched.Status())
@@ -260,6 +274,18 @@ func openDatabase(cfg config.Config) (sqlDB *sql.DB, demoMode bool, err error) {
 		return nil, false, err
 	}
 	return sqlDB, true, nil
+}
+
+// brandingFrom builds the reportpdf.Branding a Settings value implies --
+// shared logic with internal/httpapi's own brandingFrom, kept in sync
+// deliberately since both derive the same PDF-header branding from the
+// same Settings fields.
+func brandingFrom(s settings.Settings) reportpdf.Branding {
+	return reportpdf.Branding{
+		CompanyName:   s.CompanyName,
+		LogoImage:     s.CompanyLogoImage,
+		LogoImageType: s.CompanyLogoImageType,
+	}
 }
 
 // bootstrapAdmin creates the first operator account from

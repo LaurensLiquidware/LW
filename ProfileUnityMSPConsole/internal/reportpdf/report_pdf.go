@@ -3,6 +3,9 @@ package reportpdf
 import (
 	"bytes"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"regexp"
 	"strings"
 
@@ -54,17 +57,71 @@ const (
 	brandLogoHeight   = 10.0
 )
 
+// Branding is the MSP operator's own company name/logo (set from the
+// Settings screen, see internal/settings.Settings.CompanyName/
+// CompanyLogoImage), drawn alongside -- never replacing -- Liquidware's
+// own header branding. The zero value means no MSP branding is
+// configured, and newBrandedHeaderFunc renders exactly as it always has.
+type Branding struct {
+	CompanyName string
+	LogoImage   []byte
+	// LogoImageType is "png" or "jpg", matching fpdf.ImageOptions.ImageType.
+	LogoImageType string
+}
+
+// mspLogoImageName is a fixed fpdf image name for the MSP's logo. Safe to
+// reuse across renders/pages: fpdf's image registry is per-Fpdf instance,
+// and newReportPDF registers (or skips) it once per document.
+const mspLogoImageName = "msp-logo"
+
+// mspStripHeight is a second, shorter band directly below Liquidware's
+// own header band, added only when MSP branding is configured -- a
+// distinct row, not squeezed sideways into Liquidware's own title area,
+// so there's no risk of the two overlapping regardless of how wide the
+// MSP's name or logo is. This is what "alongside, not replacing" means
+// in practice: Liquidware's logo/title are drawn completely unchanged,
+// at their original size and position.
+const mspStripHeight = 12.0
+
+// mspLogoMaxHeight/mspLogoMaxWidth bound the MSP logo's drawn size within
+// the strip -- height first (leaves visible padding above/below), then
+// width (so an extremely wide/panoramic image can't dominate the strip).
+const (
+	mspLogoMaxHeight = 8.0
+	mspLogoMaxWidth  = 60.0
+)
+
+const mspBrandFontSize = 11.0
+
+// hasMSPBranding reports whether branding carries anything to draw.
+func hasMSPBranding(branding Branding) bool {
+	return branding.CompanyName != "" || len(branding.LogoImage) > 0
+}
+
+// totalHeaderHeight is brandHeaderHeight, plus mspStripHeight whenever
+// MSP branding is configured.
+func totalHeaderHeight(branding Branding) float64 {
+	if hasMSPBranding(branding) {
+		return brandHeaderHeight + mspStripHeight
+	}
+	return brandHeaderHeight
+}
+
 // newBrandedHeaderFunc returns an fpdf header callback that paints the
 // brand-blue band, embeds the Liquidware logo, and writes the report's
 // title/subtitle in white -- run via SetHeaderFunc, so it repeats
 // identically on every page of a multi-page portfolio report, not just
-// the first.
-func newBrandedHeaderFunc(pdf *fpdf.Fpdf, title string) func() {
+// the first. If branding carries an MSP company name and/or logo, a
+// second, shorter band is added directly below, with the MSP's own
+// logo/name right-aligned in it -- Liquidware's own logo/title above are
+// completely unchanged.
+func newBrandedHeaderFunc(pdf *fpdf.Fpdf, title string, branding Branding) func() {
 	return func() {
 		pageWidth, _ := pdf.GetPageSize()
+		totalHeight := totalHeaderHeight(branding)
 
 		pdf.SetFillColor(brandR, brandG, brandB)
-		pdf.Rect(0, 0, pageWidth, brandHeaderHeight, "F")
+		pdf.Rect(0, 0, pageWidth, totalHeight, "F")
 
 		logoWidth := brandLogoHeight * logoAspectWidthOverHeight
 		pdf.ImageOptions(logoImageName, 18, (brandHeaderHeight-brandLogoHeight)/2, logoWidth, brandLogoHeight, false, fpdf.ImageOptions{ImageType: "png"}, 0, "")
@@ -79,13 +136,82 @@ func newBrandedHeaderFunc(pdf *fpdf.Fpdf, title string) func() {
 		pdf.SetFont(reportFontFamily, "", 10)
 		pdf.CellFormat(textWidth, 6, title, "", 0, "L", false, 0, "")
 
+		if hasMSPBranding(branding) {
+			drawMSPBrandingStrip(pdf, pageWidth, branding)
+		}
+
 		// AddPage restores the font/color active before it was called,
 		// but NOT the cursor position -- without this, body content
 		// would start writing from wherever the title text above left
 		// it (inside the band) rather than below it, on every page.
 		pdf.SetTextColor(0, 0, 0)
-		pdf.SetXY(18, brandHeaderHeight+8)
+		pdf.SetXY(18, totalHeight+8)
 	}
+}
+
+// drawMSPBrandingStrip draws the MSP's own logo/name right-aligned in
+// the strip directly below Liquidware's own header band (see
+// mspStripHeight) -- a distinct row, so it can never overlap Liquidware's
+// title/subtitle above it regardless of the MSP's name length or logo
+// aspect ratio.
+func drawMSPBrandingStrip(pdf *fpdf.Fpdf, pageWidth float64, branding Branding) {
+	const margin = 18.0
+	stripTop := brandHeaderHeight
+	stripCenterY := stripTop + mspStripHeight/2
+
+	logoWidth := 0.0
+	logoHeight := 0.0
+	if len(branding.LogoImage) > 0 {
+		cfg, _, err := image.DecodeConfig(bytes.NewReader(branding.LogoImage))
+		if err == nil && cfg.Height > 0 {
+			aspect := float64(cfg.Width) / float64(cfg.Height)
+			logoHeight, logoWidth = mspLogoMaxHeight, mspLogoMaxHeight*aspect
+			if logoWidth > mspLogoMaxWidth {
+				logoWidth = mspLogoMaxWidth
+				logoHeight = logoWidth / aspect
+			}
+			pdf.RegisterImageOptionsReader(mspLogoImageName, fpdf.ImageOptions{ImageType: branding.LogoImageType}, bytes.NewReader(branding.LogoImage))
+			pdf.ImageOptions(mspLogoImageName, pageWidth-margin-logoWidth, stripCenterY-logoHeight/2, logoWidth, logoHeight, false, fpdf.ImageOptions{ImageType: branding.LogoImageType}, 0, "")
+		}
+	}
+
+	if branding.CompanyName == "" {
+		return
+	}
+	pdf.SetFont(reportFontFamily, "B", mspBrandFontSize)
+	maxNameWidth := pageWidth - 2*margin - logoWidth
+	if logoWidth > 0 {
+		maxNameWidth -= 4
+	}
+	name := truncateToWidth(pdf, branding.CompanyName, maxNameWidth)
+	nameWidth := pdf.GetStringWidth(name)
+	nameX := pageWidth - margin - logoWidth - nameWidth
+	if logoWidth > 0 {
+		nameX -= 4
+	}
+	pdf.SetTextColor(255, 255, 255)
+	pdf.SetXY(nameX, stripCenterY-2.5)
+	pdf.CellFormat(nameWidth, 5, name, "", 0, "L", false, 0, "")
+}
+
+// truncateToWidth shortens s, appending "..." if needed, until it fits
+// within maxWidth at the font currently set on pdf -- so an operator's
+// company name can never overflow past the page margin regardless of
+// length.
+func truncateToWidth(pdf *fpdf.Fpdf, s string, maxWidth float64) string {
+	if maxWidth <= 0 || pdf.GetStringWidth(s) <= maxWidth {
+		return s
+	}
+	const ellipsis = "..."
+	runes := []rune(s)
+	for len(runes) > 0 {
+		runes = runes[:len(runes)-1]
+		candidate := string(runes) + ellipsis
+		if pdf.GetStringWidth(candidate) <= maxWidth {
+			return candidate
+		}
+	}
+	return ellipsis
 }
 
 // newBrandedFooterFunc returns an fpdf footer callback: a thin brand-blue
@@ -170,17 +296,17 @@ func footerText(pageNo int, demoMode bool) string {
 	return fmt.Sprintf("ProfileUnity MSP Licensing Console — Page %d of {nb}", pageNo)
 }
 
-func newReportPDF(title string, demoMode bool) *fpdf.Fpdf {
+func newReportPDF(title string, demoMode bool, branding Branding) *fpdf.Fpdf {
 	title = reportTitle(title, demoMode)
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.AddUTF8FontFromBytes(reportFontFamily, "", dejaVuSansRegular)
 	pdf.AddUTF8FontFromBytes(reportFontFamily, "B", dejaVuSansBold)
 	pdf.RegisterImageOptionsReader(logoImageName, fpdf.ImageOptions{ImageType: "png"}, bytes.NewReader(liquidwareLogoWhite))
 
-	pdf.SetMargins(18, brandHeaderHeight+8, 18)
+	pdf.SetMargins(18, totalHeaderHeight(branding)+8, 18)
 	pdf.SetAutoPageBreak(true, 22)
 	pdf.AliasNbPages("{nb}")
-	pdf.SetHeaderFunc(newBrandedHeaderFunc(pdf, title))
+	pdf.SetHeaderFunc(newBrandedHeaderFunc(pdf, title, branding))
 	pdf.SetFooterFunc(newBrandedFooterFunc(pdf, demoMode))
 	pdf.AddPage()
 	return pdf
@@ -229,9 +355,11 @@ func writeTenantReportBody(pdf *fpdf.Fpdf, r dashboard.TenantMonthlyReport) {
 
 // RenderTenantReportPDF renders a single tenant's monthly report. demoMode
 // watermarks the header/footer with demoWatermark -- set it whenever r was
-// built from a demo.db sidecar database.
-func RenderTenantReportPDF(r dashboard.TenantMonthlyReport, demoMode bool) *fpdf.Fpdf {
-	pdf := newReportPDF(fmt.Sprintf("Monthly Report — %s", r.Tenant.DisplayName), demoMode)
+// built from a demo.db sidecar database. branding draws the MSP
+// operator's own company name/logo alongside Liquidware's own header
+// branding -- pass the zero Branding{} if none is configured.
+func RenderTenantReportPDF(r dashboard.TenantMonthlyReport, demoMode bool, branding Branding) *fpdf.Fpdf {
+	pdf := newReportPDF(fmt.Sprintf("Monthly Report — %s", r.Tenant.DisplayName), demoMode, branding)
 	writeTenantReportBody(pdf, r)
 	return pdf
 }
@@ -239,9 +367,10 @@ func RenderTenantReportPDF(r dashboard.TenantMonthlyReport, demoMode bool) *fpdf
 // RenderPortfolioReportPDF renders the MSP-wide summary followed by each
 // tenant's own detail section, so a single download (or emailed
 // attachment) covers everything an operator needs for the month. demoMode
-// watermarks the header/footer, same as RenderTenantReportPDF.
-func RenderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport, demoMode bool) *fpdf.Fpdf {
-	pdf := newReportPDF(fmt.Sprintf("Monthly Portfolio Report — %04d-%02d", r.Year, r.Month), demoMode)
+// watermarks the header/footer, same as RenderTenantReportPDF. branding is
+// also the same -- see RenderTenantReportPDF.
+func RenderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport, demoMode bool, branding Branding) *fpdf.Fpdf {
+	pdf := newReportPDF(fmt.Sprintf("Monthly Portfolio Report — %04d-%02d", r.Year, r.Month), demoMode, branding)
 
 	writeSectionHeading(pdf, "Portfolio summary")
 	writeStatLine(pdf, "Tenants registered:", fmt.Sprintf("%d", r.TenantsRegistered))

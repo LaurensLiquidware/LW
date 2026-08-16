@@ -44,6 +44,15 @@ type Settings struct {
 	// generator, or an operator upload) sets them.
 	TLSCertPEM string
 	TLSKeyPEM  string
+
+	// CompanyName/CompanyLogoImage are the MSP operator's own branding,
+	// shown alongside Liquidware's existing branding on PDF reports (see
+	// internal/reportpdf.Branding). Empty/nil until an operator sets them
+	// from the Settings screen -- there is no seed value for these from
+	// config.Config, unlike everything else in this struct.
+	CompanyName          string
+	CompanyLogoImage     []byte
+	CompanyLogoImageType string // "png" or "jpg", matches fpdf.ImageOptions.ImageType; "" if no logo is stored
 }
 
 // ReportEmailEnabled reports whether monthly report emailing is
@@ -149,7 +158,8 @@ func (s *Store) Load(ctx context.Context) (settings Settings, ok bool, err error
 		       report_recipients, report_email_day,
 		       collection_interval_seconds, collection_timezone, collection_concurrency, collection_tenant_timeout_seconds,
 		       session_idle_timeout_seconds, session_absolute_timeout_seconds,
-		       tls_cert_pem, tls_key_pem
+		       tls_cert_pem, tls_key_pem,
+		       company_name, company_logo_image, company_logo_image_type
 		FROM runtime_settings WHERE id = 1`)
 	err = row.Scan(
 		&settings.SMTPHost, &settings.SMTPPort, &settings.SMTPUsername, &settings.SMTPPassword, &settings.SMTPFrom, &settings.SMTPSecurity,
@@ -157,6 +167,7 @@ func (s *Store) Load(ctx context.Context) (settings Settings, ok bool, err error
 		&intervalSeconds, &settings.CollectionTimezone, &settings.CollectionConcurrency, &tenantTimeoutSeconds,
 		&idleSeconds, &absoluteSeconds,
 		&settings.TLSCertPEM, &settings.TLSKeyPEM,
+		&settings.CompanyName, &settings.CompanyLogoImage, &settings.CompanyLogoImageType,
 	)
 	if err == sql.ErrNoRows {
 		return Settings{}, false, nil
@@ -198,13 +209,15 @@ func (s *Store) insert(ctx context.Context, v Settings) error {
 			report_recipients, report_email_day,
 			collection_interval_seconds, collection_timezone, collection_concurrency, collection_tenant_timeout_seconds,
 			session_idle_timeout_seconds, session_absolute_timeout_seconds,
-			tls_cert_pem, tls_key_pem, updated_at_utc
-		) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			tls_cert_pem, tls_key_pem,
+			company_name, company_logo_image, company_logo_image_type, updated_at_utc
+		) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		v.SMTPHost, v.SMTPPort, v.SMTPUsername, v.SMTPPassword, v.SMTPFrom, v.SMTPSecurity,
 		strings.Join(v.ReportRecipients, ","), v.ReportEmailDay,
 		int64(v.CollectionInterval/time.Second), v.CollectionTimezone, v.CollectionConcurrency, int64(v.CollectionTenantTimeout/time.Second),
 		int64(v.SessionIdleTimeout/time.Second), int64(v.SessionAbsoluteTimeout/time.Second),
-		v.TLSCertPEM, v.TLSKeyPEM, time.Now().UTC().Format(time.RFC3339),
+		v.TLSCertPEM, v.TLSKeyPEM,
+		v.CompanyName, v.CompanyLogoImage, v.CompanyLogoImageType, time.Now().UTC().Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("settings: seed: %w", err)
@@ -221,16 +234,31 @@ func (s *Store) Update(ctx context.Context, v Settings) error {
 			report_recipients = ?, report_email_day = ?,
 			collection_interval_seconds = ?, collection_timezone = ?, collection_concurrency = ?, collection_tenant_timeout_seconds = ?,
 			session_idle_timeout_seconds = ?, session_absolute_timeout_seconds = ?,
-			tls_cert_pem = ?, tls_key_pem = ?, updated_at_utc = ?
+			tls_cert_pem = ?, tls_key_pem = ?,
+			company_name = ?, updated_at_utc = ?
 		WHERE id = 1`,
 		v.SMTPHost, v.SMTPPort, v.SMTPUsername, v.SMTPPassword, v.SMTPFrom, v.SMTPSecurity,
 		strings.Join(v.ReportRecipients, ","), v.ReportEmailDay,
 		int64(v.CollectionInterval/time.Second), v.CollectionTimezone, v.CollectionConcurrency, int64(v.CollectionTenantTimeout/time.Second),
 		int64(v.SessionIdleTimeout/time.Second), int64(v.SessionAbsoluteTimeout/time.Second),
-		v.TLSCertPEM, v.TLSKeyPEM, time.Now().UTC().Format(time.RFC3339),
+		v.TLSCertPEM, v.TLSKeyPEM,
+		v.CompanyName, time.Now().UTC().Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("settings: update: %w", err)
+	}
+	return nil
+}
+
+// UpdateBranding overwrites only the stored company name/logo, leaving
+// every other setting untouched -- used by the logo upload/clear
+// endpoints, which have no reason to touch anything else. Pass logoImage
+// as nil and logoImageType as "" to clear a previously uploaded logo.
+func (s *Store) UpdateBranding(ctx context.Context, companyName string, logoImage []byte, logoImageType string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE runtime_settings SET company_name = ?, company_logo_image = ?, company_logo_image_type = ?, updated_at_utc = ? WHERE id = 1`,
+		companyName, logoImage, logoImageType, time.Now().UTC().Format(time.RFC3339))
+	if err != nil {
+		return fmt.Errorf("settings: update branding: %w", err)
 	}
 	return nil
 }

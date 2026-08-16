@@ -87,6 +87,9 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	mux.Handle("POST /api/settings/tls-cert", RequireSession(authDeps.Sessions, auth.RequireCSRF(UploadTLSCertHandler(settingsDeps))))
 	mux.Handle("POST /api/settings/test-email", RequireSession(authDeps.Sessions, auth.RequireCSRF(TestEmailHandler(settingsDeps))))
 	mux.Handle("POST /api/settings/send-report-now", RequireSession(authDeps.Sessions, auth.RequireCSRF(SendReportNowHandler(settingsDeps))))
+	mux.Handle("GET /api/settings/logo", RequireSession(authDeps.Sessions, GetLogoHandler(settingsDeps)))
+	mux.Handle("POST /api/settings/logo", RequireSession(authDeps.Sessions, auth.RequireCSRF(UploadLogoHandler(settingsDeps))))
+	mux.Handle("DELETE /api/settings/logo", RequireSession(authDeps.Sessions, auth.RequireCSRF(ClearLogoHandler(settingsDeps))))
 
 	// Legal packaging (project brief §11.7): the license PDF and SBOM
 	// ship inside the binary and are reachable at fixed top-level paths

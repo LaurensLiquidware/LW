@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
-import { Settings, SettingsWriteRequest, TlsCertUploadRequest, TestEmailRequest } from './models/settings';
+import { Settings, SettingsWriteRequest, TlsCertUploadRequest, LogoUploadRequest, TestEmailRequest } from './models/settings';
 
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
@@ -18,6 +18,21 @@ export class SettingsService {
 
   uploadTlsCert(req: TlsCertUploadRequest): Promise<Settings> {
     return firstValueFrom(this.http.post<Settings>('/api/settings/tls-cert', req));
+  }
+
+  uploadLogo(req: LogoUploadRequest): Promise<Settings> {
+    return firstValueFrom(this.http.post<Settings>('/api/settings/logo', req));
+  }
+
+  clearLogo(): Promise<Settings> {
+    return firstValueFrom(this.http.delete<Settings>('/api/settings/logo'));
+  }
+
+  /** Cache-busting URL for the Settings screen's logo <img> preview --
+   * the browser must not reuse a stale cached image after a fresh
+   * upload/clear. */
+  logoPreviewUrl(): string {
+    return `/api/settings/logo?t=${Date.now()}`;
   }
 
   /** Sends a one-off test message using form values, not the saved

@@ -151,6 +151,72 @@ func TestUpdateTLSCert_LeavesOtherFieldsUntouched(t *testing.T) {
 	}
 }
 
+func TestUpdate_PersistsCompanyName(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := store.EnsureSeeded(ctx, exampleSettings()); err != nil {
+		t.Fatalf("EnsureSeeded: %v", err)
+	}
+
+	updated := exampleSettings()
+	updated.CompanyName = "Acme MSP"
+	if err := store.Update(ctx, updated); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	got, ok, err := store.Load(ctx)
+	if err != nil || !ok {
+		t.Fatalf("Load after Update: ok=%v err=%v", ok, err)
+	}
+	if got.CompanyName != "Acme MSP" {
+		t.Errorf("CompanyName = %q, want %q", got.CompanyName, "Acme MSP")
+	}
+}
+
+func TestUpdateBranding_SetsAndClearsLogoWithoutTouchingOtherFields(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	seed := exampleSettings()
+	if _, err := store.EnsureSeeded(ctx, seed); err != nil {
+		t.Fatalf("EnsureSeeded: %v", err)
+	}
+
+	logo := []byte{0x89, 0x50, 0x4E, 0x47} // not a full PNG, just distinct bytes to round-trip
+	if err := store.UpdateBranding(ctx, "Acme MSP", logo, "png"); err != nil {
+		t.Fatalf("UpdateBranding (set): %v", err)
+	}
+
+	got, ok, err := store.Load(ctx)
+	if err != nil || !ok {
+		t.Fatalf("Load after UpdateBranding: ok=%v err=%v", ok, err)
+	}
+	if got.CompanyName != "Acme MSP" {
+		t.Errorf("CompanyName = %q, want %q", got.CompanyName, "Acme MSP")
+	}
+	if string(got.CompanyLogoImage) != string(logo) || got.CompanyLogoImageType != "png" {
+		t.Errorf("CompanyLogoImage/Type = %v/%q, want %v/png", got.CompanyLogoImage, got.CompanyLogoImageType, logo)
+	}
+	if got.SMTPHost != seed.SMTPHost {
+		t.Errorf("UpdateBranding changed an unrelated field: SMTPHost = %q, want %q", got.SMTPHost, seed.SMTPHost)
+	}
+
+	if err := store.UpdateBranding(ctx, "Acme MSP", nil, ""); err != nil {
+		t.Fatalf("UpdateBranding (clear): %v", err)
+	}
+	cleared, ok, err := store.Load(ctx)
+	if err != nil || !ok {
+		t.Fatalf("Load after clearing branding: ok=%v err=%v", ok, err)
+	}
+	if len(cleared.CompanyLogoImage) != 0 || cleared.CompanyLogoImageType != "" {
+		t.Errorf("logo not cleared: image=%v type=%q", cleared.CompanyLogoImage, cleared.CompanyLogoImageType)
+	}
+	if cleared.CompanyName != "Acme MSP" {
+		t.Errorf("clearing the logo changed CompanyName: got %q, want %q", cleared.CompanyName, "Acme MSP")
+	}
+}
+
 func TestValidate_RejectsSMTPHostWithoutFrom(t *testing.T) {
 	s := exampleSettings()
 	s.SMTPFrom = ""

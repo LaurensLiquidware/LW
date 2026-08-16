@@ -15,6 +15,7 @@ import (
 	"profileunity-msp-console/internal/db"
 	"profileunity-msp-console/internal/mailer"
 	"profileunity-msp-console/internal/reportemail"
+	"profileunity-msp-console/internal/reportpdf"
 	"profileunity-msp-console/internal/snapshot"
 	"profileunity-msp-console/internal/tenant"
 )
@@ -128,7 +129,7 @@ func newTestScheduler(t *testing.T, smtp mailer.Config, day int, recipients []st
 	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshot.NewRepo(sqlDB)}
 	emails := reportemail.NewRepo(sqlDB)
 
-	return New(repos, emails, smtp, recipients, day, time.UTC, false)
+	return New(repos, emails, smtp, recipients, day, time.UTC, false, reportpdf.Branding{})
 }
 
 func TestCheckAndSendAt_SendsOnTheConfiguredDay(t *testing.T) {
@@ -240,7 +241,7 @@ func TestCheckAndSendAt_DisabledWhenSMTPHostEmpty(t *testing.T) {
 	s := newTestScheduler(t, srv.smtpConfig(t), 1, []string{"msp@liquidware.eu"})
 	empty := srv.smtpConfig(t)
 	empty.Host = ""
-	s.SetConfig(empty, []string{"msp@liquidware.eu"}, 1, time.UTC)
+	s.SetConfig(empty, []string{"msp@liquidware.eu"}, 1, time.UTC, reportpdf.Branding{})
 
 	s.checkAndSendAt(context.Background(), time.Date(2026, time.August, 1, 9, 0, 0, 0, time.UTC))
 
@@ -267,7 +268,7 @@ func TestSetConfig_TakesEffectOnTheNextCheck(t *testing.T) {
 
 	// Enabling it live, the way the Settings screen would, must make the
 	// very next check send -- no restart, no re-running New.
-	s.SetConfig(srv.smtpConfig(t), []string{"msp@liquidware.eu"}, 1, time.UTC)
+	s.SetConfig(srv.smtpConfig(t), []string{"msp@liquidware.eu"}, 1, time.UTC, reportpdf.Branding{})
 	s.checkAndSendAt(context.Background(), time.Date(2026, time.August, 1, 9, 0, 0, 0, time.UTC))
 
 	select {

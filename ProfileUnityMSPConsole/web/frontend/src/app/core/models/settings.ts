@@ -29,6 +29,11 @@ export interface Settings {
   tlsCertExpiresUtc?: string;
   tlsCertSelfSigned: boolean;
   tlsCertConfigured: boolean;
+
+  /** Shown alongside Liquidware's own branding on PDF reports. */
+  companyName: string;
+  /** The logo image itself is never sent here -- see GET /api/settings/logo. */
+  companyLogoConfigured: boolean;
 }
 
 /**
@@ -57,11 +62,18 @@ export interface SettingsWriteRequest {
 
   sessionIdleTimeoutSeconds: number;
   sessionAbsoluteTimeoutSeconds: number;
+
+  companyName: string;
 }
 
 export interface TlsCertUploadRequest {
   certPem: string;
   keyPem: string;
+}
+
+export interface LogoUploadRequest {
+  /** Base64-encoded PNG or JPEG image bytes (no "data:...;base64," prefix). */
+  imageBase64: string;
 }
 
 export interface TestEmailRequest {

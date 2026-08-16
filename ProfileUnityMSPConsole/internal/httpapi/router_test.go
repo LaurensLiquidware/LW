@@ -14,6 +14,7 @@ import (
 	"profileunity-msp-console/internal/mailer"
 	"profileunity-msp-console/internal/reportemail"
 	"profileunity-msp-console/internal/reportmail"
+	"profileunity-msp-console/internal/reportpdf"
 	"profileunity-msp-console/internal/scheduler"
 	"profileunity-msp-console/internal/settings"
 	"profileunity-msp-console/internal/snapshot"
@@ -59,7 +60,7 @@ func newTestDeps(t *testing.T) testDeps {
 	}); err != nil {
 		t.Fatalf("seed settings: %v", err)
 	}
-	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), mailer.Config{}, nil, 1, time.UTC, false)
+	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), mailer.Config{}, nil, 1, time.UTC, false, reportpdf.Branding{})
 
 	return testDeps{
 		auth: AuthDeps{
@@ -70,7 +71,7 @@ func newTestDeps(t *testing.T) testDeps {
 		tenants:   TenantDeps{Tenants: tenantRepo},
 		dashboard: DashboardDeps{Repos: repos, Location: time.UTC},
 		history:   HistoryDeps{Repos: repos},
-		reports:   ReportDeps{Repos: repos},
+		reports:   ReportDeps{Repos: repos, Branding: func() reportpdf.Branding { return reportpdf.Branding{} }},
 		alerts:    AlertDeps{Repos: repos, Location: time.UTC},
 		collection: CollectionDeps{
 			Scheduler: sched,

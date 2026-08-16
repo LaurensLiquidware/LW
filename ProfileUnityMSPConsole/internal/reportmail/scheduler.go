@@ -47,6 +47,7 @@ type liveConfig struct {
 	recipients []string
 	day        int
 	location   *time.Location
+	branding   reportpdf.Branding
 }
 
 // enabled mirrors config.Config.ReportEmailEnabled/settings.Settings.
@@ -81,17 +82,17 @@ type Scheduler struct {
 // report-email (SMTP just stays unconfigured by convention), but if an
 // operator enables it anyway against demo data, the watermark still
 // applies.
-func New(repos dashboard.Repos, emails *reportemail.Repo, smtp mailer.Config, recipients []string, day int, location *time.Location, demoMode bool) *Scheduler {
+func New(repos dashboard.Repos, emails *reportemail.Repo, smtp mailer.Config, recipients []string, day int, location *time.Location, demoMode bool, branding reportpdf.Branding) *Scheduler {
 	s := &Scheduler{repos: repos, emails: emails, demoMode: demoMode}
-	s.SetConfig(smtp, recipients, day, location)
+	s.SetConfig(smtp, recipients, day, location, branding)
 	return s
 }
 
-// SetConfig changes the SMTP settings, recipients, send day, and
-// timezone a running Scheduler uses, effective from its very next check
-// — no restart needed. Safe to call from any goroutine.
-func (s *Scheduler) SetConfig(smtp mailer.Config, recipients []string, day int, location *time.Location) {
-	s.cfg.Store(&liveConfig{smtp: smtp, recipients: recipients, day: day, location: location})
+// SetConfig changes the SMTP settings, recipients, send day, timezone,
+// and MSP company branding a running Scheduler uses, effective from its
+// very next check — no restart needed. Safe to call from any goroutine.
+func (s *Scheduler) SetConfig(smtp mailer.Config, recipients []string, day int, location *time.Location, branding reportpdf.Branding) {
+	s.cfg.Store(&liveConfig{smtp: smtp, recipients: recipients, day: day, location: location, branding: branding})
 }
 
 func (s *Scheduler) current() *liveConfig {
@@ -213,7 +214,7 @@ func (s *Scheduler) send(ctx context.Context, year, month int, cur *liveConfig) 
 		return fmt.Errorf("build report: %w", err)
 	}
 
-	pdf := reportpdf.RenderPortfolioReportPDF(report, s.demoMode)
+	pdf := reportpdf.RenderPortfolioReportPDF(report, s.demoMode, cur.branding)
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		return fmt.Errorf("render PDF: %w", err)

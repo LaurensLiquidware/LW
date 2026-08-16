@@ -1,15 +1,22 @@
 package httpapi
 
 import (
+	"bytes"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"net/http"
 	"time"
 
 	"profileunity-msp-console/internal/auth"
 	"profileunity-msp-console/internal/mailer"
 	"profileunity-msp-console/internal/reportmail"
+	"profileunity-msp-console/internal/reportpdf"
 	"profileunity-msp-console/internal/scheduler"
 	"profileunity-msp-console/internal/settings"
 )
@@ -58,6 +65,13 @@ type settingsDTO struct {
 	TLSCertExpiresUTC string `json:"tlsCertExpiresUtc,omitempty"`
 	TLSCertSelfSigned bool   `json:"tlsCertSelfSigned"`
 	TLSCertConfigured bool   `json:"tlsCertConfigured"`
+
+	// CompanyName is saved as part of the main Settings form. The logo
+	// image itself is read-only here (see CompanyLogoConfigured) --
+	// it's changed only via UploadLogoHandler/ClearLogoHandler, the same
+	// split TLS cert already uses.
+	CompanyName           string `json:"companyName"`
+	CompanyLogoConfigured bool   `json:"companyLogoConfigured"`
 }
 
 func toSettingsDTO(s settings.Settings) settingsDTO {
@@ -76,6 +90,8 @@ func toSettingsDTO(s settings.Settings) settingsDTO {
 		CollectionTenantTimeoutSeconds: int(s.CollectionTenantTimeout / time.Second),
 		SessionIdleTimeoutSeconds:      int(s.SessionIdleTimeout / time.Second),
 		SessionAbsoluteTimeoutSeconds:  int(s.SessionAbsoluteTimeout / time.Second),
+		CompanyName:                    s.CompanyName,
+		CompanyLogoConfigured:          len(s.CompanyLogoImage) > 0,
 	}
 	if dto.ReportRecipients == nil {
 		dto.ReportRecipients = []string{}
@@ -118,6 +134,8 @@ type settingsWriteRequest struct {
 
 	SessionIdleTimeoutSeconds     int `json:"sessionIdleTimeoutSeconds"`
 	SessionAbsoluteTimeoutSeconds int `json:"sessionAbsoluteTimeoutSeconds"`
+
+	CompanyName string `json:"companyName"`
 }
 
 // GetSettingsHandler serves the current runtime settings.
@@ -180,6 +198,9 @@ func UpdateSettingsHandler(deps SettingsDeps) http.HandlerFunc {
 			SessionAbsoluteTimeout:  time.Duration(req.SessionAbsoluteTimeoutSeconds) * time.Second,
 			TLSCertPEM:              current.TLSCertPEM,
 			TLSKeyPEM:               current.TLSKeyPEM,
+			CompanyName:             req.CompanyName,
+			CompanyLogoImage:        current.CompanyLogoImage,
+			CompanyLogoImageType:    current.CompanyLogoImageType,
 		}
 
 		if err := updated.Validate(); err != nil {
@@ -215,7 +236,149 @@ func applyLive(deps SettingsDeps, s settings.Settings) {
 		Password: s.SMTPPassword,
 		From:     s.SMTPFrom,
 		Security: s.SMTPSecurity,
-	}, s.ReportRecipients, s.ReportEmailDay, loc)
+	}, s.ReportRecipients, s.ReportEmailDay, loc, brandingFrom(s))
+}
+
+// brandingFrom builds the reportpdf.Branding a Settings value implies --
+// shared by applyLive and cmd/server/main.go's boot-time wiring so the two
+// never drift.
+func brandingFrom(s settings.Settings) reportpdf.Branding {
+	return reportpdf.Branding{
+		CompanyName:   s.CompanyName,
+		LogoImage:     s.CompanyLogoImage,
+		LogoImageType: s.CompanyLogoImageType,
+	}
+}
+
+// logoUploadRequest is the POST /api/settings/logo request body: a
+// base64-encoded PNG or JPEG image, read from a local file by the browser
+// (FileReader.readAsDataURL, with the "data:image/...;base64," prefix
+// stripped) before submitting.
+type logoUploadRequest struct {
+	ImageBase64 string `json:"imageBase64"`
+}
+
+// maxLogoImageBytes caps the stored logo -- enforced before decoding, so
+// an oversized upload is rejected cheaply rather than after a wasted
+// image.DecodeConfig call.
+const maxLogoImageBytes = 2 * 1024 * 1024
+
+// UploadLogoHandler validates a new company logo image and, only if
+// it's a well-formed PNG/JPEG under the size cap, stores it so every PDF
+// report rendered from now on carries it alongside Liquidware's own
+// branding (see reportpdf.Branding).
+func UploadLogoHandler(deps SettingsDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req logoUploadRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if req.ImageBase64 == "" {
+			http.Error(w, "imageBase64 is required", http.StatusBadRequest)
+			return
+		}
+
+		imageBytes, err := base64.StdEncoding.DecodeString(req.ImageBase64)
+		if err != nil {
+			http.Error(w, "imageBase64 is not valid base64", http.StatusBadRequest)
+			return
+		}
+		if len(imageBytes) > maxLogoImageBytes {
+			http.Error(w, fmt.Sprintf("logo must be %d bytes or smaller", maxLogoImageBytes), http.StatusBadRequest)
+			return
+		}
+
+		format, err := sniffImageFormat(imageBytes)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		current, _, err := deps.Store.Load(r.Context())
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if err := deps.Store.UpdateBranding(r.Context(), current.CompanyName, imageBytes, format); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		updated, _, err := deps.Store.Load(r.Context())
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		applyLive(deps, updated)
+		writeJSON(w, http.StatusOK, toSettingsDTO(updated))
+	}
+}
+
+// ClearLogoHandler removes a previously uploaded logo, leaving the
+// company name and every other setting untouched.
+func ClearLogoHandler(deps SettingsDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		current, _, err := deps.Store.Load(r.Context())
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if err := deps.Store.UpdateBranding(r.Context(), current.CompanyName, nil, ""); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		updated, _, err := deps.Store.Load(r.Context())
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		applyLive(deps, updated)
+		writeJSON(w, http.StatusOK, toSettingsDTO(updated))
+	}
+}
+
+// GetLogoHandler serves the stored logo's raw image bytes, for the
+// Settings screen's <img> preview. 404 if none is stored.
+func GetLogoHandler(deps SettingsDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		current, _, err := deps.Store.Load(r.Context())
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if len(current.CompanyLogoImage) == 0 {
+			http.Error(w, "no logo configured", http.StatusNotFound)
+			return
+		}
+		contentType := "image/png"
+		if current.CompanyLogoImageType == "jpg" {
+			contentType = "image/jpeg"
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write(current.CompanyLogoImage)
+	}
+}
+
+// sniffImageFormat decodes just enough of imageBytes to confirm it's a
+// PNG or JPEG (the two formats fpdf.ImageOptions.ImageType supports that
+// this app accepts for a logo) and returns fpdf's own type string for it.
+// Any other format, or malformed image data, is rejected.
+func sniffImageFormat(imageBytes []byte) (string, error) {
+	_, format, err := image.DecodeConfig(bytes.NewReader(imageBytes))
+	if err != nil {
+		return "", fmt.Errorf("not a readable image: %w", err)
+	}
+	switch format {
+	case "png":
+		return "png", nil
+	case "jpeg":
+		return "jpg", nil
+	default:
+		return "", fmt.Errorf("logo must be a PNG or JPEG image (got %q)", format)
+	}
 }
 
 // SendReportNowHandler triggers an immediate send of last calendar
