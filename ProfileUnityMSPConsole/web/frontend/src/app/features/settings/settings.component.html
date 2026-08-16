@@ -5,6 +5,11 @@
     <p class="lwl-muted">{{ 'settings.loading' | transloco }}</p>
   } @else {
     <form [formGroup]="form" (ngSubmit)="save()" class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-3" style="border: 1px solid var(--p-surface-300); border-radius: var(--radius-md); padding: 0.75rem 1rem;">
+        <p class="lwl-micro lwl-muted" style="flex: 1 1 auto; min-width: 16rem;">{{ 'settings.saveHint' | transloco }}</p>
+        <p-button type="submit" [label]="'settings.save' | transloco" [loading]="saving()" [disabled]="form.invalid" />
+      </div>
+
       @if (saveError()) {
         <p-message severity="error" styleClass="w-full">{{ saveErrorIsRaw() ? saveError()! : (saveError()! | transloco) }}</p-message>
       }
@@ -150,13 +155,11 @@
         </div>
       </p-card>
 
-      <div class="flex justify-end">
-        <p-button type="submit" [label]="'settings.save' | transloco" [loading]="saving()" [disabled]="form.invalid" />
-      </div>
     </form>
 
     <p-card [header]="'settings.tlsHeading' | transloco">
       <div class="flex flex-col gap-3">
+        <p class="lwl-micro lwl-muted">{{ 'settings.tlsAppliesImmediatelyHint' | transloco }}</p>
         @if (current()?.tlsCertConfigured) {
           <p class="lwl-body">
             {{ 'settings.tlsCertCurrent' | transloco }}:
@@ -189,6 +192,7 @@
     <p-card [header]="'settings.logoHeading' | transloco">
       <div class="flex flex-col gap-3">
         <p class="lwl-micro lwl-muted">{{ 'settings.logoGuidance' | transloco }}</p>
+        <p class="lwl-micro lwl-muted">{{ 'settings.logoAppliesImmediatelyHint' | transloco }}</p>
         @if (logoUploadError()) {
           <p-message severity="error" styleClass="w-full">{{ logoUploadError()! | transloco }}</p-message>
         }

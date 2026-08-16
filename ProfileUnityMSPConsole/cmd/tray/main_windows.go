@@ -261,16 +261,32 @@ func (a *app) buildMainWindow() error {
 	a.changePortBtn.SetText("Change Port...")
 	a.changePortBtn.Clicked().Attach(func() { a.changePort() })
 
-	logBtn, err := walk.NewPushButton(mw)
+	// A second row, below the primary lifecycle buttons -- Show Log and
+	// Exit are secondary/utility actions, not part of Start/Stop/Restart/
+	// Change Port's row.
+	secondaryRow, err := walk.NewComposite(mw)
+	if err != nil {
+		return err
+	}
+	secondaryRow.SetLayout(walk.NewHBoxLayout())
+
+	logBtn, err := walk.NewPushButton(secondaryRow)
 	if err != nil {
 		return err
 	}
 	logBtn.SetText("Show Log")
 	logBtn.Clicked().Attach(func() { a.showLog() })
 
+	exitBtn, err := walk.NewPushButton(secondaryRow)
+	if err != nil {
+		return err
+	}
+	exitBtn.SetText("Exit")
+	exitBtn.Clicked().Attach(func() { a.quit() })
+
 	// Closing the window (the [x] button) just hides it -- "goes to a
-	// tray icon when it's running." Exit (tray context menu) is the only
-	// path that actually quits the app.
+	// tray icon when it's running." Exit (this button, or the tray
+	// context menu's matching item) is what actually quits the app.
 	mw.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
 		*canceled = true
 		mw.Hide()

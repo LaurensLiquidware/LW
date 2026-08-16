@@ -95,15 +95,17 @@ The Windows zip contains two executables:
 - **`profileunity-msp-console.exe`** — a small tray launcher. This is
   what you double-click. It starts `profileunity-msp-console-server.exe`
   as a background process, shows Start/Stop/Restart/**Change Port...**
-  buttons, a status indicator, and a clickable link straight to the
-  console in your browser, and collapses to a system tray icon while
-  running — click the tray icon (or the window's [x] button) to hide it,
-  right-click the tray icon for a menu (Show, Start, Stop, Restart,
-  **Change Port...**, Show Log, Exit). **Show Log** opens a window that
+  buttons, **Show Log**/**Exit** buttons, a status indicator, and a
+  clickable link straight to the console in your browser, and collapses
+  to a system tray icon while running — click the tray icon (or the
+  window's [x] button) to hide it, right-click the tray icon for the
+  same set of actions as a menu (Show, Start, Stop, Restart, **Change
+  Port...**, Show Log, Exit). **Show Log** opens a window that
   live-tails the server's log file as new lines are written, so you can
-  watch what's happening without opening the log file yourself. **Exit**
-  (from the tray menu — not the window's [x] button, which just hides it)
-  is what actually stops the server and closes the launcher.
+  watch what's happening without opening the log file yourself.
+  **Exit** (the window's own button, or the tray menu's matching item —
+  not the window's [x] button, which just hides it) is what actually
+  stops the server and closes the launcher.
 - **`profileunity-msp-console-server.exe`** — the actual server, unchanged
   by any of the above. Run this directly instead of the launcher if
   you're starting the console from a script, a Scheduled Task, or a

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.2 — unreleased
+
+- **Login screen**: removed the redundant visible label above the
+  Username/Password fields — the input's placeholder already says it;
+  the label text stays in the DOM (screen-reader only) so accessibility
+  is unaffected.
+- **Settings screen**: moved the **Save** button to the top of the page,
+  right below the heading, with an explanatory note that it applies to
+  Company Branding/Email/Monthly Portfolio Report/Collection/Operator
+  Sessions specifically — the TLS Certificate and Company Logo sections
+  further down each got a short "takes effect immediately, no need to
+  click Save" note next to their own buttons, since those two sections
+  were the most likely source of confusion (they don't use Save at all).
+- **Tray launcher**: added an **Exit** button to the main window (next
+  to the existing **Show Log** button), so stopping the server and
+  closing the app no longer requires knowing about the tray icon's
+  right-click menu — it does exactly what that menu's existing **Exit**
+  item already did.
+
 ## 0.5.1 — unreleased
 
 - **Fix: a stale or corrupt `demo.db` no longer takes down the whole
