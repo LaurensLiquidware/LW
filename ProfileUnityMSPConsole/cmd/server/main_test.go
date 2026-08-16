@@ -80,20 +80,27 @@ func TestOpenDatabase_OverrideForcesRealDatabaseEvenWithSidecar(t *testing.T) {
 	}
 }
 
-func TestOpenDatabase_CorruptSidecarFailsLoudly(t *testing.T) {
+func TestOpenDatabase_CorruptSidecarFallsBackToRealDatabase(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, db.DemoSidecarFilename), []byte("not a sqlite file"), 0o600); err != nil {
 		t.Fatalf("write corrupt fixture: %v", err)
 	}
 	cfg := baseConfig(t, filepath.Join(dir, "profileunity-msp-console.db"))
 
-	_, _, err := openDatabase(cfg)
-	if err == nil {
-		t.Fatal("expected an error for a corrupt demo.db, got nil")
+	sqlDB, demoMode, err := openDatabase(cfg)
+	if err != nil {
+		t.Fatalf("openDatabase: %v, want it to fall back to the real database instead of erroring", err)
+	}
+	defer sqlDB.Close()
+	if demoMode {
+		t.Error("demoMode = true, want false when the demo.db sidecar is corrupt")
+	}
+	if err := sqlDB.Ping(); err != nil {
+		t.Errorf("the real database connection returned isn't usable: %v", err)
 	}
 }
 
-func TestOpenDatabase_SchemaMismatchFailsLoudly(t *testing.T) {
+func TestOpenDatabase_SchemaMismatchFallsBackToRealDatabase(t *testing.T) {
 	dir := t.TempDir()
 	demoPath := filepath.Join(dir, db.DemoSidecarFilename)
 	newValidDemoFile(t, demoPath)
@@ -112,9 +119,16 @@ func TestOpenDatabase_SchemaMismatchFailsLoudly(t *testing.T) {
 	}
 
 	cfg := baseConfig(t, filepath.Join(dir, "profileunity-msp-console.db"))
-	_, _, err = openDatabase(cfg)
-	if err == nil {
-		t.Fatal("expected an error for a demo.db missing a migration this binary expects, got nil")
+	realDB, demoMode, err := openDatabase(cfg)
+	if err != nil {
+		t.Fatalf("openDatabase: %v, want it to fall back to the real database instead of erroring", err)
+	}
+	defer realDB.Close()
+	if demoMode {
+		t.Error("demoMode = true, want false when the demo.db sidecar has a schema mismatch")
+	}
+	if err := realDB.Ping(); err != nil {
+		t.Errorf("the real database connection returned isn't usable: %v", err)
 	}
 }
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.1 — unreleased
+
+- **Fix: a stale or corrupt `demo.db` no longer takes down the whole
+  server.** `demo.db`'s schema is checked against every migration a
+  binary expects, and any new migration (e.g. last release's
+  `0006_msp_branding.sql`) makes an older `demo.db` fail that check — but
+  that failure used to be fatal, refusing to start the server at all and
+  blocking access to the real database too, not just disabling demo mode.
+  It now logs a clear error and falls back to the real database instead,
+  exactly as if `demo.db` had never been there. Regenerate `demo.db` with
+  `cmd/gendemodb` (or delete it) to use demo mode again after a release
+  that adds a migration.
+
 ## 0.5.0 — unreleased
 
 - **MSP company branding**: added a **Company Branding** section under

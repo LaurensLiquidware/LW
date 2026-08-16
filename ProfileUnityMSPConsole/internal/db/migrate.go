@@ -130,9 +130,12 @@ func diffMigrations(expected, applied []string) *SchemaMismatchError {
 // disposable, regenerable artifact (see cmd/gendemodb), and silently
 // upgrading it in place is how it would stop being reproducible. Any
 // mismatch, or a missing/unreadable schema_migrations table (not a valid
-// demo database, or corrupt), fails loudly rather than falling back to the
-// real database -- callers must not treat an error here as "use dsn
-// anyway."
+// demo database, or corrupt), is always an error here -- this function
+// itself never returns something invalid as if it were valid. What a
+// caller does with that error is its own choice: cmd/server/main.go's
+// openDatabase deliberately falls back to the real database on it (loudly
+// logged), since a stale/corrupt demo.db must never be allowed to take
+// down access to real customer data.
 func OpenDemo(dsn string) (*sql.DB, error) {
 	sqlDB, err := sql.Open("sqlite", withPragmas(dsn))
 	if err != nil {
