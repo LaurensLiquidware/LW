@@ -22,20 +22,22 @@
   @if (loading()) {
     <p class="lwl-muted">{{ 'history.loading' | transloco }}</p>
   } @else if (chartData()) {
-    <div style="height: 24rem;">
-      <p-chart type="line" [data]="chartData()" [options]="chartOptions" />
-    </div>
-
-    @if (entitlementChanges().length > 0) {
-      <div class="mt-2">
-        <h2 class="lwl-metric-label">{{ 'history.entitlementChanges' | transloco }}</h2>
-        <ul>
-          @for (change of entitlementChanges(); track change.date) {
-            <li class="lwl-cell">{{ change.date }}: {{ change.fromTotal }} → {{ change.toTotal }}</li>
-          }
-        </ul>
+    <p-card>
+      <div style="height: 24rem;">
+        <p-chart type="line" [data]="chartData()" [options]="chartOptions" />
       </div>
-    }
+
+      @if (entitlementChanges().length > 0) {
+        <div class="mt-2">
+          <h2 class="lwl-metric-label">{{ 'history.entitlementChanges' | transloco }}</h2>
+          <ul>
+            @for (change of entitlementChanges(); track change.date) {
+              <li class="lwl-cell">{{ change.date }}: {{ change.fromTotal }} → {{ change.toTotal }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </p-card>
   } @else {
     <p class="lwl-muted">{{ 'history.noData' | transloco }}</p>
   }

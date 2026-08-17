@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.1 — unreleased
+
+- **Fix: the History screen's chart rendered with no color at all** —
+  every line silently fell back to plain black. Root cause: its dataset
+  colors were set as literal CSS-variable strings
+  (`borderColor: 'var(--p-primary-600)'`), which a `<canvas>` 2D context
+  can't resolve (unlike CSS on a DOM element). Colors are now resolved
+  to their actual computed values at runtime, and given the chart a
+  styling pass to match the rest of the app: a brand-blue filled area
+  for "Used", a neutral gray dashed line for "Entitled" (a ceiling isn't
+  inherently "good", so dropped the green), points hidden until hover
+  (a visible dot on every one of ~180 daily points was the main source
+  of visual clutter), lighter horizontal-only gridlines, a styled
+  legend and tooltip, and the chart now sits in a card matching every
+  other screen. The gap-rendering rule this screen exists to enforce —
+  a missed collection renders as a real break, never interpolated or
+  dropped to zero — is unchanged and re-verified.
+
 ## 0.6.0 — unreleased
 
 - **Tray launcher auto-detects `demo.db`**: the first time it notices a

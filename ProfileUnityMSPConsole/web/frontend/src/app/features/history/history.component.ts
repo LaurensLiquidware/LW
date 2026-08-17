@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@ang
 import { FormsModule } from '@angular/forms';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ChartModule } from 'primeng/chart';
+import { CardModule } from 'primeng/card';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { PrimeTemplate } from 'primeng/api';
@@ -25,7 +26,7 @@ type Mode = 'tenant' | 'portfolio';
  */
 @Component({
     selector: 'app-history',
-    imports: [FormsModule, TranslocoModule, ChartModule, SelectModule, SelectButtonModule, PrimeTemplate],
+    imports: [FormsModule, TranslocoModule, ChartModule, CardModule, SelectModule, SelectButtonModule, PrimeTemplate],
     changeDetection: ChangeDetectionStrategy.Eager,
     templateUrl: './history.component.html'
 })
@@ -54,15 +55,129 @@ export class HistoryComponent implements OnInit {
   readonly entitlementChanges = signal<EntitlementChange[]>([]);
 
   readonly chartData = signal<any | null>(null);
+
+  // Resolved once at construction, not read fresh per chart: this
+  // screen has no theme toggle today (confirmed -- no ThemeService/
+  // dark-mode anywhere in the frontend), so the tokens can't change
+  // during a session. `getComputedStyle` is required here because
+  // Chart.js draws on a <canvas> 2D context, which -- unlike CSS on a
+  // DOM element -- cannot resolve a raw `var(--...)` string; passing one
+  // as a canvas strokeStyle/fillStyle silently falls back to black,
+  // which is exactly why this chart used to render with no color at all.
+  private readonly root = getComputedStyle(document.documentElement);
+  private readonly brand = this.resolveToken('--p-primary-600');
+  private readonly capLine = this.resolveToken('--p-surface-400', '#a1a1aa');
+  private readonly gridColor = this.resolveToken('--p-surface-200');
+  private readonly axisColor = this.resolveToken('--p-surface-500');
+  private readonly tooltipBg = this.resolveToken('--p-surface-0', '#ffffff');
+  private readonly tooltipBorder = this.resolveToken('--frame-border-color', '#d4d4d8');
+  private readonly fontFamily = this.resolveToken('--font-sans', 'Inter var, sans-serif');
+
   readonly chartOptions = {
-    plugins: { legend: { display: true } },
-    scales: { y: { beginAtZero: true } },
+    interaction: { mode: 'index' as const, intersect: false },
+    plugins: {
+      legend: {
+        display: true,
+        labels: { usePointStyle: true, pointStyle: 'line', font: { family: this.fontFamily, size: 12 }, color: this.axisColor },
+      },
+      tooltip: {
+        backgroundColor: this.tooltipBg,
+        borderColor: this.tooltipBorder,
+        borderWidth: 1,
+        titleColor: this.axisColor,
+        bodyColor: this.axisColor,
+        cornerRadius: 6,
+        padding: 8,
+        titleFont: { family: this.fontFamily, size: 11, weight: '600' as const },
+        bodyFont: { family: this.fontFamily, size: 11 },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { family: this.fontFamily, size: 11 }, color: this.axisColor } },
+      y: {
+        beginAtZero: true,
+        grid: { color: this.gridColor },
+        ticks: { font: { family: this.fontFamily, size: 11 }, color: this.axisColor },
+      },
+    },
     // spanGaps defaults to false in Chart.js -- explicit here because a
     // failed/missing collection day must render as a break, never an
     // interpolated line across it and never a drop to zero.
     spanGaps: false,
-    elements: { line: { spanGaps: false } },
+    elements: {
+      line: { spanGaps: false, tension: 0.3, borderWidth: 2.25 },
+      point: { radius: 0, hoverRadius: 3 },
+    },
   };
+
+  /** Resolves a CSS custom property to its actual computed value (e.g.
+   * "#0061a0"), which -- unlike the raw "var(--x)" string -- a canvas
+   * 2D context can actually use as a stroke/fill color. Falls back to
+   * fallback when the token isn't defined, so a renamed/missing token
+   * degrades visibly (a fallback color) rather than invisibly (canvas's
+   * own default-to-black behavior, the original bug this exists to
+   * avoid repeating). */
+  private resolveToken(varName: string, fallback = '#000000'): string {
+    const value = this.root.getPropertyValue(varName).trim();
+    return value || fallback;
+  }
+
+  /** Builds one chart's dataset pair (a "used" line with a brand-blue
+   * fill, and a neutral dashed "entitled" ceiling line) from two
+   * already-gap-filled series -- shared by loadTenantHistory and
+   * loadPortfolioHistory, which previously duplicated this shape with
+   * the exact same (broken) styling in both places. */
+  private buildChartData(usedLabel: string, usedValues: (number | null)[], capLabel: string, capValues: (number | null)[], labels: string[]) {
+    return {
+      labels,
+      datasets: [
+        {
+          label: usedLabel,
+          data: usedValues,
+          borderColor: this.brand,
+          pointBackgroundColor: this.brand,
+          fill: true,
+          // A gradient reference to a specific canvas is created lazily
+          // by Chart.js's own backgroundColor callback API -- this runs
+          // once per render with the live chart context, so it always
+          // matches the canvas's actual current size.
+          backgroundColor: (context: any) => {
+            const chart = context.chart;
+            const { ctx, chartArea } = chart;
+            if (!chartArea) {
+              return 'transparent';
+            }
+            const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            gradient.addColorStop(0, this.withAlpha(this.brand, 0.18));
+            gradient.addColorStop(1, this.withAlpha(this.brand, 0.01));
+            return gradient;
+          },
+        },
+        {
+          label: capLabel,
+          data: capValues,
+          borderColor: this.capLine,
+          backgroundColor: 'transparent',
+          borderDash: [7, 5],
+          fill: false,
+        },
+      ],
+    };
+  }
+
+  /** Adds an alpha channel to a "#rrggbb" color -- used to build the
+   * "used" line's area-fill gradient without a second resolved token. */
+  private withAlpha(hex: string, alpha: number): string {
+    const match = /^#([0-9a-f]{6})$/i.exec(hex);
+    if (!match) {
+      return hex;
+    }
+    const int = parseInt(match[1], 16);
+    const r = (int >> 16) & 255;
+    const g = (int >> 8) & 255;
+    const b = int & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
 
   async ngOnInit(): Promise<void> {
     this.tenants.set(await this.tenantsService.list());
@@ -104,13 +219,15 @@ export class HistoryComponent implements OnInit {
         history.points.map((p) => ({ date: p.date, value: p.status === 'success' ? p.totalLicenses : null })),
       );
 
-      this.chartData.set({
-        labels: usedSeries.labels,
-        datasets: [
-          { label: this.transloco.translate('history.used'), data: usedSeries.values, borderColor: 'var(--p-primary-600)', backgroundColor: 'transparent', tension: 0.1 },
-          { label: this.transloco.translate('history.entitled'), data: totalSeries.values, borderColor: 'var(--good-color)', backgroundColor: 'transparent', borderDash: [6, 3], tension: 0.1 },
-        ],
-      });
+      this.chartData.set(
+        this.buildChartData(
+          this.transloco.translate('history.used'),
+          usedSeries.values,
+          this.transloco.translate('history.entitled'),
+          totalSeries.values,
+          usedSeries.labels,
+        ),
+      );
     } finally {
       this.loading.set(false);
     }
@@ -125,13 +242,15 @@ export class HistoryComponent implements OnInit {
       const usedSeries = buildContinuousSeries(points.map((p) => ({ date: p.date, value: p.totalUsed })));
       const totalSeries = buildContinuousSeries(points.map((p) => ({ date: p.date, value: p.totalEntitled })));
 
-      this.chartData.set({
-        labels: usedSeries.labels,
-        datasets: [
-          { label: this.transloco.translate('history.totalUsed'), data: usedSeries.values, borderColor: 'var(--p-primary-600)', backgroundColor: 'transparent', tension: 0.1 },
-          { label: this.transloco.translate('history.totalEntitled'), data: totalSeries.values, borderColor: 'var(--good-color)', backgroundColor: 'transparent', borderDash: [6, 3], tension: 0.1 },
-        ],
-      });
+      this.chartData.set(
+        this.buildChartData(
+          this.transloco.translate('history.totalUsed'),
+          usedSeries.values,
+          this.transloco.translate('history.totalEntitled'),
+          totalSeries.values,
+          usedSeries.labels,
+        ),
+      );
     } finally {
       this.loading.set(false);
     }
