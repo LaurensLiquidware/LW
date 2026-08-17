@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.2 — unreleased
+
+- **PDF reports: the MSP branding strip is now a white band instead of
+  a continuation of the blue header fill**, with the company name in
+  brand blue and a thin gray divider separating it from Liquidware's
+  own logo/title band above. An uploaded MSP logo now renders in its
+  true colors instead of being tinted by sitting on the blue fill.
+  Liquidware's own branding is unchanged. Updated the Settings screen's
+  logo guidance text and `docs/MANUAL.md` to match (they previously
+  described the old dark-blue band and recommended light-colored
+  logos).
+
 ## 0.6.1 — unreleased
 
 - **Fix: the History screen's chart rendered with no color at all** —

@@ -207,11 +207,11 @@ on the reports it sends to its customers. Set a **Company Name** (saved
 with the rest of the form) and upload a **Company Logo** — PNG or JPEG,
 up to 2 MB — and both appear on every tenant and portfolio monthly PDF
 report from then on (including the automatic monthly emailed
-attachment), in a band directly beneath Liquidware's own logo and
-title, which is unchanged. Since that band is dark blue, a white or
-light-colored logo works best — a transparent PNG is ideal — and a
-wide, landscape shape (roughly 4:1, like a wordmark) fits it better
-than a square or tall logo. **Remove Logo** clears a previously
+attachment), in a white band directly beneath Liquidware's own logo and
+title, which is unchanged. That band is white specifically so an
+uploaded logo shows its true colors rather than being tinted by sitting
+on blue; a wide, landscape shape (roughly 4:1, like a wordmark) fits it
+better than a square or tall logo. **Remove Logo** clears a previously
 uploaded one; the change takes effect on the very next report, no
 restart.
 

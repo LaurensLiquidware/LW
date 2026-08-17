@@ -161,7 +161,7 @@
     "companyName": "Bedrijfsnaam",
     "companyNameHint": "Wordt samen met Liquidware's eigen branding op elk PDF-rapport getoond.",
     "logoHeading": "Bedrijfslogo",
-    "logoGuidance": "PNG of JPEG, maximaal 2 MB. Omdat het logo op een donkerblauwe balk wordt getoond, werkt een wit of lichtgekleurd logo het best — een transparante PNG is ideaal. Een brede, liggende vorm (ongeveer 4:1, zoals een woordmerk) past beter dan een vierkant of staand logo.",
+    "logoGuidance": "PNG of JPEG, maximaal 2 MB. Het wordt op een witte achtergrond getoond, zodat de eigen kleuren van uw logo natuurgetrouw worden weergegeven. Een brede, liggende vorm (ongeveer 4:1, zoals een woordmerk) past beter dan een vierkant of staand logo.",
     "logoUpload": "Logo Uploaden",
     "logoRemove": "Logo Verwijderen",
     "logoUploadError": "Kon dat logo niet uploaden — zorg dat het een PNG- of JPEG-afbeelding onder 2 MB is.",

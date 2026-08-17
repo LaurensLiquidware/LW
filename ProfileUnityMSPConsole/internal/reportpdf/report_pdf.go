@@ -55,6 +55,13 @@ const (
 
 	brandHeaderHeight = 24.0
 	brandLogoHeight   = 10.0
+
+	// stripDividerR/G/B is the hairline separating the MSP branding
+	// strip from Liquidware's own band above it -- close to the web
+	// console's --p-surface-200, since the strip's own background is
+	// now white rather than a continuation of the brand-blue fill (see
+	// mspStripHeight).
+	stripDividerR, stripDividerG, stripDividerB = 224, 224, 227
 )
 
 // Branding is the MSP operator's own company name/logo (set from the
@@ -112,16 +119,27 @@ func totalHeaderHeight(branding Branding) float64 {
 // title/subtitle in white -- run via SetHeaderFunc, so it repeats
 // identically on every page of a multi-page portfolio report, not just
 // the first. If branding carries an MSP company name and/or logo, a
-// second, shorter band is added directly below, with the MSP's own
-// logo/name right-aligned in it -- Liquidware's own logo/title above are
-// completely unchanged.
+// second, shorter band is added directly below, white rather than a
+// continuation of the brand-blue fill -- so an MSP's own uploaded logo
+// shows its true colors instead of being tinted by sitting on blue --
+// with the MSP's own logo/name right-aligned in it, separated from
+// Liquidware's band above by a thin divider. Liquidware's own logo/title
+// above are completely unchanged.
 func newBrandedHeaderFunc(pdf *fpdf.Fpdf, title string, branding Branding) func() {
 	return func() {
 		pageWidth, _ := pdf.GetPageSize()
 		totalHeight := totalHeaderHeight(branding)
+		hasMSP := hasMSPBranding(branding)
 
 		pdf.SetFillColor(brandR, brandG, brandB)
-		pdf.Rect(0, 0, pageWidth, totalHeight, "F")
+		pdf.Rect(0, 0, pageWidth, brandHeaderHeight, "F")
+		if hasMSP {
+			pdf.SetFillColor(255, 255, 255)
+			pdf.Rect(0, brandHeaderHeight, pageWidth, mspStripHeight, "F")
+			pdf.SetDrawColor(stripDividerR, stripDividerG, stripDividerB)
+			pdf.SetLineWidth(0.3)
+			pdf.Line(0, brandHeaderHeight, pageWidth, brandHeaderHeight)
+		}
 
 		logoWidth := brandLogoHeight * logoAspectWidthOverHeight
 		pdf.ImageOptions(logoImageName, 18, (brandHeaderHeight-brandLogoHeight)/2, logoWidth, brandLogoHeight, false, fpdf.ImageOptions{ImageType: "png"}, 0, "")
@@ -136,7 +154,7 @@ func newBrandedHeaderFunc(pdf *fpdf.Fpdf, title string, branding Branding) func(
 		pdf.SetFont(reportFontFamily, "", 10)
 		pdf.CellFormat(textWidth, 6, title, "", 0, "L", false, 0, "")
 
-		if hasMSPBranding(branding) {
+		if hasMSP {
 			drawMSPBrandingStrip(pdf, pageWidth, branding)
 		}
 
@@ -189,7 +207,7 @@ func drawMSPBrandingStrip(pdf *fpdf.Fpdf, pageWidth float64, branding Branding) 
 	if logoWidth > 0 {
 		nameX -= 4
 	}
-	pdf.SetTextColor(255, 255, 255)
+	pdf.SetTextColor(brandR, brandG, brandB)
 	pdf.SetXY(nameX, stripCenterY-2.5)
 	pdf.CellFormat(nameWidth, 5, name, "", 0, "L", false, 0, "")
 }

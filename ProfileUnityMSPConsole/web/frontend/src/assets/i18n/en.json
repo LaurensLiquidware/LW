@@ -161,7 +161,7 @@
     "companyName": "Company Name",
     "companyNameHint": "Shown alongside Liquidware's own branding on every PDF report.",
     "logoHeading": "Company Logo",
-    "logoGuidance": "PNG or JPEG, up to 2 MB. Since it's shown on a dark blue banner, a white or light-colored logo works best — a transparent PNG is ideal. A wide, landscape shape (roughly 4:1, like a wordmark) fits better than a square or tall logo.",
+    "logoGuidance": "PNG or JPEG, up to 2 MB. It's shown on a white background, so your logo's own colors render true-to-life. A wide, landscape shape (roughly 4:1, like a wordmark) fits better than a square or tall logo.",
     "logoUpload": "Upload Logo",
     "logoRemove": "Remove Logo",
     "logoUploadError": "Could not upload that logo — make sure it's a PNG or JPEG image under 2 MB.",
