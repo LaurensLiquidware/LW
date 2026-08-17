@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.3 — unreleased
+
+- **Fix: the Settings screen's logo preview had a hardcoded dark-blue
+  background** left over from the PDF header's old design, so an
+  uploaded transparent-PNG logo appeared to sit on a blue box even
+  though the PDF report itself now shows it on white. The preview now
+  matches the PDF's white band.
+
 ## 0.6.2 — unreleased
 
 - **PDF reports: the MSP branding strip is now a white band instead of
