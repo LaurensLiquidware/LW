@@ -50,7 +50,7 @@ func newTestRouterDemo(t *testing.T) (http.Handler, testDeps) {
 	deps := newTestDeps(t)
 	deps.auth.DemoMode = true
 	deps.collection.DemoMode = true
-	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts, deps.collection, deps.settings)
+	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts, deps.collection, deps.settings, deps.licenses)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -272,3 +272,109 @@ func TestRepo_Get_NotFound(t *testing.T) {
 		t.Errorf("err = %v, want ErrNotFound", err)
 	}
 }
+
+func TestRepo_UpdateLicenseServer_RoundTrip(t *testing.T) {
+	repo := newTestRepo(t, testKey())
+	ctx := context.Background()
+
+	tn, err := repo.Create(ctx, CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tn.LicenseServerHostname != "" || tn.LicenseServerHasPassword {
+		t.Fatalf("expected no License Server configured on a fresh tenant, got %+v", tn)
+	}
+
+	password := "ls-secret"
+	if err := repo.UpdateLicenseServer(ctx, tn.ID, "ld-lw01.example.com", 443, "prou_services", &password, true); err != nil {
+		t.Fatalf("UpdateLicenseServer: %v", err)
+	}
+
+	got, err := repo.Get(ctx, tn.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.LicenseServerHostname != "ld-lw01.example.com" || got.LicenseServerPort != 443 ||
+		got.LicenseServerUsername != "prou_services" || !got.LicenseServerHasPassword || !got.LicenseServerTLSSkipVerify {
+		t.Errorf("got %+v", got)
+	}
+
+	creds, err := repo.GetLicenseServerCredentials(ctx, tn.ID)
+	if err != nil {
+		t.Fatalf("GetLicenseServerCredentials: %v", err)
+	}
+	if creds == nil || creds.Username != "prou_services" || creds.Password != "ls-secret" {
+		t.Errorf("got %+v", creds)
+	}
+
+	// The tenant's own console credentials must be unaffected.
+	if got.Username != "" || got.HasPassword {
+		t.Errorf("UpdateLicenseServer touched the tenant's own credentials: %+v", got)
+	}
+}
+
+func TestRepo_UpdateLicenseServer_KeepsPasswordWhenNotProvided(t *testing.T) {
+	repo := newTestRepo(t, testKey())
+	ctx := context.Background()
+
+	tn, err := repo.Create(ctx, CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	password := "ls-secret"
+	if err := repo.UpdateLicenseServer(ctx, tn.ID, "ld-lw01.example.com", 443, "prou_services", &password, false); err != nil {
+		t.Fatal(err)
+	}
+
+	// nil password + same username -> keep the stored password.
+	if err := repo.UpdateLicenseServer(ctx, tn.ID, "ld-lw02.example.com", 443, "prou_services", nil, true); err != nil {
+		t.Fatalf("UpdateLicenseServer (keep password): %v", err)
+	}
+
+	got, err := repo.Get(ctx, tn.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.LicenseServerHostname != "ld-lw02.example.com" || !got.LicenseServerTLSSkipVerify {
+		t.Errorf("got %+v", got)
+	}
+	creds, err := repo.GetLicenseServerCredentials(ctx, tn.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if creds == nil || creds.Password != "ls-secret" {
+		t.Errorf("password not kept: %+v", creds)
+	}
+}
+
+func TestRepo_UpdateLicenseServer_ClearsCredentialsByEmptyingUsername(t *testing.T) {
+	repo := newTestRepo(t, testKey())
+	ctx := context.Background()
+
+	tn, err := repo.Create(ctx, CreateInput{DisplayName: "Acme", Hostname: "h", Port: 8000, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	password := "ls-secret"
+	if err := repo.UpdateLicenseServer(ctx, tn.ID, "ld-lw01.example.com", 443, "prou_services", &password, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.UpdateLicenseServer(ctx, tn.ID, "ld-lw01.example.com", 443, "", nil, false); err != nil {
+		t.Fatalf("UpdateLicenseServer (clear): %v", err)
+	}
+
+	got, err := repo.Get(ctx, tn.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.LicenseServerUsername != "" || got.LicenseServerHasPassword {
+		t.Errorf("credentials not cleared: %+v", got)
+	}
+	creds, err := repo.GetLicenseServerCredentials(ctx, tn.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if creds != nil {
+		t.Errorf("expected nil credentials after clearing, got %+v", creds)
+	}
+}

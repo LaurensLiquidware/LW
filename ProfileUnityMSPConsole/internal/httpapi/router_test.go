@@ -11,6 +11,7 @@ import (
 	"profileunity-msp-console/internal/auth"
 	"profileunity-msp-console/internal/dashboard"
 	"profileunity-msp-console/internal/db"
+	"profileunity-msp-console/internal/licensepush"
 	"profileunity-msp-console/internal/mailer"
 	"profileunity-msp-console/internal/reportemail"
 	"profileunity-msp-console/internal/reportmail"
@@ -31,6 +32,19 @@ type testDeps struct {
 	alerts     AlertDeps
 	collection CollectionDeps
 	settings   SettingsDeps
+	licenses   LicenseDeps
+}
+
+// testCredentialEncryptionKey is a fixed 32-byte key so tests can store
+// and round-trip real tenant/License Server passwords (a nil key makes
+// Repo.Create/Update/UpdateLicenseServer reject any password with
+// ErrEncryptionKeyRequired).
+func testCredentialEncryptionKey() []byte {
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+	return key
 }
 
 func newTestDeps(t *testing.T) testDeps {
@@ -41,7 +55,7 @@ func newTestDeps(t *testing.T) testDeps {
 	}
 	t.Cleanup(func() { sqlDB.Close() })
 
-	tenantRepo := tenant.NewRepo(sqlDB, nil)
+	tenantRepo := tenant.NewRepo(sqlDB, testCredentialEncryptionKey())
 	snapshotRepo := snapshot.NewRepo(sqlDB)
 	repos := dashboard.Repos{Tenants: tenantRepo, Snapshots: snapshotRepo}
 	sched := scheduler.New(tenantRepo, snapshotRepo, time.Hour, time.UTC, 5, 30*time.Second)
@@ -61,10 +75,11 @@ func newTestDeps(t *testing.T) testDeps {
 		t.Fatalf("seed settings: %v", err)
 	}
 	reportMailSched := reportmail.New(repos, reportemail.NewRepo(sqlDB), mailer.Config{}, nil, 1, time.UTC, false, reportpdf.Branding{})
+	userRepo := auth.NewUserRepo(sqlDB)
 
 	return testDeps{
 		auth: AuthDeps{
-			Users:    auth.NewUserRepo(sqlDB),
+			Users:    userRepo,
 			Sessions: sessions,
 			Secure:   false,
 		},
@@ -84,13 +99,14 @@ func newTestDeps(t *testing.T) testDeps {
 			ReportMail: reportMailSched,
 			TLSCert:    tlscert.NewHolder(),
 		},
+		licenses: LicenseDeps{Tenants: tenantRepo, Pushes: licensepush.NewRepo(sqlDB), Users: userRepo},
 	}
 }
 
 func newTestRouter(t *testing.T) (http.Handler, testDeps) {
 	t.Helper()
 	deps := newTestDeps(t)
-	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts, deps.collection, deps.settings)
+	router, err := NewRouter(func() SchedulerStatus { return SchedulerStatus{Status: "not_implemented"} }, deps.auth, deps.tenants, deps.dashboard, deps.history, deps.reports, deps.alerts, deps.collection, deps.settings, deps.licenses)
 	if err != nil {
 		t.Fatal(err)
 	}

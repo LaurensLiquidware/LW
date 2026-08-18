@@ -1,0 +1,170 @@
+<div class="flex flex-col gap-4 p-6">
+  <div class="flex items-center justify-between">
+    <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'nav.licenses' | transloco }}</h1>
+    <p-select
+      [options]="tenants()"
+      [ngModel]="selectedTenant()"
+      (ngModelChange)="selectedTenant.set($event); onTenantChange()"
+      optionLabel="displayName"
+      [placeholder]="'licenses.selectTenant' | transloco"
+      styleClass="w-full md:w-80"
+    />
+  </div>
+
+  @if (!selectedTenant()) {
+    <p class="lwl-muted">{{ 'licenses.noTenants' | transloco }}</p>
+  } @else {
+    <p-card [header]="'licenses.connectionHeading' | transloco">
+      <p class="lwl-micro lwl-muted" style="margin: 0 0 1rem;">{{ 'licenses.connectionHint' | transloco }}</p>
+
+      @if (saveError()) {
+        <p-message severity="error" styleClass="w-full">{{ saveError()! | transloco }}</p-message>
+      }
+
+      <form [formGroup]="connectionForm" (ngSubmit)="saveConnection()" class="flex flex-col gap-3">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label class="flex flex-col gap-1">
+            <span class="lwl-micro">{{ 'licenses.hostname' | transloco }}</span>
+            <input pInputText formControlName="hostname" />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="lwl-micro">{{ 'licenses.port' | transloco }}</span>
+            <p-inputnumber formControlName="port" [useGrouping]="false" styleClass="w-full" />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="lwl-micro">{{ 'licenses.username' | transloco }}</span>
+            <input pInputText formControlName="username" />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="lwl-micro">
+              {{ 'licenses.password' | transloco }}
+              @if (existingHasPassword) {
+                <span class="lwl-muted">({{ 'licenses.passwordUnchangedHint' | transloco }})</span>
+              }
+            </span>
+            <p-password formControlName="password" [toggleMask]="true" [feedback]="false" styleClass="w-full" inputStyleClass="w-full" />
+          </label>
+        </div>
+
+        <label class="flex items-center gap-2">
+          <p-checkbox formControlName="tlsSkipVerify" [binary]="true" inputId="licenseServerTlsSkipVerify" />
+          <span class="lwl-micro">{{ 'licenses.tlsSkipVerify' | transloco }}</span>
+        </label>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <p-button type="submit" [label]="'licenses.saveConnection' | transloco" [loading]="savingConnection()" [disabled]="connectionForm.invalid" />
+          <p-button
+            type="button"
+            severity="secondary"
+            [outlined]="true"
+            [label]="'licenses.checkup' | transloco"
+            [loading]="checkingUp()"
+            [disabled]="!connection()?.hostname"
+            (onClick)="checkup()"
+          />
+          @if (checkupResult(); as result) {
+            <span class="lwl-micro" [style.color]="result.ok ? 'var(--good-color)' : 'var(--poor-color)'">
+              {{ result.message }}
+            </span>
+          }
+        </div>
+      </form>
+    </p-card>
+
+    <p-card [header]="'licenses.pushHeading' | transloco">
+      <p class="lwl-micro lwl-muted" style="margin: 0 0 1rem;">{{ 'licenses.pushHint' | transloco }}</p>
+
+      <label class="flex flex-col gap-1">
+        <span class="lwl-micro">{{ 'licenses.licenseCode' | transloco }}</span>
+        <textarea
+          pInputText
+          rows="4"
+          [ngModel]="licenseInput()"
+          (ngModelChange)="licenseInput.set($event)"
+          style="font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.8rem;"
+          [placeholder]="'licenses.licenseCodePlaceholder' | transloco"
+        ></textarea>
+      </label>
+
+      <div class="flex items-center gap-3" style="margin-top: 0.75rem;">
+        <p-button
+          type="button"
+          severity="secondary"
+          [outlined]="true"
+          [label]="'licenses.preview' | transloco"
+          [loading]="previewing()"
+          [disabled]="!licenseInput().trim()"
+          (onClick)="previewLicense()"
+        />
+      </div>
+
+      @if (previewError()) {
+        <p-message severity="error" styleClass="w-full mt-3">{{ previewError()! | transloco }}</p-message>
+      }
+
+      @if (previewResult(); as fields) {
+        <div class="lwl-card" style="margin-top: 1rem; border: 1px solid var(--frame-border-color); border-radius: var(--radius-md); padding: 0.9rem 1rem; background: var(--p-surface-50);">
+          <p class="lwl-micro lwl-muted" style="margin: 0 0 0.6rem; text-transform: uppercase; letter-spacing: 0.03em;">{{ 'licenses.previewTitle' | transloco }}</p>
+          <dl class="grid grid-cols-2 gap-2 md:grid-cols-3">
+            <div><dt class="lwl-micro lwl-muted">{{ 'licenses.organization' | transloco }}</dt><dd class="lwl-cell">{{ fields.organization || '—' }}</dd></div>
+            <div><dt class="lwl-micro lwl-muted">{{ 'licenses.contact' | transloco }}</dt><dd class="lwl-cell">{{ fields.contactEmail || fields.contactName || '—' }}</dd></div>
+            <div><dt class="lwl-micro lwl-muted">{{ 'licenses.validUntil' | transloco }}</dt><dd class="lwl-cell">{{ fields.validUntil || '—' }}</dd></div>
+            <div><dt class="lwl-micro lwl-muted">{{ 'licenses.licenseType' | transloco }}</dt><dd class="lwl-cell">{{ fields.licenseType || '—' }}</dd></div>
+            <div><dt class="lwl-micro lwl-muted">{{ 'licenses.maxUsers' | transloco }}</dt><dd class="lwl-cell">{{ fields.maxUsers || '—' }}</dd></div>
+            <div><dt class="lwl-micro lwl-muted">{{ 'licenses.mode' | transloco }}</dt><dd class="lwl-cell">{{ fields.isConcurrent ? ('licenses.concurrent' | transloco) : ('licenses.namedUser' | transloco) }}</dd></div>
+          </dl>
+        </div>
+
+        <p-message severity="warn" styleClass="w-full mt-4">{{ 'licenses.pushWarning' | transloco }}</p-message>
+
+        <div class="flex items-center gap-3" style="margin-top: 0.75rem;">
+          <p-button [label]="'licenses.push' | transloco" [loading]="pushing()" (onClick)="confirmPush()" />
+        </div>
+      }
+
+      @if (pushResult(); as result) {
+        <p-message [severity]="result.outcome === 'success' ? 'success' : 'error'" styleClass="w-full mt-3">
+          {{ result.message }}
+        </p-message>
+      }
+    </p-card>
+
+    <p-card [header]="'licenses.historyHeading' | transloco">
+      <p class="lwl-micro lwl-muted" style="margin: 0 0 1rem;">{{ 'licenses.historyHint' | transloco }}</p>
+
+      <p-table [value]="history()" [loading]="loadingHistory()" dataKey="id">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>{{ 'licenses.pushedAt' | transloco }}</th>
+            <th>{{ 'licenses.operator' | transloco }}</th>
+            <th>{{ 'licenses.outcomeHeading' | transloco }}</th>
+            <th>{{ 'licenses.organization' | transloco }}</th>
+            <th>{{ 'licenses.maxUsers' | transloco }}</th>
+            <th>{{ 'licenses.validUntil' | transloco }}</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-row>
+          <tr>
+            <td class="lwl-micro">{{ row.pushedAtUtc }}</td>
+            <td class="lwl-cell">{{ row.operatorUsername }}</td>
+            <td>
+              <span class="lwl-micro" [style.color]="row.outcome === 'success' ? 'var(--good-color)' : 'var(--poor-color)'">
+                {{ ('licenses.outcome.' + row.outcome) | transloco }}
+              </span>
+            </td>
+            <td class="lwl-cell">{{ row.organization || '—' }}</td>
+            <td class="lwl-cell">{{ row.maxUsers ?? '—' }}</td>
+            <td class="lwl-cell">{{ row.validUntil || '—' }}</td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="6" class="lwl-muted text-center">{{ 'licenses.noHistory' | transloco }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-card>
+  }
+</div>
+
+<p-confirmdialog />

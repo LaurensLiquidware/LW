@@ -31,6 +31,7 @@ import (
 	"profileunity-msp-console/internal/reportpdf"
 	"profileunity-msp-console/internal/scheduler"
 	"profileunity-msp-console/internal/settings"
+	"profileunity-msp-console/internal/licensepush"
 	"profileunity-msp-console/internal/snapshot"
 	"profileunity-msp-console/internal/tenant"
 	"profileunity-msp-console/internal/tlscert"
@@ -110,6 +111,7 @@ func run() error {
 
 	tenantRepo := tenant.NewRepo(sqlDB, cfg.CredentialEncryptionKey)
 	snapshotRepo := snapshot.NewRepo(sqlDB)
+	licensePushRepo := licensepush.NewRepo(sqlDB)
 	sched := scheduler.New(tenantRepo, snapshotRepo, current.CollectionInterval, collectionLocation, current.CollectionConcurrency, current.CollectionTenantTimeout)
 
 	userRepo := auth.NewUserRepo(sqlDB)
@@ -213,7 +215,8 @@ func run() error {
 		ReportMail: reportMailSched,
 		TLSCert:    certHolder,
 	}
-	router, err := httpapi.NewRouter(schedulerStatus, authDeps, tenantDeps, dashboardDeps, historyDeps, reportDeps, alertDeps, collectionDeps, settingsDeps)
+	licenseDeps := httpapi.LicenseDeps{Tenants: tenantRepo, Pushes: licensePushRepo, Users: userRepo, DemoMode: demoMode}
+	router, err := httpapi.NewRouter(schedulerStatus, authDeps, tenantDeps, dashboardDeps, historyDeps, reportDeps, alertDeps, collectionDeps, settingsDeps, licenseDeps)
 	if err != nil {
 		return fmt.Errorf("build router: %w", err)
 	}

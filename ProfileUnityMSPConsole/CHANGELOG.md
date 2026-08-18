@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0 — unreleased
+
+- **New "Licenses" section**: push a signed license directly to a
+  tenant's ProfileUnity License Server (a separate product/host from
+  the tenant's own console, with its own connection and credential).
+  Per tenant: save a License Server connection and confirm it's
+  reachable (Checkup), decode a signed license code locally to review
+  it before sending (Preview), then push it (a destructive replace —
+  the License Server keeps exactly one active license, so pushing
+  purges the previous one and its seat assignments; requires explicit
+  confirmation). Every push attempt is recorded in a per-tenant Push
+  History (date, operator, outcome, and the license involved), since
+  the License Server itself keeps no record of what it used to have
+  installed. Checkup and Push are disabled when running against demo
+  data, same as Test Connection/Collect Now elsewhere in this console;
+  Preview never touches the network, so it stays available.
+
 ## 0.7.0 — unreleased
 
 - **Dashboard now shows the MSP's own company name/logo** (Settings >

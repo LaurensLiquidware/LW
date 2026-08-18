@@ -21,7 +21,7 @@ import (
 // schedulerStatus reports live scheduler state; pass a func that always
 // returns SchedulerStatus{Status: "not_implemented"} where no scheduler
 // exists yet.
-func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps, reportDeps ReportDeps, alertDeps AlertDeps, collectionDeps CollectionDeps, settingsDeps SettingsDeps) (http.Handler, error) {
+func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenantDeps TenantDeps, dashboardDeps DashboardDeps, historyDeps HistoryDeps, reportDeps ReportDeps, alertDeps AlertDeps, collectionDeps CollectionDeps, settingsDeps SettingsDeps, licenseDeps LicenseDeps) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", HealthHandler(schedulerStatus))
@@ -90,6 +90,19 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	mux.Handle("GET /api/settings/logo", RequireSession(authDeps.Sessions, GetLogoHandler(settingsDeps)))
 	mux.Handle("POST /api/settings/logo", RequireSession(authDeps.Sessions, auth.RequireCSRF(UploadLogoHandler(settingsDeps))))
 	mux.Handle("DELETE /api/settings/logo", RequireSession(authDeps.Sessions, auth.RequireCSRF(ClearLogoHandler(settingsDeps))))
+
+	// Licenses screen: pushing a signed license to a tenant's
+	// ProfileUnity License Server (a distinct host/credential from the
+	// tenant's own console). Preview is a local decode, no network call,
+	// so it's available even in demo mode; Checkup and Push both reach a
+	// real host and are blocked in demo mode the same way Test
+	// Connection/Collect Now already are.
+	mux.Handle("GET /api/tenants/{id}/license-server", RequireSession(authDeps.Sessions, GetLicenseServerHandler(licenseDeps)))
+	mux.Handle("PUT /api/tenants/{id}/license-server", RequireSession(authDeps.Sessions, auth.RequireCSRF(UpdateLicenseServerHandler(licenseDeps))))
+	mux.Handle("POST /api/tenants/{id}/license-server/checkup", RequireSession(authDeps.Sessions, auth.RequireCSRF(DisallowInDemoMode(licenseDeps.DemoMode, CheckupLicenseServerHandler(licenseDeps)))))
+	mux.Handle("POST /api/tenants/{id}/license/preview", RequireSession(authDeps.Sessions, auth.RequireCSRF(PreviewLicenseHandler())))
+	mux.Handle("POST /api/tenants/{id}/license/push", RequireSession(authDeps.Sessions, auth.RequireCSRF(DisallowInDemoMode(licenseDeps.DemoMode, PushLicenseHandler(licenseDeps)))))
+	mux.Handle("GET /api/tenants/{id}/license/history", RequireSession(authDeps.Sessions, LicenseHistoryHandler(licenseDeps)))
 
 	// Legal packaging (project brief §11.7): the license PDF and SBOM
 	// ship inside the binary and are reachable at fixed top-level paths

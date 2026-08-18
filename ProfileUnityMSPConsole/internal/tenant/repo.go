@@ -146,7 +146,8 @@ func (r *Repo) Update(ctx context.Context, id string, in UpdateInput) (Tenant, e
 
 func (r *Repo) Get(ctx context.Context, id string) (Tenant, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, display_name, hostname, port, username, encrypted_password, tls_skip_verify, enabled, tags, notes, created_at_utc, updated_at_utc
+		SELECT id, display_name, hostname, port, username, encrypted_password, tls_skip_verify, enabled, tags, notes, created_at_utc, updated_at_utc,
+			license_server_hostname, license_server_port, license_server_username, license_server_encrypted_password, license_server_tls_skip_verify
 		FROM tenants WHERE id = ?`, id)
 	t, err := scanTenant(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -160,7 +161,8 @@ func (r *Repo) Get(ctx context.Context, id string) (Tenant, error) {
 
 func (r *Repo) List(ctx context.Context) ([]Tenant, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, display_name, hostname, port, username, encrypted_password, tls_skip_verify, enabled, tags, notes, created_at_utc, updated_at_utc
+		SELECT id, display_name, hostname, port, username, encrypted_password, tls_skip_verify, enabled, tags, notes, created_at_utc, updated_at_utc,
+			license_server_hostname, license_server_port, license_server_username, license_server_encrypted_password, license_server_tls_skip_verify
 		FROM tenants ORDER BY display_name`)
 	if err != nil {
 		return nil, fmt.Errorf("tenant: list: %w", err)
@@ -214,19 +216,106 @@ func (r *Repo) GetCredentials(ctx context.Context, id string) (*Credentials, err
 	return &Credentials{Username: username, Password: password}, nil
 }
 
+// UpdateLicenseServer overwrites only the stored License Server
+// connection for id, leaving every other tenant field untouched --
+// mirrors internal/settings' UpdateTLSCert (a narrow, dedicated update
+// path separate from the main tenant Create/Update). password uses the
+// same three-way pointer semantics as CreateInput/UpdateInput's
+// Password: nil leaves the stored password untouched, a pointer to ""
+// clears it, and a pointer to a non-empty string replaces it.
+func (r *Repo) UpdateLicenseServer(ctx context.Context, id, hostname string, port int, username string, password *string, tlsSkipVerify bool) error {
+	existing, err := r.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	var encPassword []byte
+	keepPassword := false
+	clearPassword := false
+
+	switch {
+	case username == "":
+		clearPassword = true
+	case password == nil:
+		if !existing.LicenseServerHasPassword {
+			return ErrCredentialsMismatch
+		}
+		keepPassword = true
+	case *password == "":
+		return ErrCredentialsMismatch
+	default:
+		if len(r.encryptionKey) == 0 {
+			return ErrEncryptionKeyRequired
+		}
+		blob, err := crypto.Encrypt(r.encryptionKey, *password)
+		if err != nil {
+			return fmt.Errorf("tenant: encrypt license server password: %w", err)
+		}
+		encPassword = blob
+	}
+
+	now := time.Now().UTC()
+	if keepPassword {
+		_, err = r.db.ExecContext(ctx, `
+			UPDATE tenants SET license_server_hostname=?, license_server_port=?, license_server_username=?, license_server_tls_skip_verify=?, updated_at_utc=?
+			WHERE id=?`,
+			hostname, port, username, boolToInt(tlsSkipVerify), now.Format(isoUTC), id)
+	} else {
+		var passwordArg any
+		if !clearPassword {
+			passwordArg = encPassword
+		}
+		_, err = r.db.ExecContext(ctx, `
+			UPDATE tenants SET license_server_hostname=?, license_server_port=?, license_server_username=?, license_server_encrypted_password=?, license_server_tls_skip_verify=?, updated_at_utc=?
+			WHERE id=?`,
+			hostname, port, username, passwordArg, boolToInt(tlsSkipVerify), now.Format(isoUTC), id)
+	}
+	if err != nil {
+		return fmt.Errorf("tenant: update license server: %w", err)
+	}
+	return nil
+}
+
+// GetLicenseServerCredentials decrypts and returns the stored License
+// Server credential for id. Returns (nil, nil) when none is configured
+// -- a valid state, not an error. Mirrors GetCredentials.
+func (r *Repo) GetLicenseServerCredentials(ctx context.Context, id string) (*Credentials, error) {
+	var username string
+	var encPassword []byte
+	row := r.db.QueryRowContext(ctx, `SELECT license_server_username, license_server_encrypted_password FROM tenants WHERE id = ?`, id)
+	if err := row.Scan(&username, &encPassword); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("tenant: get license server credentials: %w", err)
+	}
+	if username == "" || len(encPassword) == 0 {
+		return nil, nil
+	}
+	if len(r.encryptionKey) == 0 {
+		return nil, ErrEncryptionKeyRequired
+	}
+	password, err := crypto.Decrypt(r.encryptionKey, encPassword)
+	if err != nil {
+		return nil, fmt.Errorf("tenant: decrypt license server password: %w", err)
+	}
+	return &Credentials{Username: username, Password: password}, nil
+}
+
 type rowScanner interface {
 	Scan(dest ...any) error
 }
 
 func scanTenant(row rowScanner) (Tenant, error) {
 	var t Tenant
-	var encPassword []byte
-	var tlsSkipVerify, enabled int
+	var encPassword, licenseServerEncPassword []byte
+	var tlsSkipVerify, enabled, licenseServerTLSSkipVerify int
 	var tags string
 	var createdAt, updatedAt string
 
 	if err := row.Scan(&t.ID, &t.DisplayName, &t.Hostname, &t.Port, &t.Username, &encPassword,
-		&tlsSkipVerify, &enabled, &tags, &t.Notes, &createdAt, &updatedAt); err != nil {
+		&tlsSkipVerify, &enabled, &tags, &t.Notes, &createdAt, &updatedAt,
+		&t.LicenseServerHostname, &t.LicenseServerPort, &t.LicenseServerUsername, &licenseServerEncPassword, &licenseServerTLSSkipVerify); err != nil {
 		return Tenant{}, err
 	}
 
@@ -234,6 +323,8 @@ func scanTenant(row rowScanner) (Tenant, error) {
 	t.TLSSkipVerify = tlsSkipVerify != 0
 	t.Enabled = enabled != 0
 	t.Tags = splitTags(tags)
+	t.LicenseServerHasPassword = len(licenseServerEncPassword) > 0
+	t.LicenseServerTLSSkipVerify = licenseServerTLSSkipVerify != 0
 
 	var err error
 	t.CreatedAt, err = time.Parse(isoUTC, createdAt)

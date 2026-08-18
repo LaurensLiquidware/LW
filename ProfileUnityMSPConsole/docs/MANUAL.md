@@ -22,6 +22,7 @@ history of what was added, see [`CHANGELOG.md`](../CHANGELOG.md).
 - [Alerts](#alerts)
 - [History](#history)
 - [Monthly reports](#monthly-reports)
+- [Licenses](#licenses)
 - [About screen](#about-screen)
 - [Understanding the status language](#understanding-the-status-language)
 - [Troubleshooting](#troubleshooting)
@@ -412,6 +413,49 @@ It asks for confirmation first, since (unlike Send Test Email) it emails
 every configured recipient, not just an address typed in for a test, and
 it counts as that month's send — the automatic scheduled send won't
 duplicate it later in the month.
+
+## Licenses
+
+Pushes a signed license to a tenant's **ProfileUnity License Server** —
+a separate product/host from the tenant's own ProfileUnity console, with
+its own connection and its own credential. Select a tenant at the top of
+the screen; everything below is scoped to that one tenant.
+
+**License Server Connection**: the hostname, port, username, and
+password for that tenant's License Server. This credential is the
+username/password embedded in *that server's own* MongoDB connection
+string — it has no separate API identity store of its own, so this is
+genuinely a different credential from the tenant's own console login on
+the Tenants screen. The first time you configure a tenant that has never
+had a connection saved, the Hostname field suggests that tenant's own
+console hostname and the Username field suggests `prou_services` (the
+license server's own username) — both are just starting points you can
+change; nothing is saved until you click **Save Connection**. Once
+saved, **Checkup** confirms the server is reachable and its own
+credential is accepted, before you attempt anything destructive.
+
+**Push License**: paste the signed license code Liquidware issued for
+this tenant, then click **Decode / Preview** to see what's actually in
+it (organization, contact, expiry, seat count, mode) entirely locally —
+nothing is sent anywhere yet. Once you've reviewed the preview, **Push
+License** asks you to confirm, then installs it. This is a genuine
+**destructive replace**: a License Server holds exactly one active
+license, and pushing a new one deletes whatever was there before and
+purges its seat assignments. There is no undo, which is why this screen
+always makes you decode and confirm before it sends anything.
+
+**Push History**: every push attempt for this tenant — when, by whom,
+what the outcome was, and what license was involved — since the License
+Server itself keeps no record of what it used to have installed. A
+push can fail for several distinct reasons (the credential was
+rejected, the server refused the license itself as expired, forged, or
+already installed, or the server simply couldn't be reached) — the
+outcome column tells you which.
+
+Like Test Connection and Collect Now elsewhere in this console, Checkup
+and Push both reach out to a real host and are disabled automatically
+when running against demo data; Preview never touches the network, so
+it stays available even then.
 
 ## About screen
 

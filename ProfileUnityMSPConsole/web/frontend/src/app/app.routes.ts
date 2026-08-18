@@ -33,6 +33,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reports/reports.component').then((m) => m.ReportsComponent),
       },
       {
+        path: 'licenses',
+        loadComponent: () => import('./features/licenses/licenses.component').then((m) => m.LicensesComponent),
+      },
+      {
         path: 'settings',
         loadComponent: () => import('./features/settings/settings.component').then((m) => m.SettingsComponent),
       },

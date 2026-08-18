@@ -23,6 +23,18 @@ type Tenant struct {
 	Notes         string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+
+	// LicenseServer* describe this tenant's ProfileUnity License Server
+	// connection (a distinct host from the console above, authenticated
+	// with that server's own Mongo-connection-string credential -- see
+	// internal/licenseserver). Configured separately from the rest of
+	// the tenant via Repo.UpdateLicenseServer, never through
+	// Create/Update.
+	LicenseServerHostname      string
+	LicenseServerPort          int
+	LicenseServerUsername      string
+	LicenseServerHasPassword   bool
+	LicenseServerTLSSkipVerify bool
 }
 
 // Credentials is the plaintext form, returned only to the collector.
