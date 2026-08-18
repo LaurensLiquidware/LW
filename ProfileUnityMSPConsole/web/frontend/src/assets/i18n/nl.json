@@ -139,6 +139,7 @@
     "saveConnection": "Verbinding Opslaan",
     "checkup": "Verbinding Testen",
     "checkupError": "Kan de Licentieserver niet bereiken. Controleer de instellingen hierboven.",
+    "checkupOk": "Bereikbaar — de Licentieserver heeft gereageerd.",
     "saveError": "Kan Licentieserververbinding Niet Opslaan",
     "pushHeading": "Licentie Verzenden",
     "pushHint": "Plak hier de ondertekende licentiecode die Liquidware voor deze klant heeft uitgegeven. Deze wordt lokaal gedecodeerd zodat u hem kunt controleren voordat er iets wordt verzonden.",

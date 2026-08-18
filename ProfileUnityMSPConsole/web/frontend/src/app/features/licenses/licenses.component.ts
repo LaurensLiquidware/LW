@@ -179,7 +179,15 @@ export class LicensesComponent implements OnInit {
     this.checkingUp.set(true);
     this.checkupResult.set(null);
     try {
-      this.checkupResult.set(await this.licenses.checkup(tenant.id, { hostname: v.hostname, port: v.port, tlsSkipVerify: v.tlsSkipVerify }));
+      const result = await this.licenses.checkup(tenant.id, { hostname: v.hostname, port: v.port, tlsSkipVerify: v.tlsSkipVerify });
+      // The real server has been observed reporting success with an
+      // empty message -- it only bothers populating one to explain a
+      // failure. Without a fallback, a successful checkup would render
+      // as a blank line, indistinguishable from nothing having happened.
+      if (result.ok && !result.message) {
+        result.message = this.transloco.translate('licenses.checkupOk');
+      }
+      this.checkupResult.set(result);
     } catch {
       this.checkupResult.set({ ok: false, message: this.transloco.translate('licenses.checkupError') });
     } finally {

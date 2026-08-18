@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.3 — unreleased
+
+- **Fix: a successful Licenses Checkup could show a blank message.** A
+  real License Server was observed reporting success with an empty
+  `Message` field — it only populates one to explain a failure. Success
+  now always shows a clear "Reachable" message when the server didn't
+  supply its own.
+
 ## 0.8.2 — unreleased
 
 - **Fix: the Licenses screen's Checkup button did nothing for a tenant

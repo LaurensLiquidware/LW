@@ -139,6 +139,7 @@
     "saveConnection": "Save Connection",
     "checkup": "Checkup",
     "checkupError": "Could not reach the License Server. Check the settings above.",
+    "checkupOk": "Reachable — the License Server responded.",
     "saveError": "Could Not Save License Server Connection",
     "pushHeading": "Push License",
     "pushHint": "Paste the signed license code Liquidware issued for this tenant. It's decoded locally for your review before anything is sent.",
