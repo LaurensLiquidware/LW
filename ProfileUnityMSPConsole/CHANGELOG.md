@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.1 — unreleased
+
+- **Fix: pushing a license could report a false error even though the
+  License Server actually installed it.** A real server sent a JSON
+  number for a field (`ProductType`) the Console expected as a string,
+  which failed to decode before the success/failure check even ran.
+  License Server responses are now decoded tolerantly for every text
+  field, the same fix already in place for ProfileUnity's own
+  `/licenseinfo` responses.
+
 ## 0.8.0 — unreleased
 
 - **New "Licenses" section**: push a signed license directly to a

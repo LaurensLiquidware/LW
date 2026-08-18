@@ -115,6 +115,47 @@ type LicenseInfo struct {
 	Mode         string `json:"Mode"`
 }
 
+// UnmarshalJSON decodes through flexString for every text field (see its
+// doc comment) so a server sending a JSON number/boolean where the spec
+// promised a string doesn't fail the whole decode -- the exported fields
+// stay plain strings for every caller.
+func (l *LicenseInfo) UnmarshalJSON(data []byte) error {
+	var w struct {
+		Id           flexString `json:"Id"`
+		Organization flexString `json:"Organization"`
+		ContactName  flexString `json:"ContactName"`
+		ContactEmail flexString `json:"ContactEmail"`
+		ValidUntil   flexString `json:"ValidUntil"`
+		LicenseType  flexString `json:"LicenseType"`
+		MaxUsers     int        `json:"MaxUsers"`
+		ProductType  flexString `json:"ProductType"`
+		IsMachine    bool       `json:"IsMachine"`
+		IsConcurrent bool       `json:"IsConcurrent"`
+		Signature    flexString `json:"Signature"`
+		RawLicense   flexString `json:"RawLicense"`
+		Mode         flexString `json:"Mode"`
+	}
+	if err := json.Unmarshal(data, &w); err != nil {
+		return err
+	}
+	*l = LicenseInfo{
+		Id:           w.Id.String(),
+		Organization: w.Organization.String(),
+		ContactName:  w.ContactName.String(),
+		ContactEmail: w.ContactEmail.String(),
+		ValidUntil:   w.ValidUntil.String(),
+		LicenseType:  w.LicenseType.String(),
+		MaxUsers:     w.MaxUsers,
+		ProductType:  w.ProductType.String(),
+		IsMachine:    w.IsMachine,
+		IsConcurrent: w.IsConcurrent,
+		Signature:    w.Signature.String(),
+		RawLicense:   w.RawLicense.String(),
+		Mode:         w.Mode.String(),
+	}
+	return nil
+}
+
 func (c *Client) basicAuth() string {
 	raw := c.username + ":" + c.password
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(raw))
@@ -227,6 +268,35 @@ type LicenseInfoItem struct {
 	LicenseType   string `json:"LicenseType"`
 	MaxUsers      int    `json:"MaxUsers"`
 	UsedLicenses  int    `json:"UsedLicenses"`
+}
+
+// UnmarshalJSON decodes through flexString for every text field, for the
+// same reason as LicenseInfo.UnmarshalJSON.
+func (l *LicenseInfoItem) UnmarshalJSON(data []byte) error {
+	var w struct {
+		Organization  flexString `json:"Organization"`
+		ContactName   flexString `json:"ContactName"`
+		ContactEmail  flexString `json:"ContactEmail"`
+		ContactNumber flexString `json:"ContactNumber"`
+		ValidUntil    flexString `json:"ValidUntil"`
+		LicenseType   flexString `json:"LicenseType"`
+		MaxUsers      int        `json:"MaxUsers"`
+		UsedLicenses  int        `json:"UsedLicenses"`
+	}
+	if err := json.Unmarshal(data, &w); err != nil {
+		return err
+	}
+	*l = LicenseInfoItem{
+		Organization:  w.Organization.String(),
+		ContactName:   w.ContactName.String(),
+		ContactEmail:  w.ContactEmail.String(),
+		ContactNumber: w.ContactNumber.String(),
+		ValidUntil:    w.ValidUntil.String(),
+		LicenseType:   w.LicenseType.String(),
+		MaxUsers:      w.MaxUsers,
+		UsedLicenses:  w.UsedLicenses,
+	}
+	return nil
 }
 
 // GetLicenseInfo returns the installed license(s) and current seat usage
