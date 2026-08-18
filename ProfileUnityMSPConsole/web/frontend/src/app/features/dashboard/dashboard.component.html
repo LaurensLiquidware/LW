@@ -1,6 +1,18 @@
 <div class="flex flex-col gap-4 p-6">
   <div class="flex items-center justify-between">
-    <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'nav.dashboard' | transloco }}</h1>
+    <div class="flex items-center gap-3">
+      <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'nav.dashboard' | transloco }}</h1>
+      @if (companyName() || logoUrl()) {
+        <div class="flex items-center gap-2" style="border-left: 1px solid var(--p-surface-200); padding-left: 0.75rem;">
+          @if (logoUrl()) {
+            <img [src]="logoUrl()" alt="" style="height: 28px; max-width: 140px; object-fit: contain;" />
+          }
+          @if (companyName()) {
+            <span class="lwl-muted" style="font-size: var(--text-sm);">{{ companyName() }}</span>
+          }
+        </div>
+      }
+    </div>
     <div class="flex items-center gap-3">
       <p-button
         [label]="'dashboard.collectNow' | transloco"

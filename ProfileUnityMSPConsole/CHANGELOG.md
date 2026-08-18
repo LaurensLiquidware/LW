@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 — unreleased
+
+- **Dashboard now shows the MSP's own company name/logo** (Settings >
+  Company Branding), next to the page title — the same branding that
+  already appears on every PDF report, now visible in the app itself
+  when configured. Shows nothing extra when no company name/logo has
+  been set.
+
 ## 0.6.3 — unreleased
 
 - **Fix: the Settings screen's logo preview had a hardcoded dark-blue

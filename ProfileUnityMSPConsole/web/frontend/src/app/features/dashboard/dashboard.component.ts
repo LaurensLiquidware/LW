@@ -8,6 +8,7 @@ import { MessageModule } from 'primeng/message';
 
 import { TenantStatus } from '../../core/models/dashboard';
 import { TenantsService } from '../../core/tenants.service';
+import { SettingsService } from '../../core/settings.service';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 
 /**
@@ -23,6 +24,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
 })
 export class DashboardComponent implements OnInit {
   private readonly tenants = inject(TenantsService);
+  private readonly settings = inject(SettingsService);
   @ViewChild('table') table?: Table;
 
   readonly rows = signal<TenantStatus[]>([]);
@@ -30,8 +32,25 @@ export class DashboardComponent implements OnInit {
   readonly collecting = signal(false);
   readonly collectError = signal<string | null>(null);
 
+  /** The MSP operator's own company name/logo (Settings > Company
+   * Branding), shown alongside the page title -- same branding that
+   * already appears on every PDF report. */
+  readonly companyName = signal<string | null>(null);
+  readonly logoUrl = signal<string | null>(null);
+
   async ngOnInit(): Promise<void> {
-    await this.reload();
+    await Promise.all([this.reload(), this.loadBranding()]);
+  }
+
+  private async loadBranding(): Promise<void> {
+    try {
+      const s = await this.settings.get();
+      this.companyName.set(s.companyName || null);
+      this.logoUrl.set(s.companyLogoConfigured ? this.settings.logoPreviewUrl() : null);
+    } catch {
+      // Branding is decorative here -- a failed fetch just means the
+      // page shows no company name/logo, not a broken dashboard.
+    }
   }
 
   async reload(): Promise<void> {
