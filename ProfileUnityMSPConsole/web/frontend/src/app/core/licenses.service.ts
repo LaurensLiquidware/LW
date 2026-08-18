@@ -22,8 +22,13 @@ export class LicensesService {
     return firstValueFrom(this.http.put<LicenseServerConnection>(`/api/tenants/${tenantId}/license-server`, req));
   }
 
-  checkup(tenantId: string): Promise<{ ok: boolean; message: string }> {
-    return firstValueFrom(this.http.post<{ ok: boolean; message: string }>(`/api/tenants/${tenantId}/license-server/checkup`, {}));
+  /** Tests reachability using whatever hostname/port is passed in --
+   * not the tenant's saved connection -- since the server's own
+   * /api/checkup is unauthenticated and needs no saved credential.
+   * Mirrors the Tenants screen's Test Connection, which likewise tests
+   * live form values rather than requiring a save first. */
+  checkup(tenantId: string, req: { hostname: string; port: number; tlsSkipVerify: boolean }): Promise<{ ok: boolean; message: string }> {
+    return firstValueFrom(this.http.post<{ ok: boolean; message: string }>(`/api/tenants/${tenantId}/license-server/checkup`, req));
   }
 
   /** Decodes a license code locally on the server (no network call to

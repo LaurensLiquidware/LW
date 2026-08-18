@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.2 — unreleased
+
+- **Fix: the Licenses screen's Checkup button did nothing for a tenant
+  with no License Server connection saved yet.** It was disabled until
+  after a Save, with no explanation why. Checkup now tests whatever
+  hostname/port is currently in the form, with no save required — its
+  server-side call needs no credential either, so this matches how Test
+  Connection already behaves on the Tenants screen.
+
 ## 0.8.1 — unreleased
 
 - **Fix: pushing a license could report a false error even though the

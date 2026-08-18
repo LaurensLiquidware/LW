@@ -99,7 +99,7 @@ func NewRouter(schedulerStatus func() SchedulerStatus, authDeps AuthDeps, tenant
 	// Connection/Collect Now already are.
 	mux.Handle("GET /api/tenants/{id}/license-server", RequireSession(authDeps.Sessions, GetLicenseServerHandler(licenseDeps)))
 	mux.Handle("PUT /api/tenants/{id}/license-server", RequireSession(authDeps.Sessions, auth.RequireCSRF(UpdateLicenseServerHandler(licenseDeps))))
-	mux.Handle("POST /api/tenants/{id}/license-server/checkup", RequireSession(authDeps.Sessions, auth.RequireCSRF(DisallowInDemoMode(licenseDeps.DemoMode, CheckupLicenseServerHandler(licenseDeps)))))
+	mux.Handle("POST /api/tenants/{id}/license-server/checkup", RequireSession(authDeps.Sessions, auth.RequireCSRF(DisallowInDemoMode(licenseDeps.DemoMode, CheckupLicenseServerHandler()))))
 	mux.Handle("POST /api/tenants/{id}/license/preview", RequireSession(authDeps.Sessions, auth.RequireCSRF(PreviewLicenseHandler())))
 	mux.Handle("POST /api/tenants/{id}/license/push", RequireSession(authDeps.Sessions, auth.RequireCSRF(DisallowInDemoMode(licenseDeps.DemoMode, PushLicenseHandler(licenseDeps)))))
 	mux.Handle("GET /api/tenants/{id}/license/history", RequireSession(authDeps.Sessions, LicenseHistoryHandler(licenseDeps)))

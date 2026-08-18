@@ -59,7 +59,7 @@
             [outlined]="true"
             [label]="'licenses.checkup' | transloco"
             [loading]="checkingUp()"
-            [disabled]="!connection()?.hostname"
+            [disabled]="!connectionForm.controls.hostname.value"
             (onClick)="checkup()"
           />
           @if (checkupResult(); as result) {

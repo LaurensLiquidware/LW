@@ -430,9 +430,13 @@ the Tenants screen. The first time you configure a tenant that has never
 had a connection saved, the Hostname field suggests that tenant's own
 console hostname and the Username field suggests `prou_services` (the
 license server's own username) — both are just starting points you can
-change; nothing is saved until you click **Save Connection**. Once
-saved, **Checkup** confirms the server is reachable and its own
-credential is accepted, before you attempt anything destructive.
+change; nothing is saved until you click **Save Connection**. **Checkup**
+confirms the hostname/port you've entered is actually reachable — it
+works straight from whatever's currently in the form, so there's no need
+to save first, since the server's own health check needs no credential
+either. Checkup alone can't confirm your saved username/password are
+correct (that check has no way to test them); a wrong credential only
+shows up when you actually push.
 
 **Push License**: paste the signed license code Liquidware issued for
 this tenant, then click **Decode / Preview** to see what's actually in

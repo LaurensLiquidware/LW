@@ -175,10 +175,11 @@ export class LicensesComponent implements OnInit {
     if (!tenant) {
       return;
     }
+    const v = this.connectionForm.getRawValue();
     this.checkingUp.set(true);
     this.checkupResult.set(null);
     try {
-      this.checkupResult.set(await this.licenses.checkup(tenant.id));
+      this.checkupResult.set(await this.licenses.checkup(tenant.id, { hostname: v.hostname, port: v.port, tlsSkipVerify: v.tlsSkipVerify }));
     } catch {
       this.checkupResult.set({ ok: false, message: this.transloco.translate('licenses.checkupError') });
     } finally {

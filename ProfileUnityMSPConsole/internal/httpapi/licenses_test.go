@@ -179,17 +179,48 @@ func TestPushLicenseHandler_SuccessIsRecordedInHistory(t *testing.T) {
 	}
 }
 
-func TestCheckupLicenseServerHandler_NotConfiguredYet(t *testing.T) {
-	deps := newTestDeps(t)
-	tn := createTestTenant(t, deps)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/tenants/"+tn.ID+"/license-server/checkup", nil)
-	req.SetPathValue("id", tn.ID)
+func TestCheckupLicenseServerHandler_RequiresHostname(t *testing.T) {
+	body, _ := json.Marshal(licenseServerCheckupRequest{Port: 443})
+	req := httptest.NewRequest(http.MethodPost, "/api/tenants/x/license-server/checkup", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
-	CheckupLicenseServerHandler(deps.licenses)(rec, req)
+	CheckupLicenseServerHandler()(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400, body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestCheckupLicenseServerHandler_WorksWithoutSavingFirst is the
+// regression case for a real bug report: Checkup was disabled until a
+// connection had been saved, even though the server's own /api/checkup
+// is unauthenticated and needs no saved credential -- so it should work
+// straight from the live form, same as Test Connection on the Tenants
+// screen.
+func TestCheckupLicenseServerHandler_WorksWithoutSavingFirst(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"IsWorking": true, "Message": "ok"})
+	}))
+	defer srv.Close()
+	host, portStr := splitHostPort(t, srv.URL)
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	body, _ := json.Marshal(licenseServerCheckupRequest{Hostname: host, Port: port, TLSSkipVerify: true})
+	req := httptest.NewRequest(http.MethodPost, "/api/tenants/x/license-server/checkup", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	CheckupLicenseServerHandler()(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body: %s", rec.Code, rec.Body.String())
+	}
+	var resp licenseServerCheckupResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if !resp.Ok || resp.Message != "ok" {
+		t.Errorf("got %+v", resp)
 	}
 }
 

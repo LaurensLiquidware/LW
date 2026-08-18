@@ -99,15 +99,40 @@ type licenseServerCheckupResponse struct {
 	Message string `json:"message"`
 }
 
-// CheckupLicenseServerHandler confirms reachability of the tenant's
-// License Server before a push is attempted. Blocked in demo mode (see
+type licenseServerCheckupRequest struct {
+	Hostname      string `json:"hostname"`
+	Port          int    `json:"port"`
+	TLSSkipVerify bool   `json:"tlsSkipVerify"`
+}
+
+// CheckupLicenseServerHandler confirms reachability of a License Server.
+// Unlike Push, it operates on whatever hostname/port is in the request
+// body -- not the tenant's saved connection -- because the server's own
+// GET /api/checkup is unauthenticated (see licenseserver.Client.Checkup)
+// and so needs no credential, and therefore no Save first: this mirrors
+// the Tenants screen's own Test Connection, which likewise tests live
+// form values rather than requiring a save. Blocked in demo mode (see
 // LicenseDeps.DemoMode / DisallowInDemoMode at the route registration) --
 // this makes a real outbound call.
-func CheckupLicenseServerHandler(deps LicenseDeps) http.HandlerFunc {
+func CheckupLicenseServerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		client, err := licenseServerClientForTenant(r.Context(), deps, r.PathValue("id"))
+		var req licenseServerCheckupRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if req.Hostname == "" {
+			http.Error(w, "hostname is required", http.StatusBadRequest)
+			return
+		}
+
+		var opts []licenseserver.Option
+		if req.TLSSkipVerify {
+			opts = append(opts, licenseserver.WithInsecureSkipVerify(true))
+		}
+		client, err := licenseserver.New(fmt.Sprintf("https://%s:%d", req.Hostname, req.Port), "", "", opts...)
 		if err != nil {
-			writeLicenseServerClientError(w, err)
+			writeJSON(w, http.StatusOK, licenseServerCheckupResponse{Ok: false, Message: err.Error()})
 			return
 		}
 
