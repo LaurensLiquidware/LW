@@ -53,7 +53,7 @@
         </div>
         <div>
           <div class="lwl-metric-label">{{ 'reports.maximumUsersAtMonthEnd' | transloco }}</div>
-          <div class="lwl-metric-value">{{ tenantReport()!.maximumUsersAtMonthEnd ?? '—' }}</div>
+          <div class="lwl-metric-value">{{ tenantReport()!.maximumUsersUnlimited ? ('history.unlimited' | transloco) : (tenantReport()!.maximumUsersAtMonthEnd ?? '—') }}</div>
         </div>
         <div>
           <div class="lwl-metric-label">{{ 'reports.licenseProduct' | transloco }}</div>
@@ -67,7 +67,12 @@
         } @else {
           <ul>
             @for (change of tenantReport()!.entitlementChanges; track change.date) {
-              <li class="lwl-cell">{{ change.date }}: {{ change.fromTotal }} → {{ change.toTotal }}</li>
+              <li class="lwl-cell">
+                {{ change.date }}:
+                {{ change.fromUnlimited ? ('history.unlimited' | transloco) : change.fromTotal }}
+                →
+                {{ change.toUnlimited ? ('history.unlimited' | transloco) : change.toTotal }}
+              </li>
             }
           </ul>
         }
@@ -98,6 +103,9 @@
         <div>
           <div class="lwl-metric-label">{{ 'reports.maximumUsersAtMonthEnd' | transloco }}</div>
           <div class="lwl-metric-value">{{ portfolioReport()!.totalMaximumUsersAtMonthEnd ?? '—' }}</div>
+          @if (portfolioReport()!.tenantsUnlimitedAtMonthEnd > 0) {
+            <div class="lwl-muted lwl-micro">{{ 'history.excludesUnlimitedTenants' | transloco }}</div>
+          }
         </div>
       </div>
       <div>
@@ -120,7 +128,7 @@
                 <td class="lwl-cell"><app-status-badge kind="coverage" [value]="tr.coverage" /></td>
                 <td class="lwl-cell text-right">{{ tr.peakUsed ?? '—' }}</td>
                 <td class="lwl-cell text-right">{{ tr.entitledAtMonthEnd ?? '—' }}</td>
-                <td class="lwl-cell text-right">{{ tr.maximumUsersAtMonthEnd ?? '—' }}</td>
+                <td class="lwl-cell text-right">{{ tr.maximumUsersUnlimited ? ('history.unlimited' | transloco) : (tr.maximumUsersAtMonthEnd ?? '—') }}</td>
                 <td class="lwl-cell pl-4">{{ tr.licenseProductAtMonthEnd ?? '—' }}</td>
               </tr>
             }

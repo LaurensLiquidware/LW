@@ -12,6 +12,8 @@ export interface EntitlementChange {
   date: string;
   fromTotal: number;
   toTotal: number;
+  fromUnlimited: boolean;
+  toUnlimited: boolean;
 }
 
 export interface TenantHistory {
@@ -26,4 +28,5 @@ export interface PortfolioPoint {
   totalEntitled: number;
   tenantsReporting: number;
   tenantsRegistered: number;
+  tenantsUnlimited: number;
 }

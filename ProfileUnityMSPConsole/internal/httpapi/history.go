@@ -22,9 +22,11 @@ type historyPointDTO struct {
 }
 
 type entitlementChangeDTO struct {
-	Date      string `json:"date"`
-	FromTotal int    `json:"fromTotal"`
-	ToTotal   int    `json:"toTotal"`
+	Date          string `json:"date"`
+	FromTotal     int    `json:"fromTotal"`
+	ToTotal       int    `json:"toTotal"`
+	FromUnlimited bool   `json:"fromUnlimited"`
+	ToUnlimited   bool   `json:"toUnlimited"`
 }
 
 type tenantHistoryResponse struct {
@@ -69,7 +71,10 @@ func TenantHistoryHandler(deps HistoryDeps) http.HandlerFunc {
 			resp.Points = append(resp.Points, dto)
 		}
 		for _, c := range dashboard.DetectEntitlementChanges(points) {
-			resp.EntitlementChanges = append(resp.EntitlementChanges, entitlementChangeDTO{Date: c.Date, FromTotal: c.FromTotal, ToTotal: c.ToTotal})
+			resp.EntitlementChanges = append(resp.EntitlementChanges, entitlementChangeDTO{
+				Date: c.Date, FromTotal: c.FromTotal, ToTotal: c.ToTotal,
+				FromUnlimited: c.FromUnlimited, ToUnlimited: c.ToUnlimited,
+			})
 		}
 
 		writeJSON(w, http.StatusOK, resp)
@@ -82,6 +87,7 @@ type portfolioPointDTO struct {
 	TotalEntitled     int    `json:"totalEntitled"`
 	TenantsReporting  int    `json:"tenantsReporting"`
 	TenantsRegistered int    `json:"tenantsRegistered"`
+	TenantsUnlimited  int    `json:"tenantsUnlimited"`
 }
 
 // PortfolioHistoryHandler serves the aggregate, all-tenants view from
@@ -105,6 +111,7 @@ func PortfolioHistoryHandler(deps HistoryDeps) http.HandlerFunc {
 			dtos = append(dtos, portfolioPointDTO{
 				Date: p.Date, TotalUsed: p.TotalUsed, TotalEntitled: p.TotalEntitled,
 				TenantsReporting: p.TenantsReporting, TenantsRegistered: p.TenantsRegistered,
+				TenantsUnlimited: p.TenantsUnlimited,
 			})
 		}
 		writeJSON(w, http.StatusOK, dtos)

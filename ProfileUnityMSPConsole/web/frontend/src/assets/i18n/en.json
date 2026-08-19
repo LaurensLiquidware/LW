@@ -91,7 +91,10 @@
     "entitled": "Entitled",
     "totalUsed": "Total Used",
     "totalEntitled": "Total Entitled",
-    "entitlementChanges": "Entitlement Changes"
+    "entitlementChanges": "Entitlement Changes",
+    "unlimited": "Unlimited",
+    "becameUnlimitedOn": "Became unlimited on {{date}}",
+    "excludesUnlimitedTenants": "* Total Entitled excludes tenant(s) with unlimited licenses"
   },
   "alerts": {
     "title": "Alerts",
@@ -181,7 +184,8 @@
       "good": "Good",
       "fair": "Fair",
       "poor": "Poor",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "unlimited": "Unlimited"
     },
     "expiry": {
       "ok": "OK",

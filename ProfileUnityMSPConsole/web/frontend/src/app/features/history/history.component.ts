@@ -54,6 +54,12 @@ export class HistoryComponent implements OnInit {
   readonly loading = signal(false);
   readonly entitlementChanges = signal<EntitlementChange[]>([]);
 
+  // True when the portfolio view's date range includes at least one day
+  // where a tenant reported an unlimited license -- shown as a caption
+  // under the chart, since TotalEntitled's sum is then a partial figure
+  // (an unlimited tenant contributes 0, not its true, uncapped ceiling).
+  readonly portfolioHasUnlimitedTenants = signal(false);
+
   readonly chartData = signal<any | null>(null);
 
   // Resolved once at construction, not read fresh per chart: this
@@ -165,6 +171,29 @@ export class HistoryComponent implements OnInit {
     };
   }
 
+  /** Turns a raw entitled/cap series -- where an unlimited day is a
+   * successful collection with value 0 (ProfileUnity's own "no seat cap"
+   * convention, see dashboard.IsUnlimitedLicense server-side) -- into one
+   * that never plots that 0, per the confirmed design: the cap line
+   * should stay flat at the highest known finite ceiling once a tenant
+   * goes unlimited, not crater to zero. `null` (a genuine gap: the day
+   * failed or was never attempted) is left untouched. */
+  private buildEntitledSeries(values: (number | null)[]): (number | null)[] {
+    const finiteValues = values.filter((v): v is number => v !== null && v > 0);
+    const fallback = finiteValues.length > 0 ? Math.max(...finiteValues) : null;
+    let lastFinite = fallback;
+    return values.map((v) => {
+      if (v === null) {
+        return null;
+      }
+      if (v === 0) {
+        return lastFinite;
+      }
+      lastFinite = v;
+      return v;
+    });
+  }
+
   /** Adds an alpha channel to a "#rrggbb" color -- used to build the
    * "used" line's area-fill gradient without a second resolved token. */
   private withAlpha(hex: string, alpha: number): string {
@@ -208,6 +237,7 @@ export class HistoryComponent implements OnInit {
     }
     this.loading.set(true);
     this.chartData.set(null);
+    this.portfolioHasUnlimitedTenants.set(false);
     try {
       const history = await this.historyService.tenantHistory(tenant.id);
       this.entitlementChanges.set(history.entitlementChanges);
@@ -218,13 +248,14 @@ export class HistoryComponent implements OnInit {
       const totalSeries = buildContinuousSeries(
         history.points.map((p) => ({ date: p.date, value: p.status === 'success' ? p.totalLicenses : null })),
       );
+      const entitledValues = this.buildEntitledSeries(totalSeries.values);
 
       this.chartData.set(
         this.buildChartData(
           this.transloco.translate('history.used'),
           usedSeries.values,
           this.transloco.translate('history.entitled'),
-          totalSeries.values,
+          entitledValues,
           usedSeries.labels,
         ),
       );
@@ -237,8 +268,10 @@ export class HistoryComponent implements OnInit {
     this.loading.set(true);
     this.chartData.set(null);
     this.entitlementChanges.set([]);
+    this.portfolioHasUnlimitedTenants.set(false);
     try {
       const points = await this.historyService.portfolioHistory();
+      this.portfolioHasUnlimitedTenants.set(points.some((p) => p.tenantsUnlimited > 0));
       const usedSeries = buildContinuousSeries(points.map((p) => ({ date: p.date, value: p.totalUsed })));
       const totalSeries = buildContinuousSeries(points.map((p) => ({ date: p.date, value: p.totalEntitled })));
 

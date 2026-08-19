@@ -27,12 +27,24 @@
         <p-chart type="line" [data]="chartData()" [options]="chartOptions" />
       </div>
 
+      @if (portfolioHasUnlimitedTenants()) {
+        <p class="lwl-muted lwl-micro mt-2">{{ 'history.excludesUnlimitedTenants' | transloco }}</p>
+      }
+
       @if (entitlementChanges().length > 0) {
         <div class="mt-2">
           <h2 class="lwl-metric-label">{{ 'history.entitlementChanges' | transloco }}</h2>
           <ul>
             @for (change of entitlementChanges(); track change.date) {
-              <li class="lwl-cell">{{ change.date }}: {{ change.fromTotal }} → {{ change.toTotal }}</li>
+              <li class="lwl-cell">
+                {{ change.date }}:
+                {{ change.fromUnlimited ? ('history.unlimited' | transloco) : change.fromTotal }}
+                →
+                {{ change.toUnlimited ? ('history.unlimited' | transloco) : change.toTotal }}
+              </li>
+              @if (change.toUnlimited) {
+                <li class="lwl-muted lwl-micro">{{ 'history.becameUnlimitedOn' | transloco: { date: change.date } }}</li>
+              }
             }
           </ul>
         </div>

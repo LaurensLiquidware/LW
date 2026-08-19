@@ -14,6 +14,12 @@ type EntitlementChange struct {
 	Date      string
 	FromTotal int
 	ToTotal   int
+
+	// FromUnlimited/ToUnlimited mirror IsUnlimitedLicense's meaning for
+	// FromTotal/ToTotal, so callers never have to re-derive the "0 means
+	// unlimited" convention themselves.
+	FromUnlimited bool
+	ToUnlimited   bool
 }
 
 // DetectEntitlementChanges walks points (assumed sorted by CollectionDate
@@ -33,9 +39,11 @@ func DetectEntitlementChanges(points []snapshot.Snapshot) []EntitlementChange {
 		}
 		if haveLast && *p.TotalLicenses != lastTotal {
 			changes = append(changes, EntitlementChange{
-				Date:      p.CollectionDate,
-				FromTotal: lastTotal,
-				ToTotal:   *p.TotalLicenses,
+				Date:          p.CollectionDate,
+				FromTotal:     lastTotal,
+				ToTotal:       *p.TotalLicenses,
+				FromUnlimited: IsUnlimitedLicense(&lastTotal),
+				ToUnlimited:   IsUnlimitedLicense(p.TotalLicenses),
 			})
 		}
 		lastTotal = *p.TotalLicenses
@@ -52,6 +60,14 @@ type PortfolioPoint struct {
 	TotalUsed        int
 	TotalEntitled    int
 	TenantsReporting int
+
+	// TenantsUnlimited is how many of that day's successfully-reporting
+	// tenants have an unlimited license (see IsUnlimitedLicense). Such a
+	// tenant contributes 0 to TotalEntitled -- harmless to the sum, but it
+	// means TotalEntitled understates the true combined ceiling whenever
+	// this is > 0, so callers should say so rather than presenting
+	// TotalEntitled as a complete figure.
+	TenantsUnlimited int
 
 	// TenantsRegistered is how many tenants are registered now. It is a
 	// simplification, not a historical count: a tenant added last week
@@ -84,6 +100,9 @@ func BuildPortfolioHistory(tenantsRegistered int, allSuccess []snapshot.Snapshot
 		p.TotalUsed += *s.UsedLicenses
 		p.TotalEntitled += *s.TotalLicenses
 		p.TenantsReporting++
+		if IsUnlimitedLicense(s.TotalLicenses) {
+			p.TenantsUnlimited++
+		}
 	}
 
 	sort.Strings(dates)

@@ -60,6 +60,12 @@ type TenantMonthlyReport struct {
 	// nil if there was none.
 	MaximumUsersAtMonthEnd *int
 
+	// MaximumUsersUnlimited mirrors IsUnlimitedLicense for
+	// MaximumUsersAtMonthEnd -- true when that month-end reading was
+	// ProfileUnity's own "unlimited seats" convention (a successful
+	// collection with TotalLicenses == 0), not a real zero-seat ceiling.
+	MaximumUsersUnlimited bool
+
 	// LicenseProductAtMonthEnd is LicenseProduct from the last successful
 	// collection in the month, "" if there was none -- same "last known
 	// value this month" convention as EntitledAtMonthEnd/
@@ -108,6 +114,7 @@ func BuildTenantMonthlyReport(t tenant.Tenant, year, month, daysInMonth int, mon
 		if s.TotalLicenses != nil {
 			v := *s.TotalLicenses
 			r.MaximumUsersAtMonthEnd = &v
+			r.MaximumUsersUnlimited = IsUnlimitedLicense(s.TotalLicenses)
 		}
 		if s.LicenseProduct != "" {
 			r.LicenseProductAtMonthEnd = s.LicenseProduct
@@ -152,7 +159,15 @@ type PortfolioMonthlyReport struct {
 	TotalEntitledAtMonthEnd *int
 
 	// TotalMaximumUsersAtMonthEnd sums each tenant's MaximumUsersAtMonthEnd.
+	// An unlimited tenant contributes 0 to this sum (harmless), so check
+	// TenantsUnlimitedAtMonthEnd before presenting this as a complete
+	// ceiling.
 	TotalMaximumUsersAtMonthEnd *int
+
+	// TenantsUnlimitedAtMonthEnd is how many TenantReports have
+	// MaximumUsersUnlimited set -- when > 0, TotalMaximumUsersAtMonthEnd
+	// understates the true combined ceiling.
+	TenantsUnlimitedAtMonthEnd int
 
 	// TenantReports is every tenant's own monthly report, so the
 	// portfolio view can show per-tenant coverage/entitlement-change
@@ -218,6 +233,9 @@ func BuildPortfolioMonthlyReport(year, month, tenantsRegistered int, tenantRepor
 		if tr.MaximumUsersAtMonthEnd != nil {
 			maxUsersTotal += *tr.MaximumUsersAtMonthEnd
 			haveAnyMaxUsers = true
+		}
+		if tr.MaximumUsersUnlimited {
+			r.TenantsUnlimitedAtMonthEnd++
 		}
 	}
 	if haveAnyEntitled {

@@ -60,6 +60,42 @@ func TestDetectEntitlementChanges_FirstPointNeverCounts(t *testing.T) {
 	}
 }
 
+func TestDetectEntitlementChanges_BecameUnlimited(t *testing.T) {
+	points := []snapshot.Snapshot{
+		successPoint("2026-08-01", 5, 3),
+		successPoint("2026-08-02", 5, 4),
+		successPoint("2026-08-03", 0, 4), // became unlimited
+		successPoint("2026-08-04", 5, 5), // back to a real cap
+	}
+	got := DetectEntitlementChanges(points)
+	if len(got) != 2 {
+		t.Fatalf("got %+v, want 2 changes", got)
+	}
+	if !got[0].ToUnlimited || got[0].FromUnlimited {
+		t.Errorf("first change = %+v, want ToUnlimited=true, FromUnlimited=false", got[0])
+	}
+	if !got[1].FromUnlimited || got[1].ToUnlimited {
+		t.Errorf("second change = %+v, want FromUnlimited=true, ToUnlimited=false", got[1])
+	}
+}
+
+func TestBuildPortfolioHistory_CountsUnlimitedTenants(t *testing.T) {
+	all := []snapshot.Snapshot{
+		{TenantID: "a", CollectionDate: "2026-08-01", Status: snapshot.StatusSuccess, TotalLicenses: intPtr(10), UsedLicenses: intPtr(1)},
+		{TenantID: "b", CollectionDate: "2026-08-01", Status: snapshot.StatusSuccess, TotalLicenses: intPtr(0), UsedLicenses: intPtr(5)},
+	}
+	got := BuildPortfolioHistory(2, all)
+	if len(got) != 1 {
+		t.Fatalf("got %d points, want 1", len(got))
+	}
+	if got[0].TenantsUnlimited != 1 {
+		t.Errorf("TenantsUnlimited = %d, want 1", got[0].TenantsUnlimited)
+	}
+	if got[0].TotalEntitled != 10 {
+		t.Errorf("TotalEntitled = %d, want 10 (unlimited tenant contributes 0)", got[0].TotalEntitled)
+	}
+}
+
 func TestBuildPortfolioHistory(t *testing.T) {
 	all := []snapshot.Snapshot{
 		{TenantID: "a", CollectionDate: "2026-08-01", Status: snapshot.StatusSuccess, TotalLicenses: intPtr(10), UsedLicenses: intPtr(1)},

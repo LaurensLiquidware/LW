@@ -56,6 +56,29 @@ func TestFmtProduct(t *testing.T) {
 	}
 }
 
+func TestFmtMaxUsers(t *testing.T) {
+	if got := fmtMaxUsers(nil, true); got != "Unlimited" {
+		t.Errorf("fmtMaxUsers(nil, true) = %q, want %q", got, "Unlimited")
+	}
+	v := 0
+	if got := fmtMaxUsers(&v, true); got != "Unlimited" {
+		t.Errorf("fmtMaxUsers(&0, true) = %q, want %q", got, "Unlimited")
+	}
+	v2 := 5
+	if got := fmtMaxUsers(&v2, false); got != "5" {
+		t.Errorf("fmtMaxUsers(&5, false) = %q, want %q", got, "5")
+	}
+}
+
+func TestFmtEntitlementValue(t *testing.T) {
+	if got := fmtEntitlementValue(0, true); got != "Unlimited" {
+		t.Errorf("fmtEntitlementValue(0, true) = %q, want %q", got, "Unlimited")
+	}
+	if got := fmtEntitlementValue(5, false); got != "5" {
+		t.Errorf("fmtEntitlementValue(5, false) = %q, want %q", got, "5")
+	}
+}
+
 func TestSafeFilenamePart(t *testing.T) {
 	cases := []struct {
 		in, want string
@@ -121,6 +144,27 @@ func TestRenderTenantReportPDF_ProducesValidOutput(t *testing.T) {
 	}
 	if !strings.HasPrefix(buf.String(), "%PDF") {
 		t.Fatalf("rendered output does not start with %%PDF magic bytes: %q", buf.String()[:min(20, buf.Len())])
+	}
+}
+
+func TestRenderTenantReportPDF_UnlimitedLicenseProducesValidOutput(t *testing.T) {
+	r := fullTenantReport()
+	zero := 0
+	r.MaximumUsersAtMonthEnd = &zero
+	r.MaximumUsersUnlimited = true
+	r.EntitlementChanges = []dashboard.EntitlementChange{
+		{Date: "2026-07-10", FromTotal: 500, ToTotal: 0, ToUnlimited: true},
+	}
+	pdf := RenderTenantReportPDF(r, false, Branding{})
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		t.Fatalf("Output() error = %v", err)
+	}
+	if pdf.Err() {
+		t.Fatalf("pdf.Err() = true, want false; details: %v", pdf.Error())
+	}
+	if buf.Len() == 0 {
+		t.Fatal("rendered PDF is empty")
 	}
 }
 

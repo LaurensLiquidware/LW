@@ -44,6 +44,12 @@ export class StatusBadgeComponent {
       case 'poor':
       case 'expired':
         return 'var(--poor-color)';
+      case 'unlimited':
+        // Deliberately outside the Good/Fair/Poor palette, like the
+        // "data"/"coverage" kinds -- an unlimited license isn't good or
+        // bad, it's a different kind of license with no ceiling to judge
+        // against.
+        return StatusBadgeComponent.NEUTRAL_FG;
       default:
         return StatusBadgeComponent.NEUTRAL_FG;
     }
@@ -60,6 +66,8 @@ export class StatusBadgeComponent {
       case 'poor':
       case 'expired':
         return 'color-mix(in srgb, var(--poor-color), white 85%)';
+      case 'unlimited':
+        return StatusBadgeComponent.NEUTRAL_BG;
       default:
         return StatusBadgeComponent.NEUTRAL_BG;
     }
@@ -88,6 +96,8 @@ export class StatusBadgeComponent {
         return 'warning';
       case 'none':
         return 'sync_problem';
+      case 'unlimited':
+        return 'all_inclusive';
       default:
         return 'help';
     }

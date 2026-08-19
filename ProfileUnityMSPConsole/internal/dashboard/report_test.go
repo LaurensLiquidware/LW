@@ -139,6 +139,41 @@ func TestBuildTenantMonthlyReport_OutOfOrderInputIsSortedFirst(t *testing.T) {
 	}
 }
 
+func TestBuildTenantMonthlyReport_MaximumUsersUnlimitedFromLastSuccess(t *testing.T) {
+	tn := tenant.Tenant{ID: "a"}
+	points := []snapshot.Snapshot{
+		successPoint("2026-08-01", 5, 3),
+		successPoint("2026-08-15", 0, 4), // became unlimited
+	}
+
+	r := BuildTenantMonthlyReport(tn, 2026, 8, 15, points)
+
+	if !r.MaximumUsersUnlimited {
+		t.Error("MaximumUsersUnlimited = false, want true (last successful day was TotalLicenses=0)")
+	}
+	if r.MaximumUsersAtMonthEnd == nil || *r.MaximumUsersAtMonthEnd != 0 {
+		t.Errorf("MaximumUsersAtMonthEnd = %v, want 0", r.MaximumUsersAtMonthEnd)
+	}
+}
+
+func TestBuildPortfolioMonthlyReport_CountsUnlimitedTenants(t *testing.T) {
+	tenantA := BuildTenantMonthlyReport(tenant.Tenant{ID: "a"}, 2026, 8, 1, []snapshot.Snapshot{
+		{TenantID: "a", CollectionDate: "2026-08-01", Status: snapshot.StatusSuccess, TotalLicenses: intPtr(10), UsedLicenses: intPtr(3)},
+	})
+	tenantB := BuildTenantMonthlyReport(tenant.Tenant{ID: "b"}, 2026, 8, 1, []snapshot.Snapshot{
+		{TenantID: "b", CollectionDate: "2026-08-01", Status: snapshot.StatusSuccess, TotalLicenses: intPtr(0), UsedLicenses: intPtr(5)},
+	})
+
+	r := BuildPortfolioMonthlyReport(2026, 8, 2, []TenantMonthlyReport{tenantA, tenantB}, nil)
+
+	if r.TenantsUnlimitedAtMonthEnd != 1 {
+		t.Errorf("TenantsUnlimitedAtMonthEnd = %d, want 1", r.TenantsUnlimitedAtMonthEnd)
+	}
+	if r.TotalMaximumUsersAtMonthEnd == nil || *r.TotalMaximumUsersAtMonthEnd != 10 {
+		t.Errorf("TotalMaximumUsersAtMonthEnd = %v, want 10 (unlimited tenant contributes 0)", r.TotalMaximumUsersAtMonthEnd)
+	}
+}
+
 func TestBuildPortfolioMonthlyReport_SumsAcrossTenants(t *testing.T) {
 	tenantA := BuildTenantMonthlyReport(tenant.Tenant{ID: "a"}, 2026, 8, 2, []snapshot.Snapshot{
 		{TenantID: "a", CollectionDate: "2026-08-01", Status: snapshot.StatusSuccess, TotalLicenses: intPtr(10), UsedLicenses: intPtr(3)},

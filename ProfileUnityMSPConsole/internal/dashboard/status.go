@@ -23,7 +23,25 @@ const (
 	UsageFair    UsageStatus = "fair"
 	UsagePoor    UsageStatus = "poor"
 	UsageUnknown UsageStatus = "unknown" // no reliable used/total figures
+
+	// UsageUnlimited: the license has no seat cap (see IsUnlimitedLicense).
+	// Deliberately not part of the Good/Fair/Poor palette -- like
+	// DataStatus's non-GFP states, this isn't "good" or "bad", it's a
+	// different kind of license entirely, with no utilization percentage
+	// to speak of.
+	UsageUnlimited UsageStatus = "unlimited"
 )
+
+// IsUnlimitedLicense reports whether total represents ProfileUnity's own
+// "unlimited seats" convention -- a successful collection where
+// TotalLicenses is exactly 0. ProfileUnity's /licenseinfo API has no
+// dedicated "unlimited" flag; confirmed against a real ProfileUnity
+// console that it reports a literal 0 for an unlimited-seat license, and
+// a genuine zero-seat license is not a state that API produces -- so a
+// successfully-collected 0 always means unlimited, never "broken".
+func IsUnlimitedLicense(total *int) bool {
+	return total != nil && *total == 0
+}
 
 // ExpiryStatus is how close a tenant's support entitlement is to lapsing.
 type ExpiryStatus string
@@ -87,7 +105,8 @@ type TenantStatus struct {
 	Data   DataStatus
 
 	// UtilizationPercent is UsedLicenses/TotalLicenses from LatestSuccess,
-	// nil when unknown. It can exceed 1.0 (over the limit).
+	// nil when unknown. It can exceed 1.0 (over the limit). Also nil when
+	// Usage is UsageUnlimited -- there's no ceiling to divide against.
 	UtilizationPercent *float64
 
 	// ExpiryRunwayDays is days until SupportEnds (negative if already
@@ -123,7 +142,13 @@ func computeDataStatus(latest *snapshot.Snapshot, now time.Time, loc *time.Locat
 }
 
 func computeUsageStatus(latestSuccess *snapshot.Snapshot) (UsageStatus, *float64) {
-	if latestSuccess == nil || latestSuccess.TotalLicenses == nil || latestSuccess.UsedLicenses == nil || *latestSuccess.TotalLicenses <= 0 {
+	if latestSuccess == nil || latestSuccess.TotalLicenses == nil || latestSuccess.UsedLicenses == nil {
+		return UsageUnknown, nil
+	}
+	if IsUnlimitedLicense(latestSuccess.TotalLicenses) {
+		return UsageUnlimited, nil
+	}
+	if *latestSuccess.TotalLicenses <= 0 {
 		return UsageUnknown, nil
 	}
 	pct := float64(*latestSuccess.UsedLicenses) / float64(*latestSuccess.TotalLicenses)

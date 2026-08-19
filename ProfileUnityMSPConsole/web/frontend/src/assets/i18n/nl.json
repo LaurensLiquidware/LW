@@ -91,7 +91,10 @@
     "entitled": "Toegekend",
     "totalUsed": "Totaal Gebruikt",
     "totalEntitled": "Totaal Toegekend",
-    "entitlementChanges": "Wijzigingen In Toewijzing"
+    "entitlementChanges": "Wijzigingen In Toewijzing",
+    "unlimited": "Ongelimiteerd",
+    "becameUnlimitedOn": "Ongelimiteerd geworden op {{date}}",
+    "excludesUnlimitedTenants": "* Totaal Toegekend sluit klant(en) met een ongelimiteerde licentie uit"
   },
   "alerts": {
     "title": "Meldingen",
@@ -181,7 +184,8 @@
       "good": "Goed",
       "fair": "Matig",
       "poor": "Slecht",
-      "unknown": "Onbekend"
+      "unknown": "Onbekend",
+      "unlimited": "Ongelimiteerd"
     },
     "expiry": {
       "ok": "OK",

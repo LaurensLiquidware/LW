@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.4 — unreleased
+
+- **Fix: an unlimited-seat license made the Dashboard show "Unknown"
+  and the History chart crater to zero.** ProfileUnity itself reports a
+  literal `0` for a license with no seat cap — every consumer of that
+  figure treated it the same as "no data at all." The Dashboard now
+  shows a distinct "Unlimited" badge (no utilization percentage) for
+  such a tenant; the History screen's Entitled line now stays flat at
+  the highest known ceiling instead of dropping to zero, with a "became
+  unlimited on ..." note; the Entitlement Changes list and both the
+  tenant and portfolio monthly reports (JSON and PDF) now read
+  "5 → Unlimited" instead of a raw jump to zero.
+
 ## 0.8.3 — unreleased
 
 - **Fix: a successful Licenses Checkup could show a blank message.** A

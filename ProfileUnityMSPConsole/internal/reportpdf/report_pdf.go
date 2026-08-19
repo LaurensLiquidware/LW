@@ -286,6 +286,28 @@ func fmtProduct(v string) string {
 	return v
 }
 
+// fmtMaxUsers renders a Maximum Users figure, showing "Unlimited" rather
+// than the number 0 that ProfileUnity's own API convention uses for an
+// unlimited-seat license (see dashboard.IsUnlimitedLicense) -- callers
+// pass the accompanying *Unlimited flag rather than re-deriving that
+// convention here.
+func fmtMaxUsers(v *int, unlimited bool) string {
+	if unlimited {
+		return "Unlimited"
+	}
+	return fmtInt(v)
+}
+
+// fmtEntitlementValue renders one side of an entitlement change (from or
+// to), as "Unlimited" when that side is flagged so, per the same
+// convention as fmtMaxUsers.
+func fmtEntitlementValue(total int, unlimited bool) string {
+	if unlimited {
+		return "Unlimited"
+	}
+	return fmt.Sprintf("%d", total)
+}
+
 // demoWatermark is appended to a report's header title and substituted
 // into its footer whenever it's rendered from a demo.db sidecar database
 // (see cmd/server/main.go's DemoMode plumbing) -- a demo report forwarded
@@ -354,7 +376,7 @@ func writeTenantReportBody(pdf *fpdf.Fpdf, r dashboard.TenantMonthlyReport) {
 	writeStatLine(pdf, "Peak used licenses:", peak)
 	writeStatLine(pdf, "Average used licenses:", fmtAvg(r.AverageUsed))
 	writeStatLine(pdf, "Entitled at month end:", fmtInt(r.EntitledAtMonthEnd))
-	writeStatLine(pdf, "Maximum users:", fmtInt(r.MaximumUsersAtMonthEnd))
+	writeStatLine(pdf, "Maximum users:", fmtMaxUsers(r.MaximumUsersAtMonthEnd, r.MaximumUsersUnlimited))
 	writeStatLine(pdf, "Product:", fmtProduct(r.LicenseProductAtMonthEnd))
 	pdf.Ln(2)
 
@@ -365,7 +387,7 @@ func writeTenantReportBody(pdf *fpdf.Fpdf, r dashboard.TenantMonthlyReport) {
 		pdf.CellFormat(0, 6, "Entitlement changes:", "", 1, "L", false, 0, "")
 		pdf.SetFont(reportFontFamily, "", 10)
 		for _, c := range r.EntitlementChanges {
-			pdf.CellFormat(0, 6, fmt.Sprintf("  %s: %d -> %d", c.Date, c.FromTotal, c.ToTotal), "", 1, "L", false, 0, "")
+			pdf.CellFormat(0, 6, fmt.Sprintf("  %s: %s -> %s", c.Date, fmtEntitlementValue(c.FromTotal, c.FromUnlimited), fmtEntitlementValue(c.ToTotal, c.ToUnlimited)), "", 1, "L", false, 0, "")
 		}
 	}
 	pdf.Ln(4)
@@ -399,7 +421,11 @@ func RenderPortfolioReportPDF(r dashboard.PortfolioMonthlyReport, demoMode bool,
 	writeStatLine(pdf, "Peak total used licenses:", peak)
 	writeStatLine(pdf, "Average total used licenses:", fmtAvg(r.AverageTotalUsed))
 	writeStatLine(pdf, "Total entitled at month end:", fmtInt(r.TotalEntitledAtMonthEnd))
-	writeStatLine(pdf, "Total maximum users:", fmtInt(r.TotalMaximumUsersAtMonthEnd))
+	totalMaxUsers := fmtInt(r.TotalMaximumUsersAtMonthEnd)
+	if r.TenantsUnlimitedAtMonthEnd > 0 {
+		totalMaxUsers = fmt.Sprintf("%s (excludes %d tenant(s) with unlimited licenses)", totalMaxUsers, r.TenantsUnlimitedAtMonthEnd)
+	}
+	writeStatLine(pdf, "Total maximum users:", totalMaxUsers)
 	pdf.Ln(6)
 
 	writeSectionHeading(pdf, "Per-tenant detail")

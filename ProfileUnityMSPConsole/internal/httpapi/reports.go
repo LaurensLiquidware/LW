@@ -48,9 +48,11 @@ func monthRange(r *http.Request) (year, month, days int, from, to string, err er
 }
 
 type entitlementChangeReportDTO struct {
-	Date      string `json:"date"`
-	FromTotal int    `json:"fromTotal"`
-	ToTotal   int    `json:"toTotal"`
+	Date          string `json:"date"`
+	FromTotal     int    `json:"fromTotal"`
+	ToTotal       int    `json:"toTotal"`
+	FromUnlimited bool   `json:"fromUnlimited"`
+	ToUnlimited   bool   `json:"toUnlimited"`
 }
 
 type tenantMonthlyReportDTO struct {
@@ -68,16 +70,20 @@ type tenantMonthlyReportDTO struct {
 	PeakUsedDate string   `json:"peakUsedDate,omitempty"`
 	AverageUsed  *float64 `json:"averageUsed"`
 
-	EntitledAtMonthEnd       *int                         `json:"entitledAtMonthEnd"`
-	MaximumUsersAtMonthEnd   *int                         `json:"maximumUsersAtMonthEnd"`
-	LicenseProductAtMonthEnd string                       `json:"licenseProductAtMonthEnd,omitempty"`
-	EntitlementChanges       []entitlementChangeReportDTO `json:"entitlementChanges"`
+	EntitledAtMonthEnd        *int                         `json:"entitledAtMonthEnd"`
+	MaximumUsersAtMonthEnd    *int                         `json:"maximumUsersAtMonthEnd"`
+	MaximumUsersUnlimited     bool                         `json:"maximumUsersUnlimited"`
+	LicenseProductAtMonthEnd  string                       `json:"licenseProductAtMonthEnd,omitempty"`
+	EntitlementChanges        []entitlementChangeReportDTO `json:"entitlementChanges"`
 }
 
 func toTenantReportDTO(r dashboard.TenantMonthlyReport) tenantMonthlyReportDTO {
 	changes := make([]entitlementChangeReportDTO, 0, len(r.EntitlementChanges))
 	for _, c := range r.EntitlementChanges {
-		changes = append(changes, entitlementChangeReportDTO{Date: c.Date, FromTotal: c.FromTotal, ToTotal: c.ToTotal})
+		changes = append(changes, entitlementChangeReportDTO{
+			Date: c.Date, FromTotal: c.FromTotal, ToTotal: c.ToTotal,
+			FromUnlimited: c.FromUnlimited, ToUnlimited: c.ToUnlimited,
+		})
 	}
 	return tenantMonthlyReportDTO{
 		Tenant:                   toDTO(r.Tenant),
@@ -93,6 +99,7 @@ func toTenantReportDTO(r dashboard.TenantMonthlyReport) tenantMonthlyReportDTO {
 		AverageUsed:              r.AverageUsed,
 		EntitledAtMonthEnd:       r.EntitledAtMonthEnd,
 		MaximumUsersAtMonthEnd:   r.MaximumUsersAtMonthEnd,
+		MaximumUsersUnlimited:    r.MaximumUsersUnlimited,
 		LicenseProductAtMonthEnd: r.LicenseProductAtMonthEnd,
 		EntitlementChanges:       changes,
 	}
@@ -168,6 +175,7 @@ type portfolioMonthlyReportDTO struct {
 
 	TotalEntitledAtMonthEnd     *int                     `json:"totalEntitledAtMonthEnd"`
 	TotalMaximumUsersAtMonthEnd *int                     `json:"totalMaximumUsersAtMonthEnd"`
+	TenantsUnlimitedAtMonthEnd  int                      `json:"tenantsUnlimitedAtMonthEnd"`
 	TenantReports               []tenantMonthlyReportDTO `json:"tenantReports"`
 }
 
@@ -185,6 +193,7 @@ func toPortfolioReportDTO(r dashboard.PortfolioMonthlyReport) portfolioMonthlyRe
 		AverageTotalUsed:            r.AverageTotalUsed,
 		TotalEntitledAtMonthEnd:     r.TotalEntitledAtMonthEnd,
 		TotalMaximumUsersAtMonthEnd: r.TotalMaximumUsersAtMonthEnd,
+		TenantsUnlimitedAtMonthEnd:  r.TenantsUnlimitedAtMonthEnd,
 		TenantReports:               tenantReports,
 	}
 }

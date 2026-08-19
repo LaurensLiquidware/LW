@@ -108,17 +108,38 @@ func TestCompute_UsageThresholds(t *testing.T) {
 	}
 }
 
-func TestCompute_UsageUnknownWhenTotalIsZeroOrMissing(t *testing.T) {
-	zeroTotal := successSnapshot("2026-08-14", 0, 0, "2027-01-01")
-	ts := Compute(tenant.Tenant{}, zeroTotal, zeroTotal, fixedNow, time.UTC)
-	if ts.Usage != UsageUnknown {
-		t.Errorf("Usage = %q, want unknown for a zero total", ts.Usage)
-	}
-
+func TestCompute_UsageUnknownWhenFiguresAreMissing(t *testing.T) {
+	// A zero total on a successful collection is now UsageUnlimited (see
+	// TestCompute_UsageUnlimitedWhenTotalIsZero) -- ProfileUnity's own
+	// "unlimited seats" convention, not "unknown". Only genuinely missing
+	// figures should still read as unknown.
 	missing := &snapshot.Snapshot{CollectionDate: "2026-08-14", Status: snapshot.StatusSuccess}
-	ts2 := Compute(tenant.Tenant{}, missing, missing, fixedNow, time.UTC)
-	if ts2.Usage != UsageUnknown {
-		t.Errorf("Usage = %q, want unknown for missing figures", ts2.Usage)
+	ts := Compute(tenant.Tenant{}, missing, missing, fixedNow, time.UTC)
+	if ts.Usage != UsageUnknown {
+		t.Errorf("Usage = %q, want unknown for missing figures", ts.Usage)
+	}
+}
+
+func TestCompute_UsageUnlimitedWhenTotalIsZero(t *testing.T) {
+	unlimited := successSnapshot("2026-08-14", 3, 0, "2027-01-01")
+	ts := Compute(tenant.Tenant{}, unlimited, unlimited, fixedNow, time.UTC)
+	if ts.Usage != UsageUnlimited {
+		t.Errorf("Usage = %q, want unlimited for a successful collection with TotalLicenses=0", ts.Usage)
+	}
+	if ts.UtilizationPercent != nil {
+		t.Errorf("UtilizationPercent = %v, want nil for an unlimited license", ts.UtilizationPercent)
+	}
+}
+
+func TestIsUnlimitedLicense(t *testing.T) {
+	if IsUnlimitedLicense(nil) {
+		t.Error("nil should not be unlimited")
+	}
+	if !IsUnlimitedLicense(intPtr(0)) {
+		t.Error("0 should be unlimited")
+	}
+	if IsUnlimitedLicense(intPtr(5)) {
+		t.Error("5 should not be unlimited")
 	}
 }
 
