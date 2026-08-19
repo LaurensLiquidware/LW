@@ -23,7 +23,7 @@
     <p class="lwl-muted">{{ 'history.loading' | transloco }}</p>
   } @else if (chartData()) {
     <p-card>
-      <div style="height: 24rem;">
+      <div style="height: 34rem;">
         <p-chart type="line" [data]="chartData()" [options]="chartOptions" />
       </div>
 

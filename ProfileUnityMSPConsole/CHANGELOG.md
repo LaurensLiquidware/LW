@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.7 — unreleased
+
+- **Fix: the History chart rendered much smaller than before**, after
+  the previous fix stopped it from overflowing its container. Root
+  cause: `<p-chart>` itself has no explicit height, so Chart.js's
+  responsive resize was sizing the canvas off `<p-chart>`'s own
+  shrink-to-fit box (falling back to its ~150px default) rather than the
+  taller container around it. The chart now correctly fills its
+  container, which has also been made taller (24rem → 34rem) to restore
+  a comfortably large graph.
+
 ## 0.8.6 — unreleased
 
 - **Fix: the History chart's box didn't fit the chart.** The chart sits

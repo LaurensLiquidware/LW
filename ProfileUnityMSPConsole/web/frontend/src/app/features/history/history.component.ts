@@ -28,7 +28,15 @@ type Mode = 'tenant' | 'portfolio';
     selector: 'app-history',
     imports: [FormsModule, TranslocoModule, ChartModule, CardModule, SelectModule, SelectButtonModule, PrimeTemplate],
     changeDetection: ChangeDetectionStrategy.Eager,
-    templateUrl: './history.component.html'
+    templateUrl: './history.component.html',
+    // PrimeNG's <p-chart> sets its own host [style] binding ("display:
+    // block; position: relative;") with no height, which wins over any
+    // plain style attribute passed to it in the template -- so its own
+    // fixed height, and its wrapping height:34rem div above, can't reach
+    // the canvas without going through the cascade instead. ::ng-deep
+    // reliably overrides a child component's own host style binding,
+    // which a template-level style/[style] binding does not.
+    styles: [':host ::ng-deep p-chart { display: block; height: 100%; }']
 })
 export class HistoryComponent implements OnInit {
   private readonly tenantsService = inject(TenantsService);
