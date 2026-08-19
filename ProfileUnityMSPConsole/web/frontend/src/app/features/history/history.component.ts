@@ -80,6 +80,15 @@ export class HistoryComponent implements OnInit {
   private readonly fontFamily = this.resolveToken('--font-sans', 'Inter var, sans-serif');
 
   readonly chartOptions = {
+    // Chart.js ignores a fixed-height CSS container unless told not to
+    // preserve its own aspect ratio -- without this, it sizes the canvas
+    // from its default 2:1 width/height ratio instead of the actual
+    // 24rem container in history.component.html, so on a wide screen the
+    // canvas renders taller than that box and overflows into (and, since
+    // canvas backgrounds are transparent outside the plotted area, visibly
+    // shows through) the Entitlement Changes list below it.
+    responsive: true,
+    maintainAspectRatio: false,
     interaction: { mode: 'index' as const, intersect: false },
     plugins: {
       legend: {

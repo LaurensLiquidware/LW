@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.6 — unreleased
+
+- **Fix: the History chart's box didn't fit the chart.** The chart sits
+  in a fixed-height container, but Chart.js was never told to stop
+  preserving its own default aspect ratio — so on a wide screen it drew
+  a taller canvas than the container, overflowing past the visible box
+  and, since a canvas is transparent outside its plotted area, letting
+  the Entitlement Changes text underneath show through inside what
+  looked like the chart itself. The chart now fills its container
+  exactly.
+
 ## 0.8.5 — unreleased
 
 - **Fix: History chart tooltip floated away from both lines for an
