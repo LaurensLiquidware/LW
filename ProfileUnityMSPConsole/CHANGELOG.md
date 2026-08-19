@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.5 — unreleased
+
+- **Fix: History chart tooltip floated away from both lines for an
+  unlimited-license tenant.** The tooltip's default positioning
+  averages the pixel height of every series in the hovered column —
+  fine when Used and Entitled track close together, but once Entitled
+  is pinned flat at a high ceiling (v0.8.4's unlimited-license fix) the
+  average landed in the empty gap between the two lines. The tooltip
+  now snaps to the nearest actual point instead.
+
 ## 0.8.4 — unreleased
 
 - **Fix: an unlimited-seat license made the Dashboard show "Unknown"

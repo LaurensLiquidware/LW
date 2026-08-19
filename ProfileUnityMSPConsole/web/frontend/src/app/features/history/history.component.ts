@@ -87,6 +87,14 @@ export class HistoryComponent implements OnInit {
         labels: { usePointStyle: true, pointStyle: 'line', font: { family: this.fontFamily, size: 12 }, color: this.axisColor },
       },
       tooltip: {
+        // 'nearest' snaps the tooltip to the closest actual data point.
+        // The default 'average' positioner places it at the average
+        // pixel height of every active series in the hovered column --
+        // fine when the lines track close together, but once Entitled
+        // is pinned flat at a high ceiling (an unlimited tenant) it lands
+        // in the empty gap between the two lines instead of next to
+        // either one.
+        position: 'nearest' as const,
         backgroundColor: this.tooltipBg,
         borderColor: this.tooltipBorder,
         borderWidth: 1,
