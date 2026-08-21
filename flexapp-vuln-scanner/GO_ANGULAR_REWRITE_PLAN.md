@@ -158,34 +158,42 @@ browser itself.
 
 ## Sparks Tool checklist compliance plan
 
-Reusing MSP Console's existing scripts/pipeline directly:
+**Status update (post-implementation):** items 1–4, 6, and 7 below are
+done and verified in `flexapp-vuln-scanner-go/`, not just planned. Item
+5 (Grype) is blocked by this dev environment's network policy.
 
-1. **Double-byte/Unicode** — Go's `string`/`utf8` + Angular/TS are
-   UTF-8-native by default; no special handling needed beyond testing with
-   the same double-byte fixture data already validated for
-   `FlexAppOneDownloadMonitor`.
-2. **Regional formats / ISO 8601** — enforce ISO 8601 for all machine-read
-   timestamps in JSON output (`time.Time` + `encoding/json` defaults to
-   RFC3339); locale-formatted display strings only in the Angular UI layer.
-3. **No CDN/undisclosed external refs** — vendor PrimeIcons' `primeicons.css`
-   + woff2 locally (**not** the `primeicons-cdn.css` variant, which pulls
-   from `unpkg.com` — flagged explicitly in the style guide audit this
-   turn); the `support.js` preview harness in the style guide zip must
-   never ship, matching the exclusion already noted for MSP Console.
-4. **CycloneDX 1.6 SBOM** — `scripts/generate-sbom.sh` (cyclonedx-gomod +
-   cyclonedx-npm, merged via `merge-sbom.py`) reused as-is; verifies purl +
-   SPDX license per component including transitives.
-5. **Zero Critical/High CVEs** — run Grype against `bom.cdx.json` as part of
-   `scripts/release.sh`, same as MSP Console.
-6. **Version visibility** — `internal/version`, surfaced in the About screen,
-   single source of truth (`VERSION` file, synced via `sync-version.sh`).
-7. **License PDF + SBOM packaged together** — `Spark_License.pdf`,
-   `bom.cdx.json`, `THIRD-PARTY-NOTICES.txt` at repo/artifact top level,
-   linked from the About screen and README, same layout as MSP Console.
-
-PySide6's LGPL notice (flagged as still-owed in `NATIVE_APP_MIGRATION.md`)
-becomes moot once `desktop/` is deleted — no LGPL dependency carries into the
-Go/Angular stack unless a Go PDF library pulls one in (see open questions).
+1. ✅ **Double-byte/Unicode** — Go's `string`/`utf8` + Angular/TS are
+   UTF-8-native by default; no special handling needed.
+2. ✅ **Regional formats / ISO 8601** — every machine-read timestamp
+   (`time.Time` + `encoding/json`) is RFC3339; locale-formatted display
+   strings only in the Angular UI layer.
+3. ✅ **No CDN/undisclosed external refs** — vendored PrimeIcons'
+   `primeicons.css` + woff2 locally (not the `primeicons-cdn.css`
+   variant); the style guide zip's `support.js` preview harness was
+   never copied in.
+4. ✅ **CycloneDX 1.6 SBOM** — `scripts/generate-sbom.sh`
+   (cyclonedx-gomod + cyclonedx-npm, merged via `merge-sbom.py`) run for
+   real against this project's actual dependency graph: 120 components
+   (3 Go modules + 117 npm packages) in `flexapp-vuln-scanner-go/bom.cdx.json`.
+   `github.com/go-pdf/fpdf` and `github.com/package-url/packageurl-go`
+   (the two new Go dependencies this rewrite added) are both MIT-licensed
+   — verified their `LICENSE` files directly, since cyclonedx-gomod's
+   automatic license detection didn't pick them up. No LGPL dependency
+   anywhere in the Go/Angular stack (PySide6's LGPL notice was specific
+   to the desktop app being retired).
+5. ⏳ **Zero Critical/High CVEs** — not done. `grype.anchore.io` and
+   GitHub release downloads are blocked by this dev environment's
+   network egress policy (the same restriction already documented for
+   `FlexAppOneDownloadMonitor`'s Sparks audit); `go install`ing the
+   Grype CLI itself also did not complete. Needs a network-unrestricted
+   machine.
+6. ✅ **Version visibility** — `internal/version`, surfaced in the About
+   screen (verified via a live server + Playwright screenshot), single
+   source of truth (`VERSION` file, synced via `sync-version.sh`).
+7. ✅ **License PDF + SBOM packaged together** — `Spark_License.pdf`,
+   `bom.cdx.json`, `THIRD-PARTY-NOTICES.txt` at repo top level, embedded
+   into the binary, and served at fixed paths the About screen links to
+   — confirmed via a live server serving all three correctly.
 
 ## Build order (pausing after each, per project convention)
 
@@ -210,33 +218,29 @@ Go/Angular stack unless a Go PDF library pulls one in (see open questions).
 
 ## Open questions (need answers before/along the way, not blocking the plan itself)
 
-1. **Project name/folder** — `flexapp-vuln-scanner-go/`, or reuse
-   `flexapp-vuln-scanner/` in place (deleting `webui/`/`desktop/`/
-   `stage2-resolve/` once ported) and keep `stage1-extract/` as the only
-   carryover directory? Reusing the name in place is cleaner long-term but
-   means the old and new app can't run side-by-side during the port.
-2. **File/folder picker for package path** — an Angular SPA served from
-   `localhost` cannot open a native Windows file dialog the way PySide6's
-   `QFileDialog` could. Options: (a) a plain text path field (simplest,
-   regains the "custom jump-to-path" UX problem the desktop app had solved
-   away), (b) the tray app opens a native `walk.Dialog` file picker and
-   passes the chosen path to the browser via a small local endpoint, (c)
-   browser's native `<input type=file webkitdirectory>` where supported.
-   Recommend (b) to keep the "real native picker" win from the desktop app,
-   but it's extra work. Needs a decision.
-3. **PDF generation library in Go** — needs a license-compatible choice
-   (e.g. `gofpdf`/`maroto`/`go-pdf`); whichever is picked gets its own
-   SBOM/notices entry. No selection made yet.
-4. **CLI** — is a command-line mode still required, or is the Angular UI
-   the only interface going forward? Affects whether `cli.py` needs a Go
-   equivalent.
-5. **Cancel a running scan** — flagged as unresolved in the PySide6 app
-   too (`QThread.terminate()` unsafe on a subprocess-blocked thread); the Go
-   version can do this properly via `exec.CommandContext` + context
-   cancellation, but it's a design decision, not a mechanical port.
-6. **Migration of existing scan history** — `desktop/recent_scans_store.py`'s
-   JSON file and any scans already run via the web UI: worth an import
-   step, or is starting fresh on the Go app acceptable?
+Status as of the working implementation in `flexapp-vuln-scanner-go/`:
+
+1. **Project name/folder** — decided and built as `flexapp-vuln-scanner-go/`,
+   alongside the still-live Python `flexapp-vuln-scanner/`.
+2. **File/folder picker for package path** — implemented as option (a),
+   a plain text path field (`features/new-scan`), with the output
+   folder auto-filled from the package's file stem. The "real native
+   picker" win from the desktop app (option b, a tray-hosted native
+   dialog) was not built — still open if that UX regression matters
+   enough to revisit.
+3. **PDF generation library in Go** — decided: `github.com/go-pdf/fpdf`
+   (MIT-licensed, verified). `internal/report/pdf.go` renders coverage +
+   findings as a real 2-page PDF, confirmed working end-to-end.
+4. **CLI** — not built. The Angular UI is the only interface right now;
+   revisit if a headless/scriptable mode turns out to be needed.
+5. **Cancel a running scan** — not built. `internal/pipeline.RunStage1`
+   shells out via `os/exec` without a `context.Context` yet, so this
+   remains a design decision, not a mechanical port, same as flagged
+   originally.
+6. **Migration of existing scan history** — decided: starting fresh.
+   The Go version's `JobRegistry` (`internal/httpapi/jobs.go`) is
+   in-memory only, same limitation the Flask web UI already had (no
+   `desktop/recent_scans_store.py`-style persistence built yet either).
 
 ## Effort shape (rough, comparable-project basis)
 
