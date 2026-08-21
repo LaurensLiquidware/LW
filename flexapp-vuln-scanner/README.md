@@ -170,6 +170,17 @@ anything. Live-validated (2026-08-13) against real Nextcloud Client scan data (s
 `PLAN.md`) — same coverage percentage, same findings, rendered in a
 browser instead of separate files.
 
+## Desktop App
+
+[`desktop/README.md`](desktop/README.md) has a native Windows app
+(PySide6/Qt) over the same Stage 1 + Stage 2 pipeline - a real window
+instead of a browser tab and local Flask server, with the OS's native
+file/folder pickers (UNC paths and network drives just work) and a
+Recent Scans list that persists across restarts. See
+[`NATIVE_APP_MIGRATION.md`](NATIVE_APP_MIGRATION.md) for why it exists.
+Not yet validated with a real Windows build - see that directory's
+README for what has and hasn't been confirmed.
+
 ## Known limitations
 
 - **`api.osv.dev` and `services.nvd.nist.gov` are both blocked by this

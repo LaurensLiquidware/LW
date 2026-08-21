@@ -172,6 +172,33 @@ end-to-end run against a real package justifies cutting a version.
   5 attempts, honoring a `Retry-After` header when NVD sends one,
   otherwise waiting the full 30s window) before giving up.
 
+### Added
+
+- A native Windows desktop app (`desktop/`, PySide6/Qt) - a real window
+  instead of the web UI's browser tab + local Flask server, with the
+  OS's native file/folder pickers (UNC paths and network drives just
+  work, no equivalent of `browse.py` needed) and a Recent Scans list
+  that persists across restarts (`recent_scans_store.py`, JSON under
+  `%APPDATA%\FlexAppVulnScanner\`), unlike the web UI's memory-only job
+  list. Dashboard, New Scan dialog (output folder auto-derived from the
+  package name, collapsible Advanced section for the NVD API key),
+  live scan progress, a sortable/filterable results view, and a
+  Compare Scans dialog - all five screens from the earlier mockup, now
+  real. Reuses `flexapp_vuln.pipeline` (see below) for every bit of
+  actual scanning logic, so this front end's behavior can't drift from
+  the web UI's. 43 new tests (`pytest-qt`, `QT_QPA_PLATFORM=offscreen`)
+  plus manual verification of every screen against real data, which
+  caught and fixed 3 real bugs before they'd have been found any other
+  way: a `PureWindowsPath`-vs-`Path` bug in deriving the output folder
+  from a package name, a findings-table severity sort that silently
+  fell back to alphabetical order, and a PyInstaller packaging bug
+  (`jsonschema`'s optional `rfc3987_syntax` dependency loads a `.lark`
+  grammar file PyInstaller's default analysis doesn't catch). A
+  PyInstaller `.spec` builds and runs cleanly as a Linux binary in this
+  dev/test environment; **not yet built or run as a real Windows
+  `.exe`**. See `NATIVE_APP_MIGRATION.md` and `desktop/README.md` for
+  what's confirmed vs. still open.
+
 ### Changed
 
 - Extracted the scan orchestration that lived in `webui/jobs.py` (running
