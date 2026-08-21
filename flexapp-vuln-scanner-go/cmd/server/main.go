@@ -75,8 +75,7 @@ func run() error {
 			StageOneScript: cfg.StageOneScript,
 			CacheDir:       cfg.CacheDir,
 		},
-		Mappings:   mappings,
-		PickerAddr: cfg.PickerAddr,
+		Mappings: mappings,
 	}
 
 	router, err := httpapi.NewRouter(scanDeps)

@@ -14,7 +14,6 @@ import (
 	_ "embed"
 	"fmt"
 	"image/png"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,8 +63,6 @@ type app struct {
 	logOffset    int64
 	logRuneCount int
 
-	pickerServer *http.Server
-
 	mu  sync.Mutex
 	cmd *exec.Cmd
 }
@@ -113,8 +110,6 @@ func main() {
 	if err := a.buildNotifyIcon(); err != nil {
 		warnDialog("build tray icon", err)
 	}
-
-	a.pickerServer = a.startPickerServer(currentPickerAddr(installDir))
 
 	a.start()
 	a.mw.Run()
@@ -424,9 +419,6 @@ func (a *app) restart() {
 
 func (a *app) quit() {
 	a.stop()
-	if a.pickerServer != nil {
-		a.pickerServer.Close()
-	}
 	if a.notifyIcon != nil {
 		a.notifyIcon.Dispose()
 	}

@@ -7,42 +7,26 @@ import (
 	"testing"
 )
 
-func TestConfigHandler_ReportsPickerAddr(t *testing.T) {
-	handler := ConfigHandler("127.0.0.1:8745")
-
+func TestConfigHandler_ReportsPickerAvailable(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
 	rec := httptest.NewRecorder()
-	handler(rec, req)
+	ConfigHandler(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
 
 	var body struct {
-		PickerAddr string `json:"pickerAddr"`
+		PickerAvailable bool `json:"pickerAvailable"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body.PickerAddr != "127.0.0.1:8745" {
-		t.Errorf("pickerAddr = %q, want 127.0.0.1:8745", body.PickerAddr)
-	}
-}
-
-func TestConfigHandler_EmptyPickerAddrReportedAsEmpty(t *testing.T) {
-	handler := ConfigHandler("")
-
-	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
-	rec := httptest.NewRecorder()
-	handler(rec, req)
-
-	var body struct {
-		PickerAddr string `json:"pickerAddr"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if body.PickerAddr != "" {
-		t.Errorf("pickerAddr = %q, want empty", body.PickerAddr)
+	// pickerAvailable is a build-time constant (true only in the Windows
+	// build, see picker_windows.go/picker_other.go) -- this just confirms
+	// the handler reports whatever this build was compiled with, not a
+	// hardcoded true/false.
+	if body.PickerAvailable != pickerAvailable {
+		t.Errorf("pickerAvailable = %v, want %v", body.PickerAvailable, pickerAvailable)
 	}
 }

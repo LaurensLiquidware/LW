@@ -161,19 +161,32 @@
   zips.
 - Added a native file/folder picker for the New Scan screen's Package
   Path and Output Folder fields, resolving the last open item from the
-  rewrite plan. `cmd/tray/picker_windows.go` hosts a small loopback HTTP
-  server (`FVS_PICKER_ADDR`, default `127.0.0.1:8745`) exposing
-  `/pick-file` and `/pick-folder`, each showing a real Win32 dialog via
-  `lxn/walk`'s `FileDialog` (already this app's GUI dependency) on the
-  tray's own GUI thread and returning the chosen path as JSON. The
-  server reports the picker's address via a new `GET /api/config`
-  endpoint; the new Angular `PickerService` probes `/health` once per
-  page load and the New Scan screen only renders its Browse buttons
-  when that probe succeeds, so the screen degrades to plain text entry
-  when not launched via the tray (this Linux dev environment, or the
-  server run directly). Verified: new Go unit tests
-  (`internal/config`, `internal/httpapi/appconfig_test.go`), a real
-  Windows cross-compile confirming the tray `.exe` still builds with
-  the picker code included, and a live server + Playwright check
-  confirming the Browse buttons correctly stay hidden (zero rendered,
-  no console errors) when the picker is unreachable.
+  rewrite plan. `GET /api/pick-file` and `GET /api/pick-folder`
+  (`internal/httpapi/picker_windows.go`) show a real Win32 dialog via
+  `lxn/walk`'s `FileDialog` (already `cmd/tray`'s GUI dependency)
+  directly in the server process -- `GetOpenFileName`/
+  `SHBrowseForFolder` are blocking calls that pump their own message
+  loop, so no `walk.MainWindow` or a separate picker process is needed,
+  and the picker works whether or not the tray launcher is running.
+  `GET /api/config` reports whether this build supports it (`false` on
+  the `picker_other.go` non-Windows stub); the New Scan screen's Browse
+  buttons only render when it does. An initial version of this wrongly
+  ran the picker as a separate loopback HTTP server hosted by
+  `cmd/tray`, requiring cross-origin fetches from the browser and not
+  working when the server was run without the tray -- corrected before
+  it shipped, per real-world testing. Verified: new Go unit tests
+  (`internal/httpapi/appconfig_test.go`, `picker_other_test.go`), a
+  real Windows cross-compile of all three binaries, and a live server +
+  Playwright check confirming the Browse buttons correctly stay hidden
+  (zero rendered, no console errors) on this non-Windows build.
+- Fixed a packaging bug caught in real Windows testing: the release
+  bundle never included `stage1-extract/` (the PowerShell Stage 1
+  script + its supporting modules) or `config/` (`cpe-mappings.yaml`),
+  both read from disk next to the running binary at their `config.go`
+  default paths -- every real scan failed with "Stage 1 script not
+  found" because nothing had ever copied `stage1-extract/` into
+  `flexapp-vuln-scanner-go/` in the first place, let alone into a
+  release zip. `stage1-extract/` (unchanged from
+  `../flexapp-vuln-scanner/`, minus its Pester tests) is now committed
+  to this project, and `scripts/release.sh` packages both directories
+  into every release zip.

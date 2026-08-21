@@ -222,15 +222,21 @@ Status as of the working implementation in `flexapp-vuln-scanner-go/`:
 
 1. **Project name/folder** — decided and built as `flexapp-vuln-scanner-go/`,
    alongside the still-live Python `flexapp-vuln-scanner/`.
-2. **File/folder picker for package path** — resolved: built option (b),
-   the tray-hosted native dialog. `cmd/tray/picker_windows.go` hosts a
-   small loopback HTTP server (`lxn/walk`'s `FileDialog`, the same
-   Win32 dialog the PySide6 desktop app used) exposing `/pick-file` and
-   `/pick-folder`; the server reports its address via `GET /api/config`
-   and the New Scan screen's Browse buttons only render once that's
-   confirmed reachable, so a plain text path field (option (a), what
-   shipped first) remains the fallback when not launched via the tray.
-   No more UX regression versus the desktop app.
+2. **File/folder picker for package path** — resolved: built as a native
+   dialog served directly by `cmd/server` itself
+   (`internal/httpapi/picker_windows.go`, `GET /api/pick-file`/
+   `/api/pick-folder`), using `lxn/walk`'s `FileDialog` (the same Win32
+   dialog the PySide6 desktop app used) -- `GetOpenFileName`/
+   `SHBrowseForFolder` are blocking calls that pump their own message
+   loop, so this needs no GUI thread of its own and works whether or
+   not the tray launcher is running. `GET /api/config` reports whether
+   this build supports it (Windows only); the New Scan screen's Browse
+   buttons only render when it does, so a plain text path field
+   (option (a), what shipped first) remains the fallback everywhere
+   else. No more UX regression versus the desktop app. (An earlier
+   version wrongly ran this as a separate process hosted by
+   `cmd/tray`, reachable only cross-origin and only while the tray was
+   running -- corrected after real Windows testing surfaced it.)
 3. **PDF generation library in Go** — decided: `github.com/go-pdf/fpdf`
    (MIT-licensed, verified). `internal/report/pdf.go` renders coverage +
    findings as a real 2-page PDF, confirmed working end-to-end.
