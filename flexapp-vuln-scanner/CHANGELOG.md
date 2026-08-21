@@ -174,6 +174,23 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- Every finding now shows which file(s) it actually came from. Previously,
+  when the same vulnerability matched several physical files sharing one
+  purl/cpe identity (e.g. the same DLL copied to three locations),
+  `build_finding_rows()` correctly deduped them into one row but silently
+  kept only the first file's path - the other affected files were dropped
+  entirely, with no way to recover which ones they were. `build_finding_rows()`
+  now collects every distinct `relativePath` sharing a dedup key into a
+  sorted `relativePaths` list. Wired into all four output surfaces:
+  `findings.md` and the PDF report list every affected path stacked in
+  one cell; `findings.csv` joins them with `; `; the web UI's results and
+  compare pages show the single path inline when there's only one, or a
+  native `<details>` disclosure ("N files ▸") when there's more than
+  one - no JavaScript needed. 12 new tests across `reporting.py`,
+  `pdf_report.py`, and the webui templates; verified with a
+  headless-browser screenshot of a real 3-file shared CVE expanding to
+  show all three paths under one row.
+
 - Web UI: the index page's Output Directory / Open-folder fields now
   prefill with a default (`<repo>/scan-out`) instead of starting empty,
   so a first-time user isn't staring at a required field with no idea

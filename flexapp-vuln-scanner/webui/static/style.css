@@ -347,6 +347,29 @@ table.stats td:first-child { font-weight: 600; width: 60%; }
 .sev-legend { margin-bottom: 0.75rem; }
 .sev-legend .sev { margin: 0 0.15rem; }
 
+.file-path { font-family: var(--font-mono); font-size: 0.8rem; color: var(--fg); }
+.affected-files summary {
+  cursor: pointer;
+  color: var(--link);
+  font-weight: 600;
+  font-size: 0.857rem;
+  list-style: none;
+}
+.affected-files summary::-webkit-details-marker { display: none; }
+.affected-files summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.3rem;
+  transition: transform 0.15s;
+}
+.affected-files[open] summary::before { transform: rotate(90deg); }
+.affected-files ul {
+  margin: 0.4rem 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+.affected-files li { margin-bottom: 0.2rem; }
+
 pre#log {
   background: var(--p-surface-900);
   color: var(--p-surface-200);

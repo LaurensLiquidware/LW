@@ -101,8 +101,8 @@ def render_coverage_report(coverage: dict[str, Any], package_name: str) -> str:
 
 def build_finding_rows(vuln_matches: dict[str, Any]) -> list[dict[str, Any]]:
     """Flattens vuln-matches.json into one row per distinct (component,
-    vulnerability), severity-sorted. Shared by the Markdown and PDF
-    renderers so both dedupe and sort identically.
+    vulnerability), severity-sorted. Shared by the Markdown, PDF, CSV, and
+    webui renderers so all of them dedupe and sort identically.
 
     Keyed by (purl-or-cpe, vulnerability id) - the same physical component
     (e.g. the same bundled sqlite3.dll copied to more than one path) can
@@ -110,30 +110,38 @@ def build_finding_rows(vuln_matches: dict[str, Any]) -> list[dict[str, Any]]:
     vulnerability list. Without deduping by identity, every CVE for that
     component would be rendered once per file instead of once overall -
     this is the same "one entry per distinct component" rule sbom.py
-    already applies when building the SBOM.
+    already applies when building the SBOM. Every relativePath that
+    shares a dedup key is collected into that row's "relativePaths" list
+    (sorted, deduplicated) rather than keeping only the first one seen -
+    a reader needs to know every affected file, not just one of them.
     """
     rows_by_key: dict[tuple[str, str], dict[str, Any]] = {}
     for component in vuln_matches.get("components", []):
         identity = component.get("identity") or {}
         confidence = component.get("confidence")
-        dedup_identity = component.get("purl") or component.get("cpe") or component.get("relativePath")
+        relative_path = component.get("relativePath")
+        dedup_identity = component.get("purl") or component.get("cpe") or relative_path
         for vuln in component.get("vulnerabilities", []):
             key = (dedup_identity, vuln.get("id") or "")
             if key in rows_by_key:
+                if relative_path and relative_path not in rows_by_key[key]["relativePaths"]:
+                    rows_by_key[key]["relativePaths"].append(relative_path)
                 continue
             rows_by_key[key] = {
                 "severityLevel": vuln.get("severityLevel"),
                 "id": vuln.get("id"),
                 "url": vulnerability_url(vuln.get("id")),
                 "summary": vuln.get("summary") or "",
-                "product": identity.get("product") or component.get("relativePath"),
+                "product": identity.get("product") or relative_path,
                 "version": identity.get("version") or "",
-                "relativePath": component.get("relativePath"),
+                "relativePaths": [relative_path] if relative_path else [],
                 "confidence": confidence,
                 "source": vuln.get("source"),
             }
 
     rows = list(rows_by_key.values())
+    for r in rows:
+        r["relativePaths"].sort()
     rows.sort(key=lambda r: (_severity_rank(r["severityLevel"]), r["id"] or ""))
     return rows
 
@@ -160,8 +168,8 @@ def count_by_severity(rows: list[dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
-_CSV_FIELDS = ["severityLevel", "id", "url", "product", "version", "summary", "source", "confidence", "relativePath"]
-_CSV_HEADER = ["Severity", "ID", "URL", "Component", "Version", "Summary", "Source", "Confidence", "Path"]
+_CSV_FIELDS = ["severityLevel", "id", "url", "product", "version", "summary", "source", "confidence"]
+_CSV_HEADER = ["Severity", "ID", "URL", "Component", "Version", "Summary", "Source", "Confidence", "Affected Files"]
 
 
 def render_findings_csv(vuln_matches: dict[str, Any]) -> str:
@@ -172,13 +180,17 @@ def render_findings_csv(vuln_matches: dict[str, Any]) -> str:
     render_findings, this has no way to write an explanatory sentence
     for the "no data supplied" case, so callers must not confuse an
     absent file with "zero vulnerabilities found."
+
+    "Affected Files" joins every path sharing that finding with "; " -
+    a semicolon rather than a comma, since a Windows path never contains
+    one but commonly needs a comma-safe separator inside a CSV cell.
     """
     rows = build_finding_rows(vuln_matches)
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(_CSV_HEADER)
     for r in rows:
-        writer.writerow([r.get(field) or "" for field in _CSV_FIELDS])
+        writer.writerow([r.get(field) or "" for field in _CSV_FIELDS] + ["; ".join(r["relativePaths"])])
     return buf.getvalue()
 
 
@@ -234,14 +246,18 @@ def render_findings(vuln_matches: dict[str, Any] | None, package_name: str) -> s
         return "\n".join(lines)
 
     def _render_table(entries: list[dict[str, Any]]) -> list[str]:
-        table = ["| Severity | ID | Component | Version | Summary | Source | Confidence |",
-                 "|---|---|---|---|---|---|---|"]
+        table = ["| Severity | ID | Component | Version | Affected Files | Summary | Source | Confidence |",
+                 "|---|---|---|---|---|---|---|---|"]
         for r in entries:
             severity = r["severityLevel"] or "UNKNOWN"
             summary = (r["summary"][:100] + "…") if len(r["summary"]) > 100 else r["summary"]
             id_cell = f"[{r['id']}]({r['url']})" if r["url"] else (r["id"] or "")
+            # <br> (not a second row) - a GFM table cell can't hold a real
+            # newline, and every renderer this report targets (GitHub,
+            # most Markdown viewers) honors <br> inside a table cell.
+            files_cell = "<br>".join(f"`{p}`" for p in r["relativePaths"]) or "—"
             table.append(
-                f"| {severity} | {id_cell} | {r['product']} | {r['version']} | "
+                f"| {severity} | {id_cell} | {r['product']} | {r['version']} | {files_cell} | "
                 f"{summary} | {r['source']} | {r['confidence']} |"
             )
         return table
