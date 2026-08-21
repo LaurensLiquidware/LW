@@ -180,7 +180,7 @@ def render_pdf_report(
 
 
 def _findings_table(entries: list[dict[str, Any]], cell_style: ParagraphStyle) -> Table:
-    header = ["Severity", "ID", "Component", "Version", "Summary", "Source", "Confidence"]
+    header = ["Severity", "ID", "Component", "Version", "Affected Files", "Summary", "Source", "Confidence"]
     data = [header]
     for r in entries:
         severity = r["severityLevel"] or "UNKNOWN"
@@ -194,14 +194,20 @@ def _findings_table(entries: list[dict[str, Any]], cell_style: ParagraphStyle) -
             )
         else:
             id_para = Paragraph(r["id"] or "", cell_style)
+        # <br/> stacks every affected path in one cell - reportlab's
+        # Paragraph markup, not HTML, but the same idea as the Markdown
+        # renderer's <br>-joined cell for the same reason (a table cell
+        # can't hold multiple real paragraphs of independent height here).
+        files_text = "<br/>".join(r["relativePaths"]) or "—"
         data.append([
             severity_para,
             id_para,
             Paragraph(r["product"] or "", cell_style),
             Paragraph(r["version"] or "", cell_style),
+            Paragraph(files_text, cell_style),
             Paragraph(r["summary"] or "", cell_style),
             Paragraph(r["source"] or "", cell_style),
             Paragraph(r["confidence"] or "", cell_style),
         ])
-    col_widths = [0.65 * inch, 1.05 * inch, 1.25 * inch, 0.7 * inch, 2.65 * inch, 0.55 * inch, 0.85 * inch]
+    col_widths = [0.6 * inch, 0.95 * inch, 1.05 * inch, 0.6 * inch, 1.5 * inch, 1.9 * inch, 0.5 * inch, 0.7 * inch]
     return Table(data, colWidths=col_widths, repeatRows=1, style=_table_style(header=True))

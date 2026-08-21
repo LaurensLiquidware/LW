@@ -37,6 +37,35 @@ def test_render_pdf_report_writes_valid_pdf_with_coverage_and_findings(tmp_path)
     assert len(raw) > 1000
 
 
+def test_render_pdf_report_handles_multiple_affected_files(tmp_path):
+    inventory = load_inventory(FIXTURE)
+    coverage = compute_coverage(inventory)
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a\\outer-app.jar",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+        {
+            "relativePath": "b\\outer-app-legacy.jar",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+    ]}
+
+    out_path = tmp_path / "report.pdf"
+    render_pdf_report(
+        out_path, package_name="TestApp", package_meta={}, coverage=coverage, vuln_matches=vuln_matches,
+    )
+
+    assert out_path.exists()
+    assert out_path.read_bytes().startswith(b"%PDF-")
+
+
 def test_render_pdf_report_handles_no_vuln_matches(tmp_path):
     inventory = load_inventory(FIXTURE)
     coverage = compute_coverage(inventory)

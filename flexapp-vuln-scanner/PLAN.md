@@ -1483,6 +1483,40 @@ a new pattern, not something to fix blind from this dev sandbox.
     what was typed rather than silently re-defaulting over it. 2 new
     tests; verified with a screenshot showing the prefilled field.
 
+18. **New, same day: show every affected file per finding, not just
+    one.** Requested directly, spotted while mocking up the native
+    app's Results view. `build_finding_rows()` already deduped a
+    vulnerability shared across several physical files (same purl/cpe)
+    into one row - correct - but kept only the first file's
+    `relativePath` and quietly dropped the rest, so a reader had no way
+    to know which OTHER files were affected. Changed the dedup loop to
+    accumulate every distinct `relativePath` sharing a key into a
+    sorted `relativePaths` list instead of a single string.
+
+    Wired into all four surfaces that already consume
+    `build_finding_rows()`: `render_findings` (Markdown) and
+    `pdf_report.py`'s findings table both stack every path in one
+    cell (`<br>`/`<br/>` - a table cell can't hold a real newline, and
+    both renderers already lean on inline markup for the CVE-id links);
+    `render_findings_csv` joins them with `; ` (a Windows path never
+    contains a semicolon, unlike a comma); `result.html` and
+    `compare_result.html` show the single path inline when there's
+    only one, or a native `<details>`/`<summary>` disclosure ("N
+    files ▸", no JavaScript) when there's more than one - extracted
+    into a shared `_macros.html` since both templates needed it.
+
+    Verified with 12 new tests (`reporting.py`: multiple files
+    collected under one dedup key, distinct vulnerabilities on the same
+    component each keep their own file, no-path case gives an empty
+    list, the Markdown table's `<br>`-joined cell, the CSV's `;`-joined
+    cell; `pdf_report.py`: multi-file PDF still renders a valid file;
+    `test_app.py`: a single file renders inline with no `<details>`,
+    two files sharing a CVE render as one row with a working disclosure)
+    plus a headless-browser screenshot of a real 3-file shared CVE -
+    `outer-app.jar`, a `plugins\` duplicate, and a stale `.bak` copy -
+    expanding to show all three under one row. All 127
+    `stage2-resolve` + 62 `webui` tests passing.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or

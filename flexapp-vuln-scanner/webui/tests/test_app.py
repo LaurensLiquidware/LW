@@ -344,6 +344,68 @@ def test_result_page_links_cve_id_to_nvd(tmp_path):
     assert b'href="https://nvd.nist.gov/vuln/detail/CVE-2023-0001"' in resp.data
 
 
+def test_result_page_shows_single_affected_file_inline(tmp_path):
+    import json as json_module
+
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+    vuln_matches = {
+        "generatedUtc": "2026-08-13T00:00:00Z", "package": {},
+        "components": [{
+            "relativePath": "Program Files\\App\\lib\\libcrypto-1_1.dll",
+            "identity": {"product": "OpenSSL", "version": "1.1.1w"},
+            "purl": None, "cpe": "cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*",
+            "confidence": "mapped-cpe",
+            "vulnerabilities": [{"id": "CVE-2023-0001", "summary": "x", "severity": [], "severityLevel": "HIGH", "source": "nvd"}],
+        }],
+    }
+    (tmp_path / "sample.vuln-matches.json").write_text(json_module.dumps(vuln_matches), encoding="utf-8")
+
+    resp = client().post("/open", data={"dir_path": str(tmp_path)}, follow_redirects=True)
+    html = resp.data.decode()
+
+    assert "Affected Files" in html
+    assert "Program Files\\App\\lib\\libcrypto-1_1.dll" in html
+    assert "<details" not in html  # single file - no need for a disclosure widget
+
+
+def test_result_page_groups_multiple_affected_files_under_one_finding(tmp_path):
+    import json as json_module
+
+    shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
+    vuln_matches = {
+        "generatedUtc": "2026-08-13T00:00:00Z", "package": {},
+        "components": [
+            {
+                "relativePath": "a\\outer-app.jar",
+                "identity": {"product": "OuterApp", "version": "9.9.9"},
+                "purl": "pkg:maven/a/outer-app@9.9.9", "cpe": None,
+                "confidence": "exact-purl",
+                "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severity": [], "severityLevel": "CRITICAL", "source": "nvd"}],
+            },
+            {
+                "relativePath": "b\\plugins\\outer-app-legacy.jar",
+                "identity": {"product": "OuterApp", "version": "9.9.9"},
+                "purl": "pkg:maven/a/outer-app@9.9.9", "cpe": None,
+                "confidence": "exact-purl",
+                "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severity": [], "severityLevel": "CRITICAL", "source": "nvd"}],
+            },
+        ],
+    }
+    (tmp_path / "sample.vuln-matches.json").write_text(json_module.dumps(vuln_matches), encoding="utf-8")
+
+    resp = client().post("/open", data={"dir_path": str(tmp_path)}, follow_redirects=True)
+    html = resp.data.decode()
+
+    # One row for the shared CVE, not two - the id appears twice (once as
+    # link text, once inside its own href), which would double to 4 if
+    # this wrongly rendered as two separate rows.
+    assert html.count("CVE-2026-0001") == 2
+    assert "<details" in html
+    assert "2 files" in html
+    assert "a\\outer-app.jar" in html
+    assert "b\\plugins\\outer-app-legacy.jar" in html
+
+
 def _hrefs(page_html: str) -> list[str]:
     # Jinja HTML-escapes "&" to "&amp;" inside href="..." attributes -
     # unescape before treating these as real URLs to parse query params from.

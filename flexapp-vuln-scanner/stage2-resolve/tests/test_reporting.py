@@ -47,6 +47,98 @@ def test_build_finding_rows_includes_url():
     assert rows[0]["url"] == "https://nvd.nist.gov/vuln/detail/CVE-2023-0001"
 
 
+def test_build_finding_rows_collects_all_affected_files_for_a_shared_vulnerability():
+    # Same real-world component (same purl), copied to 3 different paths -
+    # one row, but every affected path must be recoverable from it.
+    vuln_matches = {"components": [
+        {
+            "relativePath": "Program Files\\App\\outer-app.jar",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+        {
+            "relativePath": "Program Files\\App\\plugins\\outer-app-legacy.jar",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+        {
+            "relativePath": "Data\\cache\\outer-app.jar.bak",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+    ]}
+    rows = build_finding_rows(vuln_matches)
+
+    assert len(rows) == 1
+    assert rows[0]["relativePaths"] == [
+        "Data\\cache\\outer-app.jar.bak",
+        "Program Files\\App\\outer-app.jar",
+        "Program Files\\App\\plugins\\outer-app-legacy.jar",
+    ]
+
+
+def test_build_finding_rows_distinct_vulnerabilities_on_same_component_each_get_their_own_files():
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a.jar",
+            "identity": {"product": "a", "version": "1.0"},
+            "purl": "pkg:maven/a/a@1.0",
+            "confidence": "exact-purl",
+            "vulnerabilities": [
+                {"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"},
+                {"id": "CVE-2026-0002", "summary": "y", "severityLevel": "HIGH", "source": "nvd"},
+            ],
+        },
+    ]}
+    rows = build_finding_rows(vuln_matches)
+
+    assert len(rows) == 2
+    assert all(r["relativePaths"] == ["a.jar"] for r in rows)
+
+
+def test_build_finding_rows_no_relative_path_gives_empty_list():
+    vuln_matches = {"components": [
+        {
+            "relativePath": None,
+            "identity": {"product": "a", "version": "1.0"},
+            "purl": "pkg:maven/a/a@1.0",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2023-0001", "summary": "x", "severityLevel": "HIGH", "source": "nvd"}],
+        },
+    ]}
+    rows = build_finding_rows(vuln_matches)
+    assert rows[0]["relativePaths"] == []
+
+
+def test_render_findings_shows_affected_files_column():
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a\\outer-app.jar",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+        {
+            "relativePath": "b\\outer-app-legacy.jar",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+    ]}
+    report = render_findings(vuln_matches, "TestApp")
+
+    assert "Affected Files" in report
+    assert "`a\\outer-app.jar`<br>`b\\outer-app-legacy.jar`" in report
+
+
 def test_render_findings_links_the_id():
     vuln_matches = {"components": [
         {
@@ -216,11 +308,38 @@ def test_render_findings_csv_has_header_and_one_row_per_finding():
     csv_text = render_findings_csv(vuln_matches)
     lines = csv_text.strip().splitlines()
 
-    assert lines[0] == "Severity,ID,URL,Component,Version,Summary,Source,Confidence,Path"
+    assert lines[0] == "Severity,ID,URL,Component,Version,Summary,Source,Confidence,Affected Files"
     assert len(lines) == 2
     assert "CVE-2023-0001" in lines[1]
     assert "https://nvd.nist.gov/vuln/detail/CVE-2023-0001" in lines[1]
     assert "exact-purl" in lines[1]
+    assert "a.jar" in lines[1]
+
+
+def test_render_findings_csv_joins_multiple_affected_files_with_semicolon():
+    vuln_matches = {"components": [
+        {
+            "relativePath": "a\\outer-app.jar",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "cpe": None,
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+        {
+            "relativePath": "b\\plugins\\outer-app-legacy.jar",
+            "identity": {"product": "OuterApp", "version": "9.9.9"},
+            "cpe": None,
+            "purl": "pkg:maven/a/outer-app@9.9.9",
+            "confidence": "exact-purl",
+            "vulnerabilities": [{"id": "CVE-2026-0001", "summary": "x", "severityLevel": "CRITICAL", "source": "nvd"}],
+        },
+    ]}
+    csv_text = render_findings_csv(vuln_matches)
+    lines = csv_text.strip().splitlines()
+
+    assert len(lines) == 2  # still one row - not one per file
+    assert "a\\outer-app.jar; b\\plugins\\outer-app-legacy.jar" in lines[1]
 
 
 def test_render_findings_csv_empty_when_no_findings():

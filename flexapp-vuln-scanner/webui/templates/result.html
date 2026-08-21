@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as macros %}
 {% block content %}
 
 <section class="panel">
@@ -94,7 +95,7 @@
     <h3>Confirmed Matches — exact-purl / mapped-cpe ({{ result.confirmed_rows|length }})</h3>
     {% if result.confirmed_rows %}
       <table class="findings">
-        <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Summary</th><th>Source</th></tr></thead>
+        <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Affected Files</th><th>Summary</th><th>Source</th></tr></thead>
         <tbody>
           {% for r in result.confirmed_rows %}
           <tr>
@@ -102,6 +103,7 @@
             <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.id }}</a>{% else %}{{ r.id }}{% endif %}</td>
             <td>{{ r.product }}</td>
             <td>{{ r.version }}</td>
+            <td>{{ macros.affected_files_cell(r) }}</td>
             <td>{{ r.summary }}</td>
             <td>{{ r.source }}</td>
           </tr>
@@ -116,7 +118,7 @@
     <p class="hint"><strong>Verify manually before treating any of these as a confirmed finding.</strong></p>
     {% if result.heuristic_rows %}
       <table class="findings">
-        <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Summary</th><th>Source</th></tr></thead>
+        <thead><tr><th>Severity</th><th>ID</th><th>Component</th><th>Version</th><th>Affected Files</th><th>Summary</th><th>Source</th></tr></thead>
         <tbody>
           {% for r in result.heuristic_rows %}
           <tr>
@@ -124,6 +126,7 @@
             <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.id }}</a>{% else %}{{ r.id }}{% endif %}</td>
             <td>{{ r.product }}</td>
             <td>{{ r.version }}</td>
+            <td>{{ macros.affected_files_cell(r) }}</td>
             <td>{{ r.summary }}</td>
             <td>{{ r.source }}</td>
           </tr>
