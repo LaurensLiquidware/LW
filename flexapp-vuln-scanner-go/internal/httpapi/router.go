@@ -6,16 +6,20 @@ import (
 	"net/url"
 	"strings"
 
+	"flexapp-vuln-scanner/internal/cpemap"
 	"flexapp-vuln-scanner/internal/legal"
 	"flexapp-vuln-scanner/web"
 )
 
+// ScanAPIDeps are the dependencies the scan endpoints need.
+type ScanAPIDeps struct {
+	Scan     ScanDeps
+	Mappings *cpemap.Mappings
+}
+
 // NewRouter assembles the server's HTTP handler: health, version, the
-// legal/SBOM artifacts, and the embedded frontend. This is deliberately
-// minimal for now -- scan endpoints (new scan, progress, results,
-// compare) are added in later build phases behind the same
-// explicit-whitelist pattern the reference project uses.
-func NewRouter() (http.Handler, error) {
+// legal/SBOM artifacts, the scan API, and the embedded frontend.
+func NewRouter(scanDeps ScanAPIDeps) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", HealthHandler())
@@ -28,6 +32,17 @@ func NewRouter() (http.Handler, error) {
 	mux.Handle("/Spark_License.pdf", legalServer)
 	mux.Handle("/bom.cdx.json", legalServer)
 	mux.Handle("/THIRD-PARTY-NOTICES.txt", legalServer)
+
+	// Scan API: start/refresh/list/poll a scan job, open an
+	// already-completed scan, compare two scans, and download a
+	// completed job's report artifacts.
+	mux.Handle("POST /api/scans", StartScanHandler(scanDeps.Scan))
+	mux.Handle("POST /api/scans/refresh", RefreshScanHandler(scanDeps.Scan))
+	mux.Handle("GET /api/scans", ListScansHandler(scanDeps.Scan.Registry))
+	mux.Handle("GET /api/scans/{id}", GetScanHandler(scanDeps.Scan.Registry))
+	mux.Handle("GET /api/scans/{id}/files/{kind}", DownloadScanFileHandler(scanDeps.Scan.Registry))
+	mux.Handle("POST /api/scans/open", OpenScanHandler(scanDeps.Mappings))
+	mux.Handle("POST /api/scans/compare", CompareScanHandler(scanDeps.Mappings))
 
 	distFS, err := fs.Sub(web.Dist, web.DistDir)
 	if err != nil {

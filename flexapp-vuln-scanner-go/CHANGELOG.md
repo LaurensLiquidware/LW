@@ -23,3 +23,22 @@
   run producing a real SBOM/coverage/findings/PDF from the shared sample
   fixture. HTTP API wiring (build-order step 3) is not done yet — these
   packages aren't reachable from `cmd/server` yet.
+- Wired the ported pipeline into `cmd/server`'s HTTP API (build-order
+  step 3): `internal/httpapi/jobs.go` (`ScanJob`/`JobRegistry`, an
+  in-memory adapter to `pipeline.ProgressSink` mirroring
+  `../flexapp-vuln-scanner/webui/jobs.py`'s `ScanJob`/`JobRegistry`
+  exactly) and `internal/httpapi/scans.go` (`POST /api/scans` start,
+  `POST /api/scans/refresh`, `GET /api/scans` list, `GET /api/scans/{id}`
+  poll, `GET /api/scans/{id}/files/{kind}` download — restricted to the
+  job's own known report paths, never an arbitrary caller-supplied
+  path —, `POST /api/scans/open`, `POST /api/scans/compare`). All
+  JSON-serialized types (`pipeline.Result`, `pipeline.Diff`,
+  `report.FindingRow`) now carry explicit camelCase JSON tags for a
+  clean Angular-facing API contract. Verified with new `httpapi` unit
+  tests plus a real end-to-end run: started the server, hit
+  `/api/scans/open` against the shared fixture and got real coverage
+  data back, started a scan and watched it surface Stage 1's missing-
+  script error through `/api/scans` polling exactly as the job model
+  intends. Not done yet: SSE/streaming progress (clients currently must
+  poll `GET /api/scans/{id}`), and the Angular screens that will call
+  any of this — they still show "Coming Soon" placeholders.

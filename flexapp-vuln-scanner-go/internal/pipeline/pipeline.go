@@ -120,24 +120,24 @@ func RunStage2(sink ProgressSink, inventoryPath, outputDir, cacheDir, nvdAPIKey 
 
 // Result is the result summary a results view renders.
 type Result struct {
-	PackageName    string
-	Coverage       coverage.Coverage
-	ConfirmedRows  []report.FindingRow
-	HeuristicRows  []report.FindingRow
-	SeverityCounts map[string]int
-	HasVulnMatches bool
-	InventoryPath  string
-	OutputDir      string
-	Files          ResultFiles
+	PackageName    string              `json:"packageName"`
+	Coverage       coverage.Coverage   `json:"coverage"`
+	ConfirmedRows  []report.FindingRow `json:"confirmedRows"`
+	HeuristicRows  []report.FindingRow `json:"heuristicRows"`
+	SeverityCounts map[string]int      `json:"severityCounts"`
+	HasVulnMatches bool                `json:"hasVulnMatches"`
+	InventoryPath  string              `json:"inventoryPath"`
+	OutputDir      string              `json:"outputDir"`
+	Files          ResultFiles         `json:"files"`
 }
 
 // ResultFiles is the set of report artifact paths WriteReports wrote.
 type ResultFiles struct {
-	SBOM           string
-	CoverageReport string
-	Findings       string
-	PDF            string
-	FindingsCSV    string // "" if vulnMatches was nil
+	SBOM           string `json:"sbom"`
+	CoverageReport string `json:"coverageReport"`
+	Findings       string `json:"findings"`
+	PDF            string `json:"pdf"`
+	FindingsCSV    string `json:"findingsCsv,omitempty"` // "" if vulnMatches was nil
 }
 
 // WriteReports writes sbom/coverage/findings/PDF and returns the result
@@ -287,11 +287,11 @@ func findSingleInventory(dirPath string) (string, error) {
 // Diff is the result of comparing two single-package scan output
 // directories.
 type Diff struct {
-	Old              *Result
-	New              *Result
-	NewFindings      []report.FindingRow
-	ResolvedFindings []report.FindingRow
-	UnchangedCount   int
+	Old              *Result             `json:"old"`
+	New              *Result             `json:"new"`
+	NewFindings      []report.FindingRow `json:"newFindings"`
+	ResolvedFindings []report.FindingRow `json:"resolvedFindings"`
+	UnchangedCount   int                 `json:"unchangedCount"`
 }
 
 // LoadDiff compares two single-package scan output directories: which

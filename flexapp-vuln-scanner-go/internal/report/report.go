@@ -108,15 +108,15 @@ func RenderCoverageReport(cov coverage.Coverage, packageName string) string {
 
 // FindingRow is one flattened (component, vulnerability) row.
 type FindingRow struct {
-	SeverityLevel string
-	ID            string
-	URL           string
-	Summary       string
-	Product       string
-	Version       string
-	RelativePaths []string
-	Confidence    string
-	Source        string
+	SeverityLevel string   `json:"severityLevel"`
+	ID            string   `json:"id"`
+	URL           string   `json:"url,omitempty"`
+	Summary       string   `json:"summary"`
+	Product       string   `json:"product"`
+	Version       string   `json:"version"`
+	RelativePaths []string `json:"relativePaths"`
+	Confidence    string   `json:"confidence"`
+	Source        string   `json:"source"`
 }
 
 // BuildFindingRows flattens a vuln-matches result into one row per

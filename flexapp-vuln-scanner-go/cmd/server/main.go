@@ -18,6 +18,7 @@ import (
 	_ "time/tzdata" // embed the IANA zone database so time.LoadLocation works without OS-provided zoneinfo (notably on Windows)
 
 	"flexapp-vuln-scanner/internal/config"
+	"flexapp-vuln-scanner/internal/cpemap"
 	"flexapp-vuln-scanner/internal/dotenv"
 	"flexapp-vuln-scanner/internal/httpapi"
 	"flexapp-vuln-scanner/internal/logging"
@@ -57,7 +58,22 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	router, err := httpapi.NewRouter()
+	mappings, err := cpemap.Load(cfg.CPEMappingsPath)
+	if err != nil {
+		return fmt.Errorf("load CPE mappings: %w", err)
+	}
+
+	scanDeps := httpapi.ScanAPIDeps{
+		Scan: httpapi.ScanDeps{
+			Registry:       httpapi.NewJobRegistry(),
+			Mappings:       mappings,
+			StageOneScript: cfg.StageOneScript,
+			CacheDir:       cfg.CacheDir,
+		},
+		Mappings: mappings,
+	}
+
+	router, err := httpapi.NewRouter(scanDeps)
 	if err != nil {
 		return fmt.Errorf("build router: %w", err)
 	}
