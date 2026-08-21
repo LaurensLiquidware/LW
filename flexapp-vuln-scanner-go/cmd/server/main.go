@@ -22,6 +22,7 @@ import (
 	"flexapp-vuln-scanner/internal/dotenv"
 	"flexapp-vuln-scanner/internal/httpapi"
 	"flexapp-vuln-scanner/internal/logging"
+	"flexapp-vuln-scanner/internal/scanstore"
 	"flexapp-vuln-scanner/internal/version"
 )
 
@@ -66,6 +67,7 @@ func run() error {
 	scanDeps := httpapi.ScanAPIDeps{
 		Scan: httpapi.ScanDeps{
 			Registry:       httpapi.NewJobRegistry(),
+			Store:          scanstore.New(cfg.ScanHistoryFile),
 			Mappings:       mappings,
 			StageOneScript: cfg.StageOneScript,
 			CacheDir:       cfg.CacheDir,

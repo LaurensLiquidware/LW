@@ -64,6 +64,11 @@ export type ScanStatus = 'queued' | 'stage1' | 'stage2' | 'done' | 'error';
 
 export interface ScanSnapshot {
   id: string;
+  /** False for a historical row reconstructed from scanstore -- a scan
+   * from a previous server process, not one this process is running or
+   * ran. Has no log or full result; use inventoryPath with openScan()
+   * to view it. */
+  live: boolean;
   packagePath: string;
   outputDir: string;
   status: ScanStatus;
@@ -74,4 +79,13 @@ export interface ScanSnapshot {
   progressDone: number;
   progressTotal: number;
   result?: ScanResult;
+
+  // Summary fields, always populated when known -- from `result` for a
+  // live job, or directly for a historical row. Prefer these over
+  // digging into `result` so a dashboard row renders the same way
+  // regardless of source.
+  packageName?: string;
+  coveragePercent?: number;
+  severityCounts?: Record<string, number>;
+  inventoryPath?: string;
 }

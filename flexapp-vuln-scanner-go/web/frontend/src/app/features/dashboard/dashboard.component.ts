@@ -17,10 +17,11 @@ const STATUS_SEVERITY: Record<ScanStatus, 'success' | 'danger' | 'info' | 'warn'
   error: 'danger',
 };
 
-/** Dashboard: every scan job started this process's lifetime (in-memory,
- * resets on restart -- see internal/httpapi/jobs.go's JobRegistry), newest
- * first. Polls while any job is still running so status/coverage updates
- * without a manual refresh. */
+/** Dashboard: every scan job started this process's lifetime, plus
+ * scan history persisted across restarts (internal/scanstore), newest
+ * first. Polls so status/coverage updates without a manual refresh.
+ * A historical row (scan.live === false) has no live job to poll --
+ * opening it re-reads the real files via its inventoryPath instead. */
 @Component({
   selector: 'app-dashboard',
   imports: [RouterLink, TranslocoModule, TableModule, ButtonModule, TagModule, DatePipe, DecimalPipe],
@@ -61,6 +62,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   open(scan: ScanSnapshot): void {
+    if (!scan.live) {
+      // No live job to poll in this process -- only a completed scan's
+      // inventory (and therefore its report files) can still be shown.
+      if (scan.inventoryPath) {
+        this.router.navigate(['/results'], { queryParams: { inventoryPath: scan.inventoryPath } });
+      }
+      return;
+    }
     if (scan.status === 'done' || scan.status === 'error') {
       this.router.navigate(['/results'], { queryParams: { jobId: scan.id } });
     } else {

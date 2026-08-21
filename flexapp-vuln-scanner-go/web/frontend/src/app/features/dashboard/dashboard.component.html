@@ -24,19 +24,19 @@
           <td>{{ scan.packagePath }}</td>
           <td><p-tag [value]="scan.status" [severity]="severityFor(scan.status)" /></td>
           <td>
-            @if (scan.result?.coverage?.coveragePercent != null) {
-              {{ scan.result.coverage.coveragePercent | number: '1.1-1' }}%
+            @if (scan.coveragePercent != null) {
+              {{ scan.coveragePercent | number: '1.1-1' }}%
             } @else {
               —
             }
           </td>
           <td>
-            @if (scan.result) {
+            @if (scan.severityCounts) {
               <span class="lwl-micro">
-                {{ scan.result.severityCounts['CRITICAL'] }}C
-                / {{ scan.result.severityCounts['HIGH'] }}H
-                / {{ scan.result.severityCounts['MEDIUM'] }}M
-                / {{ scan.result.severityCounts['LOW'] }}L
+                {{ scan.severityCounts['CRITICAL'] }}C
+                / {{ scan.severityCounts['HIGH'] }}H
+                / {{ scan.severityCounts['MEDIUM'] }}M
+                / {{ scan.severityCounts['LOW'] }}L
               </span>
             } @else {
               —

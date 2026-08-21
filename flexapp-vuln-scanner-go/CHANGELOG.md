@@ -79,3 +79,20 @@
   (same restriction already documented for
   `FlexAppOneDownloadMonitor`'s Sparks audit); needs a
   network-unrestricted machine.
+- Added scan-history persistence across server restarts:
+  `internal/scanstore` (ported from
+  `../flexapp-vuln-scanner/desktop/recent_scans_store.py`) is a flat
+  JSON file of lightweight scan-list rows (id, package path, status,
+  and once done, package name/coverage/severity counts/inventory
+  path). `ScanDeps` now persists to it alongside the in-memory
+  `JobRegistry`, and `GET /api/scans` merges live jobs from this
+  process with any persisted rows from a previous process run (marked
+  `live: false`, no log/full result -- the dashboard opens those via
+  their saved `inventoryPath` instead of a job id, since there's no
+  live job left to poll). Fixes a real regression the Go rewrite had
+  introduced versus the PySide6 desktop app: the dashboard previously
+  went blank on every server restart. Verified: new Go unit tests
+  (ported 1:1 from `test_recent_scans_store.py`, plus one covering the
+  live/historical merge) all pass, and a real two-process manual test
+  (start a scan, kill the server, start a fresh one) confirms the
+  scan reappears with `live: false` and its error/status intact.

@@ -10,6 +10,7 @@ import (
 
 	"flexapp-vuln-scanner/internal/cpemap"
 	"flexapp-vuln-scanner/internal/pipeline"
+	"flexapp-vuln-scanner/internal/scanstore"
 )
 
 // ScanJob is an in-memory scan job: an adapter between pipeline's
@@ -18,7 +19,8 @@ import (
 // This is a local, single-user tool, so an in-memory registry that
 // resets on restart is the right amount of infrastructure here, not a
 // corner cut -- mirrors ../../../flexapp-vuln-scanner/webui/jobs.py's
-// ScanJob/JobRegistry exactly.
+// ScanJob/JobRegistry exactly. Cross-restart dashboard history is a
+// separate, lightweight concern handled by internal/scanstore.
 type ScanJob struct {
 	ID          string
 	PackagePath string
@@ -75,9 +77,14 @@ func (j *ScanJob) setError(err error) {
 	j.log = append(j.log, "ERROR: "+err.Error())
 }
 
-// Snapshot is a point-in-time, JSON-serializable view of a ScanJob.
+// Snapshot is a point-in-time, JSON-serializable view of a ScanJob, or
+// (when Live is false) a lightweight historical row reconstructed from
+// scanstore -- from a scan this process did not itself run, surviving
+// a server restart. A historical row has no log or full Result; the
+// Results screen re-reads the real files via InventoryPath instead.
 type Snapshot struct {
 	ID            string           `json:"id"`
+	Live          bool             `json:"live"`
 	PackagePath   string           `json:"packagePath"`
 	OutputDir     string           `json:"outputDir"`
 	Status        string           `json:"status"`
@@ -88,6 +95,14 @@ type Snapshot struct {
 	ProgressDone  int              `json:"progressDone"`
 	ProgressTotal int              `json:"progressTotal"`
 	Result        *pipeline.Result `json:"result,omitempty"`
+
+	// Summary fields, always populated when known -- from Result for a
+	// live job, from the persisted scanstore.Entry for a historical
+	// one. Lets the dashboard render one row shape regardless of source.
+	PackageName     string         `json:"packageName,omitempty"`
+	CoveragePercent *float64       `json:"coveragePercent,omitempty"`
+	SeverityCounts  map[string]int `json:"severityCounts,omitempty"`
+	InventoryPath   string         `json:"inventoryPath,omitempty"`
 }
 
 // Snapshot returns a consistent, JSON-serializable view of the job's
@@ -97,11 +112,29 @@ func (j *ScanJob) Snapshot() Snapshot {
 	defer j.mu.Unlock()
 	logCopy := make([]string, len(j.log))
 	copy(logCopy, j.log)
-	return Snapshot{
-		ID: j.ID, PackagePath: j.PackagePath, OutputDir: j.OutputDir,
+	snap := Snapshot{
+		ID: j.ID, Live: true, PackagePath: j.PackagePath, OutputDir: j.OutputDir,
 		Status: j.status, Log: logCopy, Error: j.err, CreatedAt: j.CreatedAt,
 		ProgressPhase: j.progressPhase, ProgressDone: j.progressDone, ProgressTotal: j.progressTotal,
 		Result: j.result,
+	}
+	if j.result != nil {
+		snap.PackageName = j.result.PackageName
+		snap.CoveragePercent = j.result.Coverage.CoveragePercent
+		snap.SeverityCounts = j.result.SeverityCounts
+		snap.InventoryPath = j.result.InventoryPath
+	}
+	return snap
+}
+
+// snapshotFromEntry converts a persisted scanstore.Entry into the same
+// Snapshot shape a live ScanJob produces, minus the log/full result.
+func snapshotFromEntry(e scanstore.Entry) Snapshot {
+	return Snapshot{
+		ID: e.ID, Live: false, PackagePath: e.PackagePath, OutputDir: e.OutputDir,
+		Status: e.Status, Error: e.Error, CreatedAt: e.CreatedAt,
+		PackageName: e.PackageName, CoveragePercent: e.CoveragePercent,
+		SeverityCounts: e.SeverityCounts, InventoryPath: e.InventoryPath,
 	}
 }
 
@@ -129,9 +162,9 @@ func NewJobRegistry() *JobRegistry {
 	return &JobRegistry{jobs: map[string]*ScanJob{}}
 }
 
-func (r *JobRegistry) create(packagePath, outputDir string) *ScanJob {
+func (r *JobRegistry) create(id, packagePath, outputDir string) *ScanJob {
 	job := &ScanJob{
-		ID:          newJobID(),
+		ID:          id,
 		PackagePath: packagePath,
 		OutputDir:   outputDir,
 		status:      "queued",
@@ -163,6 +196,14 @@ func (r *JobRegistry) ListAll() []*ScanJob {
 	return jobs
 }
 
+// Has reports whether id belongs to a job in this registry.
+func (r *JobRegistry) Has(id string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, ok := r.jobs[id]
+	return ok
+}
+
 func newJobID() string {
 	var b [6]byte
 	_, _ = rand.Read(b[:])
@@ -172,16 +213,59 @@ func newJobID() string {
 // ScanDeps are the dependencies StartScan/StartRefresh need.
 type ScanDeps struct {
 	Registry       *JobRegistry
+	Store          *scanstore.Store // nil disables cross-restart persistence
 	Mappings       *cpemap.Mappings
 	StageOneScript string
 	CacheDir       string
+}
+
+// ListScans returns every scan job started this process's lifetime,
+// plus any scanstore-persisted entries from a previous process run
+// that this process hasn't itself touched -- newest first.
+func (d ScanDeps) ListScans() ([]Snapshot, error) {
+	live := d.Registry.ListAll()
+	snapshots := make([]Snapshot, len(live))
+	for i, j := range live {
+		snapshots[i] = j.Snapshot()
+	}
+
+	if d.Store != nil {
+		entries, err := d.Store.All()
+		if err != nil {
+			return nil, err
+		}
+		for _, e := range entries {
+			if !d.Registry.Has(e.ID) {
+				snapshots = append(snapshots, snapshotFromEntry(e))
+			}
+		}
+	}
+
+	sort.SliceStable(snapshots, func(i, k int) bool { return snapshots[i].CreatedAt > snapshots[k].CreatedAt })
+	return snapshots, nil
+}
+
+func (d ScanDeps) persistAdd(id, packagePath, outputDir, kind string) {
+	if d.Store == nil {
+		return
+	}
+	_, _ = d.Store.Add(id, packagePath, outputDir, kind)
+}
+
+func (d ScanDeps) persistUpdate(id string, mutate func(*scanstore.Entry)) {
+	if d.Store == nil {
+		return
+	}
+	_ = d.Store.Update(id, mutate)
 }
 
 // StartScan runs Stage 1 (mount + inventory) then Stage 2 (OSV/NVD
 // matching + reports) on a background goroutine, returning immediately
 // with the created job.
 func (d ScanDeps) StartScan(packagePath, outputDir, nvdAPIKey string) *ScanJob {
-	job := d.Registry.create(packagePath, outputDir)
+	id := newJobID()
+	job := d.Registry.create(id, packagePath, outputDir)
+	d.persistAdd(id, packagePath, outputDir, "scan")
 	go d.runJob(job, nvdAPIKey)
 	return job
 }
@@ -190,15 +274,26 @@ func (d ScanDeps) runJob(job *ScanJob, nvdAPIKey string) {
 	inventoryPath, err := pipeline.RunStage1(job, d.StageOneScript, job.PackagePath, job.OutputDir)
 	if err != nil {
 		job.setError(err)
+		d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "error"; e.Error = err.Error() })
 		return
 	}
+	d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "stage2"; e.InventoryPath = inventoryPath })
+
 	result, err := pipeline.RunStage2(job, inventoryPath, job.OutputDir, d.CacheDir, nvdAPIKey, d.Mappings)
 	if err != nil {
 		job.setError(err)
+		d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "error"; e.Error = err.Error() })
 		return
 	}
 	job.setResult(result)
 	job.SetStatus("done")
+	d.persistUpdate(job.ID, func(e *scanstore.Entry) {
+		e.Status = "done"
+		e.PackageName = result.PackageName
+		e.CoveragePercent = result.Coverage.CoveragePercent
+		e.SeverityCounts = result.SeverityCounts
+		e.InventoryPath = result.InventoryPath
+	})
 }
 
 // StartRefresh re-runs just the OSV/NVD matching + report step against
@@ -207,7 +302,9 @@ func (d ScanDeps) runJob(job *ScanJob, nvdAPIKey string) {
 // newly-published CVEs against a package without re-scanning it from
 // scratch.
 func (d ScanDeps) StartRefresh(inventoryPath, outputDir, nvdAPIKey string) *ScanJob {
-	job := d.Registry.create(fmt.Sprintf("(refresh) %s", inventoryPath), outputDir)
+	id := newJobID()
+	job := d.Registry.create(id, fmt.Sprintf("(refresh) %s", inventoryPath), outputDir)
+	d.persistAdd(id, job.PackagePath, outputDir, "refresh")
 	go d.runRefreshJob(job, inventoryPath, nvdAPIKey)
 	return job
 }
@@ -217,8 +314,16 @@ func (d ScanDeps) runRefreshJob(job *ScanJob, inventoryPath, nvdAPIKey string) {
 	result, err := pipeline.RunStage2(job, inventoryPath, job.OutputDir, d.CacheDir, nvdAPIKey, d.Mappings)
 	if err != nil {
 		job.setError(err)
+		d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "error"; e.Error = err.Error() })
 		return
 	}
 	job.setResult(result)
 	job.SetStatus("done")
+	d.persistUpdate(job.ID, func(e *scanstore.Entry) {
+		e.Status = "done"
+		e.PackageName = result.PackageName
+		e.CoveragePercent = result.Coverage.CoveragePercent
+		e.SeverityCounts = result.SeverityCounts
+		e.InventoryPath = result.InventoryPath
+	})
 }

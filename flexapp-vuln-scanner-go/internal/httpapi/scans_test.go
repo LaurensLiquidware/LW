@@ -12,6 +12,7 @@ import (
 
 	"flexapp-vuln-scanner/internal/cpemap"
 	"flexapp-vuln-scanner/internal/pipeline"
+	"flexapp-vuln-scanner/internal/scanstore"
 )
 
 const fixturePath = "../inventory/testdata/sample.inventory.json"
@@ -78,14 +79,14 @@ func TestStartScanHandler_MissingStage1ScriptSurfacesAsJobError(t *testing.T) {
 
 func TestListScansHandler_ReturnsNewestFirst(t *testing.T) {
 	deps := testScanDeps(t)
-	job1 := deps.Registry.create("a.vhdx", "/tmp/a")
-	job2 := deps.Registry.create("b.vhdx", "/tmp/b")
+	job1 := deps.Registry.create("id-a", "a.vhdx", "/tmp/a")
+	job2 := deps.Registry.create("id-b", "b.vhdx", "/tmp/b")
 	_ = job1
 	_ = job2
 
 	req := httptest.NewRequest(http.MethodGet, "/api/scans", nil)
 	rec := httptest.NewRecorder()
-	ListScansHandler(deps.Registry)(rec, req)
+	ListScansHandler(deps)(rec, req)
 
 	var snaps []Snapshot
 	if err := json.Unmarshal(rec.Body.Bytes(), &snaps); err != nil {
@@ -93,6 +94,51 @@ func TestListScansHandler_ReturnsNewestFirst(t *testing.T) {
 	}
 	if len(snaps) != 2 {
 		t.Fatalf("len(snaps) = %d, want 2", len(snaps))
+	}
+}
+
+func TestListScansHandler_MergesPersistedHistoryFromPreviousRun(t *testing.T) {
+	deps := testScanDeps(t)
+	deps.Store = scanstore.New(filepath.Join(t.TempDir(), "recent-scans.json"))
+
+	// A live job this process ran.
+	deps.Registry.create("id-live", "live.vhdx", "/tmp/live")
+	deps.persistAdd("id-live", "live.vhdx", "/tmp/live", "scan")
+
+	// A historical entry from a "previous run" -- present in the store
+	// but not in this process's live registry.
+	pct := 42.0
+	if _, err := deps.Store.Add("id-old", "old.vhdx", "/tmp/old", "scan"); err != nil {
+		t.Fatal(err)
+	}
+	if err := deps.Store.Update("id-old", func(e *scanstore.Entry) {
+		e.Status = "done"
+		e.PackageName = "OldPackage"
+		e.CoveragePercent = &pct
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshots, err := deps.ListScans()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshots) != 2 {
+		t.Fatalf("len(snapshots) = %d, want 2: %+v", len(snapshots), snapshots)
+	}
+
+	byID := map[string]Snapshot{}
+	for _, s := range snapshots {
+		byID[s.ID] = s
+	}
+	if !byID["id-live"].Live {
+		t.Error("id-live should be Live")
+	}
+	if byID["id-old"].Live {
+		t.Error("id-old should not be Live")
+	}
+	if byID["id-old"].PackageName != "OldPackage" || byID["id-old"].CoveragePercent == nil || *byID["id-old"].CoveragePercent != 42.0 {
+		t.Errorf("id-old summary = %+v", byID["id-old"])
 	}
 }
 
@@ -109,7 +155,7 @@ func TestGetScanHandler_UnknownIDIs404(t *testing.T) {
 
 func TestDownloadScanFileHandler_UnknownKindIs404(t *testing.T) {
 	deps := testScanDeps(t)
-	job := deps.Registry.create("a.vhdx", "/tmp/a")
+	job := deps.Registry.create("id-a", "a.vhdx", "/tmp/a")
 	job.setResult(&pipeline.Result{Files: pipeline.ResultFiles{SBOM: "/tmp/a/a.sbom.cdx.json"}})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/scans/"+job.ID+"/files/nope", nil)
@@ -124,7 +170,7 @@ func TestDownloadScanFileHandler_UnknownKindIs404(t *testing.T) {
 
 func TestDownloadScanFileHandler_NoResultYetIsConflict(t *testing.T) {
 	deps := testScanDeps(t)
-	job := deps.Registry.create("a.vhdx", "/tmp/a")
+	job := deps.Registry.create("id-a", "a.vhdx", "/tmp/a")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/scans/"+job.ID+"/files/sbom", nil)
 	req.SetPathValue("id", job.ID)

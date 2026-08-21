@@ -61,13 +61,14 @@ func RefreshScanHandler(deps ScanDeps) http.HandlerFunc {
 }
 
 // ListScansHandler lists every scan job started this process's
-// lifetime, newest first -- the dashboard's data source.
-func ListScansHandler(registry *JobRegistry) http.HandlerFunc {
+// lifetime, plus any scanstore-persisted history from a previous
+// process run, newest first -- the dashboard's data source.
+func ListScansHandler(deps ScanDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		jobs := registry.ListAll()
-		snapshots := make([]Snapshot, len(jobs))
-		for i, j := range jobs {
-			snapshots[i] = j.Snapshot()
+		snapshots, err := deps.ListScans()
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
 		}
 		writeJSON(w, http.StatusOK, snapshots)
 	}

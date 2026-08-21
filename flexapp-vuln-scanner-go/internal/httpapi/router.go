@@ -38,7 +38,7 @@ func NewRouter(scanDeps ScanAPIDeps) (http.Handler, error) {
 	// completed job's report artifacts.
 	mux.Handle("POST /api/scans", StartScanHandler(scanDeps.Scan))
 	mux.Handle("POST /api/scans/refresh", RefreshScanHandler(scanDeps.Scan))
-	mux.Handle("GET /api/scans", ListScansHandler(scanDeps.Scan.Registry))
+	mux.Handle("GET /api/scans", ListScansHandler(scanDeps.Scan))
 	mux.Handle("GET /api/scans/{id}", GetScanHandler(scanDeps.Scan.Registry))
 	mux.Handle("GET /api/scans/{id}/files/{kind}", DownloadScanFileHandler(scanDeps.Scan.Registry))
 	mux.Handle("POST /api/scans/open", OpenScanHandler(scanDeps.Mappings))
