@@ -9,23 +9,15 @@ import jobs
 FIXTURE = Path(__file__).parent.parent.parent / "stage2-resolve" / "tests" / "fixtures" / "sample.inventory.json"
 
 
-def test_run_stage1_missing_script_raises():
-    fake_job = jobs.ScanJob(id="x", package_path="whatever.vhdx", output_dir="/tmp/out")
-    with patch.object(jobs, "STAGE1_SCRIPT", Path("/nonexistent/Invoke-FlexAppInventory.ps1")):
-        try:
-            jobs._run_stage1(fake_job)
-            assert False, "expected RuntimeError"
-        except RuntimeError as exc:
-            assert "not found" in str(exc)
-    assert fake_job.status == "stage1"
-
-
 def test_run_refresh_job_skips_stage1_and_writes_reports(tmp_path):
     inventory_path = tmp_path / "sample.inventory.json"
     shutil.copy(FIXTURE, inventory_path)
     fake_job = jobs.ScanJob(id="x", package_path="(refresh) unused", output_dir=str(tmp_path))
 
-    with patch.object(jobs, "resolve_vuln_matches", return_value={"generatedUtc": "2026-08-13T00:00:00Z", "package": {}, "components": []}) as mock_resolve:
+    with patch(
+        "flexapp_vuln.pipeline.resolve_vuln_matches",
+        return_value={"generatedUtc": "2026-08-13T00:00:00Z", "package": {}, "components": []},
+    ) as mock_resolve:
         jobs._run_refresh_job(fake_job, inventory_path, None)
 
     mock_resolve.assert_called_once()
@@ -34,24 +26,6 @@ def test_run_refresh_job_skips_stage1_and_writes_reports(tmp_path):
     assert fake_job.result is not None
     assert fake_job.result["has_vuln_matches"] is True
     assert any("Stage 1 not re-run" in line for line in fake_job.log)
-
-
-def test_run_stage2_wires_job_set_progress_as_on_progress_callback(tmp_path):
-    inventory_path = tmp_path / "sample.inventory.json"
-    shutil.copy(FIXTURE, inventory_path)
-    fake_job = jobs.ScanJob(id="x", package_path="whatever", output_dir=str(tmp_path))
-
-    def fake_resolve(inventory, *, cache_dir, cpe_mappings, nvd_api_key, on_progress):
-        on_progress("nvd", 1, 3)
-        on_progress("nvd", 3, 3)
-        return {"generatedUtc": "2026-08-13T00:00:00Z", "package": {}, "components": []}
-
-    with patch.object(jobs, "resolve_vuln_matches", side_effect=fake_resolve):
-        jobs._run_stage2(fake_job, inventory_path, None)
-
-    assert fake_job.progress_phase == "nvd"
-    assert fake_job.progress_done == 3
-    assert fake_job.progress_total == 3
 
 
 def test_scan_job_set_progress_updates_fields():
@@ -70,7 +44,7 @@ def test_run_refresh_job_surfaces_errors(tmp_path):
     shutil.copy(FIXTURE, inventory_path)
     fake_job = jobs.ScanJob(id="x", package_path="(refresh) unused", output_dir=str(tmp_path))
 
-    with patch.object(jobs, "resolve_vuln_matches", side_effect=RuntimeError("boom")):
+    with patch("flexapp_vuln.pipeline.resolve_vuln_matches", side_effect=RuntimeError("boom")):
         jobs._run_refresh_job(fake_job, inventory_path, None)
 
     assert fake_job.status == "error"
@@ -81,7 +55,7 @@ def test_start_refresh_runs_in_background_and_completes(tmp_path):
     inventory_path = tmp_path / "sample.inventory.json"
     shutil.copy(FIXTURE, inventory_path)
 
-    with patch.object(jobs, "resolve_vuln_matches", return_value=None):
+    with patch("flexapp_vuln.pipeline.resolve_vuln_matches", return_value=None):
         job = jobs.start_refresh(str(inventory_path), str(tmp_path))
 
         # Poll briefly for the background thread to finish rather than assuming timing.

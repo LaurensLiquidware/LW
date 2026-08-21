@@ -172,6 +172,22 @@ end-to-end run against a real package justifies cutting a version.
   5 attempts, honoring a `Retry-After` header when NVD sends one,
   otherwise waiting the full 30s window) before giving up.
 
+### Changed
+
+- Extracted the scan orchestration that lived in `webui/jobs.py` (running
+  Stage 1, running Stage 2, writing reports, loading an existing scan,
+  diffing two scans) into a new `flexapp_vuln.pipeline` module in
+  `stage2-resolve`, front-end agnostic - it takes a duck-typed "progress
+  sink" (`append_log`/`status`/`set_progress`) instead of the web UI's
+  `ScanJob` specifically. `webui/jobs.py` is now a thin adapter (the
+  in-memory `JobRegistry` + background-thread + HTTP-polling model the
+  web UI needs) that calls into `pipeline`. No behavior change - this is
+  purely so the upcoming native desktop app can reuse the exact same
+  scanning logic instead of duplicating it. All existing tests still
+  pass; the ones that tested `_run_stage1`/`_run_stage2` internals moved
+  to a new `stage2-resolve/tests/test_pipeline.py` alongside the code
+  they now test.
+
 ### Added
 
 - Every finding now shows which file(s) it actually came from. Previously,

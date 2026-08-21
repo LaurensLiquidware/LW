@@ -144,7 +144,8 @@ def test_refresh_missing_fields_returns_400():
 
 def test_refresh_redirects_to_scan_status(tmp_path, monkeypatch):
     shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
-    monkeypatch.setattr(jobs, "resolve_vuln_matches", lambda *a, **kw: None)
+    import flexapp_vuln.pipeline as pipeline
+    monkeypatch.setattr(pipeline, "resolve_vuln_matches", lambda *a, **kw: None)
 
     resp = client().post("/refresh", data={
         "inventory_path": str(tmp_path / "sample.inventory.json"),
