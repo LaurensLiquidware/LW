@@ -42,19 +42,18 @@ def main() -> None:
         by_license[component_license(c)].append((component_name(c), c.get("version", "")))
 
     lines = [
-        "ProfileUnity MSP Licensing Console — Third-Party Notices",
-        "==========================================================",
+        "FlexApp Vulnerability Scanner — Third-Party Notices",
+        "=====================================================",
         "",
         "This tool bundles the third-party components listed below, generated from",
         "bom.cdx.json (the accompanying CycloneDX 1.6 SBOM). Grouped by license;",
         "consult each project's own repository for the full license text.",
         "",
-        "A separate note on two bundled non-code assets not covered by npm/Go module",
-        "licensing: the DejaVu Sans / DejaVu Sans Bold TrueType fonts used to render",
-        "PDF reports (internal/httpapi/fonts/, Bitstream Vera-derived license, see",
-        "internal/httpapi/fonts/DEJAVU-LICENSE.txt for the full text) and the Inter",
-        "and Material Symbols webfonts used by the frontend UI (see",
-        "web/frontend/src/assets/fonts/, both under the OFL-1.1 license).",
+        "A separate note on a bundled non-code asset not covered by npm/Go module",
+        "licensing: the Inter and Material Symbols webfonts used by the frontend UI",
+        "(see web/frontend/src/assets/fonts/, both under the OFL-1.1 license). PDF",
+        "reports are rendered with go-pdf/fpdf's built-in Helvetica -- no bundled",
+        "font file.",
         "",
     ]
 

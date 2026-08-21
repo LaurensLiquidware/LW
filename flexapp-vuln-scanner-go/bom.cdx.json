@@ -1,10 +1,10 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:2695e392-4000-44a0-8e78-d729d9502a2b",
+  "serialNumber": "urn:uuid:ae499566-f9eb-41c6-b8d8-d57a16abf984",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-08-14T12:00:09Z",
+    "timestamp": "2026-08-21T20:29:39Z",
     "component": {
       "type": "application",
       "name": "profileunity-msp-console",
@@ -12,35 +12,6 @@
     }
   },
   "components": [
-    {
-      "bom-ref": "pkg:golang/github.com/dustin/go-humanize@v1.0.1?type=module",
-      "type": "library",
-      "name": "github.com/dustin/go-humanize",
-      "version": "v1.0.1",
-      "scope": "required",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "1b392163b4f954d8449301f43d52608f3f9f5f5ae106b47ba514f79839297826"
-        }
-      ],
-      "purl": "pkg:golang/github.com/dustin/go-humanize@v1.0.1?goarch=amd64&goos=linux&type=module",
-      "externalReferences": [
-        {
-          "url": "https://github.com/dustin/go-humanize",
-          "type": "vcs"
-        }
-      ],
-      "evidence": {
-        "licenses": [
-          {
-            "license": {
-              "id": "MIT"
-            }
-          }
-        ]
-      }
-    },
     {
       "bom-ref": "pkg:golang/github.com/go-pdf/fpdf@v0.9.0?type=module",
       "type": "library",
@@ -71,21 +42,41 @@
       }
     },
     {
-      "bom-ref": "pkg:golang/github.com/google/uuid@v1.6.0?type=module",
+      "bom-ref": "pkg:golang/github.com/package-url/packageurl-go@v0.1.7?type=module",
       "type": "library",
-      "name": "github.com/google/uuid",
-      "version": "v1.6.0",
+      "name": "github.com/package-url/packageurl-go",
+      "version": "v0.1.7",
       "scope": "required",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "348bda24330eb231c0f27d630212d2833ac0cf2d4782bfa136b6f9edefbde05d"
+          "content": "8855a0eadcc08cb03a17fa97dcce6765a88c1c981cfa9db3c55cabfdf63eb196"
         }
       ],
-      "purl": "pkg:golang/github.com/google/uuid@v1.6.0?goarch=amd64&goos=linux&type=module",
+      "purl": "pkg:golang/github.com/package-url/packageurl-go@v0.1.7?goarch=amd64&goos=linux&type=module",
       "externalReferences": [
         {
-          "url": "https://github.com/google/uuid",
+          "url": "https://github.com/package-url/packageurl-go",
+          "type": "vcs"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module",
+      "type": "library",
+      "name": "gopkg.in/yaml.v3",
+      "version": "v3.0.1",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7f1566fc6cc0cc45aa2c7baf72d23dd4a4bd8613669963a85aed174d8252ec20"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/yaml.v3@v3.0.1?goarch=amd64&goos=linux&type=module",
+      "externalReferences": [
+        {
+          "url": "https://github.com/go-yaml/yaml",
           "type": "vcs"
         }
       ],
@@ -93,174 +84,7 @@
         "licenses": [
           {
             "license": {
-              "id": "BSD-3-Clause"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "bom-ref": "pkg:golang/github.com/remyoudompheng/bigfft@v0.0.0-20230129092748-24d4a6f8daec?type=module",
-      "type": "library",
-      "name": "github.com/remyoudompheng/bigfft",
-      "version": "v0.0.0-20230129092748-24d4a6f8daec",
-      "scope": "required",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "5b4f4854973de2272ae0d8d8ddc95becb93c3b5a89f01741105f33d226d4d2b1"
-        }
-      ],
-      "purl": "pkg:golang/github.com/remyoudompheng/bigfft@v0.0.0-20230129092748-24d4a6f8daec?goarch=amd64&goos=linux&type=module",
-      "externalReferences": [
-        {
-          "url": "https://github.com/remyoudompheng/bigfft",
-          "type": "vcs"
-        }
-      ],
-      "evidence": {
-        "licenses": [
-          {
-            "license": {
-              "id": "BSD-3-Clause"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "bom-ref": "pkg:golang/golang.org/x/crypto@v0.55.0?type=module",
-      "type": "library",
-      "name": "golang.org/x/crypto",
-      "version": "v0.55.0",
-      "scope": "required",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "f8a5878db80e68043ae9d87f625919287973f59525abad40162ac047d9ed3fc3"
-        }
-      ],
-      "purl": "pkg:golang/golang.org/x/crypto@v0.55.0?goarch=amd64&goos=linux&type=module",
-      "evidence": {
-        "licenses": [
-          {
-            "license": {
-              "id": "BSD-Source-Code"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "bom-ref": "pkg:golang/golang.org/x/sys@v0.47.0?type=module",
-      "type": "library",
-      "name": "golang.org/x/sys",
-      "version": "v0.47.0",
-      "scope": "required",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "a3b5c63af6500800c1410e18ed536ad9d456411ec998e516f0ac71e19b0d816b"
-        }
-      ],
-      "purl": "pkg:golang/golang.org/x/sys@v0.47.0?goarch=amd64&goos=linux&type=module",
-      "evidence": {
-        "licenses": [
-          {
-            "license": {
-              "id": "BSD-Source-Code"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "bom-ref": "pkg:golang/modernc.org/libc@v1.75.3?type=module",
-      "type": "library",
-      "name": "modernc.org/libc",
-      "version": "v1.75.3",
-      "scope": "required",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "bc2a93e7e4748cf5cc9ef3241a8d13db35ef14db61fa5617542c795fb0825ff8"
-        }
-      ],
-      "purl": "pkg:golang/modernc.org/libc@v1.75.3?goarch=amd64&goos=linux&type=module",
-      "evidence": {
-        "licenses": [
-          {
-            "license": {
-              "id": "MIT"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "bom-ref": "pkg:golang/modernc.org/mathutil@v1.7.1?type=module",
-      "type": "library",
-      "name": "modernc.org/mathutil",
-      "version": "v1.7.1",
-      "scope": "required",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "18265519775a37c813a81d4c7ffbaca7563f852aa0236bc01863f88d9302c4e5"
-        }
-      ],
-      "purl": "pkg:golang/modernc.org/mathutil@v1.7.1?goarch=amd64&goos=linux&type=module",
-      "evidence": {
-        "licenses": [
-          {
-            "license": {
-              "id": "BSD-3-Clause"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "bom-ref": "pkg:golang/modernc.org/memory@v1.12.0?type=module",
-      "type": "library",
-      "name": "modernc.org/memory",
-      "version": "v1.12.0",
-      "scope": "required",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "b7092660d9065c2bed616ce8bb1d368ed2ba7a8be365b748d2e1c5518a7a92e5"
-        }
-      ],
-      "purl": "pkg:golang/modernc.org/memory@v1.12.0?goarch=amd64&goos=linux&type=module",
-      "evidence": {
-        "licenses": [
-          {
-            "license": {
-              "id": "BSD-3-Clause"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "bom-ref": "pkg:golang/modernc.org/sqlite@v1.56.0?type=module",
-      "type": "library",
-      "name": "modernc.org/sqlite",
-      "version": "v1.56.0",
-      "scope": "required",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "fc3f1ed917c5aa8cbf65ce8fb82efa536f33170988fec631d4a8e6e32127f5ed"
-        }
-      ],
-      "purl": "pkg:golang/modernc.org/sqlite@v1.56.0?goarch=amd64&goos=linux&type=module",
-      "evidence": {
-        "licenses": [
-          {
-            "license": {
-              "id": "BSD-3-Clause"
+              "id": "Apache-2.0"
             }
           }
         ]
@@ -312,6 +136,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.12.0 || >=24.0.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@angular/animations"
@@ -416,6 +244,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.12.0 || >=24.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@angular/common"
         }
@@ -467,6 +299,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.12.0 || >=24.0.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@angular/compiler"
@@ -520,6 +356,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.12.0 || >=24.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@angular/core"
         }
@@ -571,6 +411,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.12.0 || >=24.0.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@angular/forms"
@@ -624,6 +468,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.12.0 || >=24.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@angular/platform-browser-dynamic"
         }
@@ -676,6 +524,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.12.0 || >=24.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@angular/platform-browser"
         }
@@ -727,6 +579,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.12.0 || >=24.0.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@angular/router"
@@ -882,6 +738,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^10 || ^12 || >=14"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/autoprefixer"
         }
@@ -931,6 +791,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:pnpm",
+          "value": ">=8"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/chart.js"
@@ -982,6 +846,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^10 || ^12 || >=14"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/postcss"
@@ -1137,6 +1005,10 @@
           ],
           "properties": [
             {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=12.11.0"
+            },
+            {
               "name": "cdx:npm:package:path",
               "value": "node_modules/primeng/node_modules/@primeuix/utils"
             }
@@ -1240,6 +1112,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=14.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/tailwindcss"
         }
@@ -1291,6 +1167,10 @@
           ],
           "properties": [
             {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">= 8.10.0"
+            },
+            {
               "name": "cdx:npm:package:path",
               "value": "node_modules/tailwindcss/node_modules/chokidar"
             }
@@ -1341,6 +1221,10 @@
                 }
               ],
               "properties": [
+                {
+                  "name": "cdx:npm:package:constraint:engine:node",
+                  "value": ">= 6"
+                },
                 {
                   "name": "cdx:npm:package:path",
                   "value": "node_modules/tailwindcss/node_modules/chokidar/node_modules/glob-parent"
@@ -1444,6 +1328,10 @@
           ],
           "properties": [
             {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=4"
+            },
+            {
               "name": "cdx:npm:package:path",
               "value": "node_modules/tailwindcss/node_modules/postcss-selector-parser"
             }
@@ -1495,6 +1383,10 @@
           ],
           "properties": [
             {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=8.10.0"
+            },
+            {
               "name": "cdx:npm:package:path",
               "value": "node_modules/tailwindcss/node_modules/readdirp"
             }
@@ -1545,6 +1437,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=8.6"
+            },
             {
               "name": "cdx:npm:package:path",
               "value": "node_modules/tailwindcss/node_modules/picomatch"
@@ -1752,6 +1648,10 @@
           ],
           "properties": [
             {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.19.0"
+            },
+            {
               "name": "cdx:npm:package:path",
               "value": "node_modules/parse5/node_modules/entities"
             }
@@ -1857,6 +1757,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@jsverse/transloco-utils"
         }
@@ -1960,6 +1864,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.11.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@primeuix/styled"
         }
@@ -2010,6 +1918,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/browserslist"
@@ -2112,6 +2024,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "*"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/fraction.js"
@@ -2318,6 +2234,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^10 || ^12 || ^13.7 || ^14 || >=15.0.1"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/nanoid"
         }
@@ -2368,6 +2288,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/source-map-js"
@@ -2420,6 +2344,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.11.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@primeuix/motion"
@@ -2524,6 +2452,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@alloc/quick-lru"
@@ -2729,6 +2661,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8.6.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/fast-glob"
         }
@@ -2779,6 +2715,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">= 6"
+            },
             {
               "name": "cdx:npm:package:path",
               "value": "node_modules/fast-glob/node_modules/glob-parent"
@@ -2833,6 +2773,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10.13.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/glob-parent"
         }
@@ -2883,6 +2827,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-glob"
@@ -2935,6 +2883,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=14"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/lilconfig"
         }
@@ -2986,6 +2938,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8.6"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/micromatch"
         }
@@ -3036,6 +2992,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=8.6"
+            },
             {
               "name": "cdx:npm:package:path",
               "value": "node_modules/micromatch/node_modules/picomatch"
@@ -3090,6 +3050,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/normalize-path"
         }
@@ -3140,6 +3104,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 6"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/object-hash"
@@ -3192,6 +3160,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=14.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/postcss-import"
         }
@@ -3242,6 +3214,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^12 || ^14 || >= 16"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/postcss-js"
@@ -3294,6 +3270,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 18"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/postcss-load-config"
         }
@@ -3345,6 +3325,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/postcss-nested"
         }
@@ -3394,6 +3378,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=4"
+            },
             {
               "name": "cdx:npm:package:path",
               "value": "node_modules/postcss-nested/node_modules/postcss-selector-parser"
@@ -3448,6 +3436,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.4"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/resolve"
         }
@@ -3499,6 +3491,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=16 || 14 >=14.17"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/sucrase"
         }
@@ -3549,6 +3545,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=14"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/cosmiconfig"
@@ -3602,6 +3602,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.11.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@primeuix/utils"
         }
@@ -3651,6 +3655,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.0.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/baseline-browser-mapping"
@@ -3754,6 +3762,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/node-releases"
         }
@@ -3856,6 +3868,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 8"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/anymatch"
         }
@@ -3906,6 +3922,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=8.6"
+            },
             {
               "name": "cdx:npm:package:path",
               "value": "node_modules/anymatch/node_modules/picomatch"
@@ -3960,6 +3980,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/braces"
         }
@@ -4010,6 +4034,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-binary-path"
@@ -4062,6 +4090,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 8"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@nodelib/fs.stat"
         }
@@ -4113,6 +4145,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 8"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@nodelib/fs.walk"
         }
@@ -4162,6 +4198,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 8"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/merge2"
@@ -4213,6 +4253,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-extglob"
@@ -4315,6 +4359,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 6"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/camelcase-css"
@@ -4421,6 +4469,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=4"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/cssesc"
         }
@@ -4523,6 +4575,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.4"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/es-errors"
         }
@@ -4573,6 +4629,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.4"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-core-module"
@@ -4676,6 +4736,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.4"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/supports-preserve-symlinks-flag"
         }
@@ -4778,6 +4842,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 6"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/commander"
@@ -4932,6 +5000,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 6"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/pirates"
         }
@@ -4982,6 +5054,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.0.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/tinyglobby"
@@ -5085,6 +5161,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/import-fresh"
         }
@@ -5186,6 +5266,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/parse-json"
@@ -5291,6 +5375,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/path-type"
         }
@@ -5341,6 +5429,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=14.17"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -5397,6 +5489,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/escalade"
         }
@@ -5447,6 +5543,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/fill-range"
@@ -5499,6 +5599,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/binary-extensions"
         }
@@ -5549,6 +5653,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 8"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@nodelib/fs.scandir"
@@ -5652,6 +5760,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/pify"
         }
@@ -5702,6 +5814,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.4"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/hasown"
@@ -5909,6 +6025,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/object-assign"
         }
@@ -5959,6 +6079,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.8"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/thenify-all"
@@ -6011,6 +6135,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/fdir"
         }
@@ -6061,6 +6189,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/picomatch"
@@ -6113,6 +6245,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/parent-module"
         }
@@ -6163,6 +6299,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=4"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/resolve-from"
@@ -6266,6 +6406,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@babel/code-frame"
         }
@@ -6366,6 +6510,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/to-regex-range"
@@ -6468,6 +6616,14 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
+          "name": "cdx:npm:package:constraint:engine:iojs",
+          "value": ">=1.0.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/reusify"
@@ -6572,6 +6728,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@jridgewell/resolve-uri"
         }
@@ -6674,6 +6834,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/callsites"
         }
@@ -6725,6 +6889,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@babel/helper-validator-identifier"
@@ -6878,6 +7046,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.12.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-number"

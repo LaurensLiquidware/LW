@@ -60,3 +60,22 @@
   shared fixture (66.7% coverage, 2/3 resolved, correct "no vuln data"
   notice) and a caught-and-fixed bug where an untranslated error case
   showed a raw i18n key instead of its message.
+- Verified Windows packaging (build-order step 5) and regenerated the
+  real Sparks Tool compliance artifacts (build-order step 6, partial):
+  `scripts/build-windows.sh` actually cross-compiles from this Linux
+  dev environment -- confirmed both `flexapp-vuln-scanner.exe` (GUI
+  subsystem) and `flexapp-vuln-scanner-server.exe` (console subsystem)
+  come out as valid Windows PE32+ binaries with the embedded icon/
+  version resource. Regenerated `bom.cdx.json` (120 real components: 3
+  Go modules + 117 npm packages, via `cyclonedx-gomod` + `cyclonedx-npm`)
+  and `THIRD-PARTY-NOTICES.txt` from this project's actual dependency
+  graph, replacing the stale `ProfileUnityMSPConsole` copies -- also
+  fixed `generate-notices.py`'s hardcoded MSP Console title/font note
+  (this project has no bundled PDF font; `go-pdf/fpdf` uses built-in
+  Helvetica). Verified the About screen serves all three real artifacts
+  end-to-end via a live server + Playwright screenshot. Not done:
+  running Grype against the SBOM for the checklist's zero-Critical/High
+  requirement -- blocked by this environment's network egress policy
+  (same restriction already documented for
+  `FlexAppOneDownloadMonitor`'s Sparks audit); needs a
+  network-unrestricted machine.
