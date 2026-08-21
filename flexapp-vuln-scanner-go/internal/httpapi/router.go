@@ -15,6 +15,10 @@ import (
 type ScanAPIDeps struct {
 	Scan     ScanDeps
 	Mappings *cpemap.Mappings
+
+	// PickerAddr is reported to the frontend via GET /api/config; see
+	// ConfigHandler.
+	PickerAddr string
 }
 
 // NewRouter assembles the server's HTTP handler: health, version, the
@@ -24,6 +28,7 @@ func NewRouter(scanDeps ScanAPIDeps) (http.Handler, error) {
 
 	mux.HandleFunc("/healthz", HealthHandler())
 	mux.HandleFunc("/api/version", VersionHandler)
+	mux.HandleFunc("/api/config", ConfigHandler(scanDeps.PickerAddr))
 
 	// Legal packaging (Sparks Tool checklist §7): the license PDF and SBOM
 	// ship inside the binary and are reachable at fixed top-level paths so

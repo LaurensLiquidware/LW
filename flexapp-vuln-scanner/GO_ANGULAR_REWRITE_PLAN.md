@@ -222,17 +222,21 @@ Status as of the working implementation in `flexapp-vuln-scanner-go/`:
 
 1. **Project name/folder** — decided and built as `flexapp-vuln-scanner-go/`,
    alongside the still-live Python `flexapp-vuln-scanner/`.
-2. **File/folder picker for package path** — implemented as option (a),
-   a plain text path field (`features/new-scan`), with the output
-   folder auto-filled from the package's file stem. The "real native
-   picker" win from the desktop app (option b, a tray-hosted native
-   dialog) was not built — still open if that UX regression matters
-   enough to revisit.
+2. **File/folder picker for package path** — resolved: built option (b),
+   the tray-hosted native dialog. `cmd/tray/picker_windows.go` hosts a
+   small loopback HTTP server (`lxn/walk`'s `FileDialog`, the same
+   Win32 dialog the PySide6 desktop app used) exposing `/pick-file` and
+   `/pick-folder`; the server reports its address via `GET /api/config`
+   and the New Scan screen's Browse buttons only render once that's
+   confirmed reachable, so a plain text path field (option (a), what
+   shipped first) remains the fallback when not launched via the tray.
+   No more UX regression versus the desktop app.
 3. **PDF generation library in Go** — decided: `github.com/go-pdf/fpdf`
    (MIT-licensed, verified). `internal/report/pdf.go` renders coverage +
    findings as a real 2-page PDF, confirmed working end-to-end.
-4. **CLI** — not built. The Angular UI is the only interface right now;
-   revisit if a headless/scriptable mode turns out to be needed.
+4. **CLI** — resolved: built. `cmd/cli` (`flexapp-vuln-scanner-cli`)
+   runs Stage 1/Stage 2 directly against `internal/pipeline`, no HTTP
+   server involved, for scripted/CI/cron use.
 5. **Cancel a running scan** — built, and verified real (not just
    wired up): `context.Context` threaded through `RunStage1`/
    `RunStage2`/`resolve.Resolve`/the OSV/NVD clients, a `Cancel()` on
@@ -240,10 +244,11 @@ Status as of the working implementation in `flexapp-vuln-scanner-go/`:
    cancels a real 30-second-sleeping `pwsh` subprocess and confirms it
    returns in well under that. Resolves what neither the PySide6 app
    nor the original plan had solved.
-6. **Migration of existing scan history** — decided: starting fresh.
-   The Go version's `JobRegistry` (`internal/httpapi/jobs.go`) is
-   in-memory only, same limitation the Flask web UI already had (no
-   `desktop/recent_scans_store.py`-style persistence built yet either).
+6. **Migration of existing scan history** — decided: starting fresh, and
+   since resolved further than planned: `internal/scanstore` (ported
+   from `desktop/recent_scans_store.py`) persists scan history to disk,
+   so it now survives server restarts within the Go version itself —
+   just not migrated from the Python app's own history file.
 
 ## Effort shape (rough, comparable-project basis)
 

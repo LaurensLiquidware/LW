@@ -9,6 +9,11 @@ import { MessageModule } from 'primeng/message';
 import { PanelModule } from 'primeng/panel';
 
 import { ScanService } from '../../core/scan.service';
+import { PickerService } from '../../core/picker.service';
+
+/** Win32 FileDialog filter string for the package-path Browse button --
+ * FlexApp packages ship as classic VHDX or Package Manager ZIP files. */
+const PACKAGE_FILTER = 'FlexApp Packages (*.vhdx;*.zip)|*.vhdx;*.zip|All Files (*.*)|*.*';
 
 /** New Scan form: package path + output folder (auto-filled from the
  * package's file stem, same "default output folder" behavior the
@@ -22,6 +27,7 @@ import { ScanService } from '../../core/scan.service';
 export class NewScanComponent {
   private readonly fb = inject(FormBuilder);
   private readonly scanService = inject(ScanService);
+  private readonly pickerService = inject(PickerService);
   private readonly router = inject(Router);
 
   readonly submitting = signal(false);
@@ -30,11 +36,38 @@ export class NewScanComponent {
    * than a translation key to pipe through transloco. */
   readonly errorIsRaw = signal(false);
 
+  /** Whether the tray launcher's native picker is reachable -- the
+   * Browse buttons only render once this is true, so this screen
+   * degrades to plain text entry when run without the tray launcher
+   * (e.g. this Linux dev environment, or the server started directly). */
+  readonly pickerAvailable = this.pickerService.available;
+
   readonly form = this.fb.nonNullable.group({
     packagePath: ['', Validators.required],
     outputDir: ['./scan-out', Validators.required],
     nvdApiKey: [''],
   });
+
+  constructor() {
+    this.pickerService.checkAvailable();
+  }
+
+  async browsePackagePath(): Promise<void> {
+    const path = await this.pickerService.pickFile({ title: 'Select a FlexApp Package', filter: PACKAGE_FILTER });
+    if (path) {
+      this.form.controls.packagePath.setValue(path);
+      this.form.controls.packagePath.markAsDirty();
+      this.onPackagePathChange();
+    }
+  }
+
+  async browseOutputDir(): Promise<void> {
+    const path = await this.pickerService.pickFolder({ title: 'Select an Output Folder' });
+    if (path) {
+      this.form.controls.outputDir.setValue(path);
+      this.form.controls.outputDir.markAsDirty();
+    }
+  }
 
   onPackagePathChange(): void {
     const packagePath = this.form.controls.packagePath.value;

@@ -49,6 +49,15 @@ type Config struct {
 	// (see internal/cpemap) used during vulnerability matching and SBOM
 	// building.
 	CPEMappingsPath string
+
+	// PickerAddr is the address the native file/folder picker (hosted by
+	// cmd/tray on Windows, see cmd/tray/picker_windows.go) listens on.
+	// The server only reports this to the frontend via GET /api/config --
+	// it never starts the picker itself, since the picker needs a Windows
+	// GUI thread to show dialogs from, which the headless server doesn't
+	// have. Unreachable (not launched via tray, or on a non-Windows dev
+	// machine) simply means the frontend's Browse buttons don't appear.
+	PickerAddr string
 }
 
 const (
@@ -62,6 +71,7 @@ const (
 	envScanHistoryFile  = "FVS_SCAN_HISTORY_FILE"
 	envStageOneScript   = "FVS_STAGE1_SCRIPT"
 	envCPEMappingsPath  = "FVS_CPE_MAPPINGS_PATH"
+	envPickerAddr       = "FVS_PICKER_ADDR"
 )
 
 var validLogLevels = map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
@@ -80,6 +90,7 @@ func Load() (Config, error) {
 		ScanHistoryFile:  firstNonEmpty(os.Getenv(envScanHistoryFile), "./scan-history.json"),
 		StageOneScript:   firstNonEmpty(os.Getenv(envStageOneScript), "./stage1-extract/Invoke-FlexAppInventory.ps1"),
 		CPEMappingsPath:  firstNonEmpty(os.Getenv(envCPEMappingsPath), "./config/cpe-mappings.yaml"),
+		PickerAddr:       firstNonEmpty(os.Getenv(envPickerAddr), DefaultPickerAddr),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -105,6 +116,11 @@ const DefaultLogFile = "./flexapp-vuln-scanner.log"
 // DefaultHTTPAddr is HTTPAddr's default when FVS_HTTP_ADDR is unset.
 // Exported for the same reason as DefaultLogFile.
 const DefaultHTTPAddr = "127.0.0.1:8743"
+
+// DefaultPickerAddr is PickerAddr's default when FVS_PICKER_ADDR is
+// unset. Exported so cmd/tray's picker server and this package's Load
+// agree on the same default without duplicating the literal.
+const DefaultPickerAddr = "127.0.0.1:8745"
 
 // defaultLogLevel is the LogLevel default when FVS_LOG_LEVEL is unset:
 // verbose in development, quieter in every other environment.

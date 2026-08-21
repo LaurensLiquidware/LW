@@ -8,18 +8,29 @@
 
     <div class="flex flex-col gap-1">
       <label for="packagePath" class="lwl-micro">{{ 'newScan.packagePath' | transloco }}</label>
-      <input
-        pInputText
-        id="packagePath"
-        formControlName="packagePath"
-        (blur)="onPackagePathChange()"
-        [placeholder]="'newScan.packagePathPlaceholder' | transloco"
-      />
+      <div class="flex gap-2">
+        <input
+          pInputText
+          id="packagePath"
+          formControlName="packagePath"
+          (blur)="onPackagePathChange()"
+          [placeholder]="'newScan.packagePathPlaceholder' | transloco"
+          class="flex-1"
+        />
+        @if (pickerAvailable()) {
+          <p-button type="button" icon="pi pi-folder-open" [text]="true" (onClick)="browsePackagePath()" />
+        }
+      </div>
     </div>
 
     <div class="flex flex-col gap-1">
       <label for="outputDir" class="lwl-micro">{{ 'newScan.outputDir' | transloco }}</label>
-      <input pInputText id="outputDir" formControlName="outputDir" />
+      <div class="flex gap-2">
+        <input pInputText id="outputDir" formControlName="outputDir" class="flex-1" />
+        @if (pickerAvailable()) {
+          <p-button type="button" icon="pi pi-folder-open" [text]="true" (onClick)="browseOutputDir()" />
+        }
+      </div>
     </div>
 
     <p-panel [header]="'newScan.advanced' | transloco" [toggleable]="true" [collapsed]="true">

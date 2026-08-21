@@ -159,3 +159,21 @@
   manual-PDF and demo-database steps (neither applies to this project),
   and packages `flexapp-vuln-scanner-cli`/`.exe` into both release
   zips.
+- Added a native file/folder picker for the New Scan screen's Package
+  Path and Output Folder fields, resolving the last open item from the
+  rewrite plan. `cmd/tray/picker_windows.go` hosts a small loopback HTTP
+  server (`FVS_PICKER_ADDR`, default `127.0.0.1:8745`) exposing
+  `/pick-file` and `/pick-folder`, each showing a real Win32 dialog via
+  `lxn/walk`'s `FileDialog` (already this app's GUI dependency) on the
+  tray's own GUI thread and returning the chosen path as JSON. The
+  server reports the picker's address via a new `GET /api/config`
+  endpoint; the new Angular `PickerService` probes `/health` once per
+  page load and the New Scan screen only renders its Browse buttons
+  when that probe succeeds, so the screen degrades to plain text entry
+  when not launched via the tray (this Linux dev environment, or the
+  server run directly). Verified: new Go unit tests
+  (`internal/config`, `internal/httpapi/appconfig_test.go`), a real
+  Windows cross-compile confirming the tray `.exe` still builds with
+  the picker code included, and a live server + Playwright check
+  confirming the Browse buttons correctly stay hidden (zero rendered,
+  no console errors) when the picker is unreachable.

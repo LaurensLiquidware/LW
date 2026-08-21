@@ -43,6 +43,28 @@ func currentHTTPAddr(installDir string) string {
 	return config.DefaultHTTPAddr
 }
 
+// currentPickerAddr returns the host:port the native file/folder picker
+// (see picker_windows.go) should listen on, following the same
+// env-then-.env-then-default resolution as currentHTTPAddr.
+func currentPickerAddr(installDir string) string {
+	if v := os.Getenv("FVS_PICKER_ADDR"); v != "" {
+		return v
+	}
+	f, err := os.Open(filepath.Join(installDir, ".env"))
+	if err != nil {
+		return config.DefaultPickerAddr
+	}
+	defer f.Close()
+	kv, err := dotenv.Parse(f)
+	if err != nil {
+		return config.DefaultPickerAddr
+	}
+	if v, ok := kv["FVS_PICKER_ADDR"]; ok && v != "" {
+		return v
+	}
+	return config.DefaultPickerAddr
+}
+
 // resolveServerURL builds the URL the server (running with working
 // directory installDir) actually listens on, for the clickable link in
 // the tray window. FVS_HTTP_ADDR's host is often "0.0.0.0" (all

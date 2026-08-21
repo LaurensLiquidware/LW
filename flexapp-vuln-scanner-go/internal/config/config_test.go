@@ -128,3 +128,27 @@ func TestLoad_NVDAPIKeyExplicit(t *testing.T) {
 		}
 	})
 }
+
+func TestLoad_PickerAddrDefaultsWhenUnset(t *testing.T) {
+	withEnv(t, map[string]string{envPickerAddr: ""}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.PickerAddr != DefaultPickerAddr {
+			t.Errorf("PickerAddr = %q, want %q", cfg.PickerAddr, DefaultPickerAddr)
+		}
+	})
+}
+
+func TestLoad_PickerAddrExplicitOverridesDefault(t *testing.T) {
+	withEnv(t, map[string]string{envPickerAddr: "127.0.0.1:9999"}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.PickerAddr != "127.0.0.1:9999" {
+			t.Errorf("PickerAddr = %q, want 127.0.0.1:9999", cfg.PickerAddr)
+		}
+	})
+}
