@@ -1517,6 +1517,92 @@ a new pattern, not something to fix blind from this dev sandbox.
     expanding to show all three under one row. All 127
     `stage2-resolve` + 62 `webui` tests passing.
 
+19. **New, same day: extract shared pipeline, then build the native
+    desktop app.** Requested together ("fix and build it all please"),
+    after confirming one architectural fork first: asked directly
+    whether remote/headless access (scan on one machine, view results
+    from another) was ever needed - answer was no, settling the native
+    app as a pure single-machine PySide6 app rather than a client
+    talking to `webui`'s Flask API as a backend.
+
+    First extracted `webui/jobs.py`'s scan orchestration - unchanged
+    behavior - into a new `stage2-resolve/flexapp_vuln/pipeline.py`,
+    front-end agnostic via a duck-typed progress-sink interface
+    (`append_log`/`status`/`set_progress`). `webui/jobs.py` became a
+    thin adapter over it for the web UI's in-memory job registry and
+    polling model. This was a prerequisite, not a detour: without it,
+    the desktop app would have needed to duplicate Stage 1/Stage 2
+    orchestration rather than share it, reopening the exact
+    can't-drift-between-two-implementations risk this project has
+    avoided everywhere else (CLI vs. webui vs. PDF vs. CSV all sharing
+    `build_finding_rows`, etc.).
+
+    Then built `desktop/` (PySide6/Qt): dashboard, New Scan dialog,
+    live scan progress, results view, and Compare Scans - all five
+    screens from the earlier mockup
+    (https://claude.ai/code/artifact/61d0073c-6a0a-4133-bf11-a80088e633f7),
+    now real and wired to the real `pipeline.py`. `QFileDialog` for
+    package/folder pickers (native UNC/network-drive support with zero
+    custom code - deletes the entire reason `webui/browse.py`'s
+    UNC-jump-box feature needed building for the web version).
+    `QThread` + Qt signals replace the web UI's HTTP-polling job
+    registry. A new `recent_scans_store.py` persists the dashboard's
+    scan list as JSON under `%APPDATA%\FlexAppVulnScanner\` - the web
+    UI's list is memory-only and resets every restart, which is fine
+    for a page you reload but wrong for a desktop app someone closes
+    and reopens.
+
+    Verified with 43 new tests (`pytest-qt`, `QT_QPA_PLATFORM=offscreen`)
+    plus manual verification of every screen launched as real Qt
+    widgets against real data (screenshotted via `widget.grab()`, not
+    just eyeballed live) - which caught 3 real bugs the unit tests
+    alone missed:
+    - `Path(package_path).stem` doesn't parse a Windows path's
+      backslashes as separators when run on a non-Windows host (this
+      dev/test environment) - silently broke the New Scan dialog's
+      output-folder auto-fill under test/CI, though not on the actual
+      Windows target. Fixed with `PureWindowsPath`, which parses
+      Windows path syntax regardless of host platform.
+    - The findings table's `QSortFilterProxyModel` used its default
+      sort role (`Qt.DisplayRole`, alphabetical text), silently sorting
+      "HIGH" before "CRITICAL" - the exact wrong-order bug the model's
+      `Qt.UserRole` severity-rank data existed to prevent, just never
+      wired to `proxy.setSortRole()`. Caught from a screenshot showing
+      HIGH above CRITICAL, not from any test (the existing model-level
+      test only checked the rank data existed, not that the view's
+      proxy actually used it) - fixed and a regression test added that
+      exercises the real proxy, not just the model.
+    - A PyInstaller `.spec` (`desktop/flexapp_scanner.spec`) built
+      successfully but the resulting binary crashed on startup with
+      `FileNotFoundError` - `jsonschema`'s optional `rfc3987_syntax`
+      format-checker dependency (pulled in transitively) loads a
+      `.lark` grammar file from disk at import time, which PyInstaller's
+      default import-graph analysis doesn't catch since it follows
+      Python imports, not arbitrary file reads. Fixed by bundling it
+      explicitly via `collect_data_files("rfc3987_syntax")`; rebuilt and
+      confirmed the packaged binary now launches and stays running.
+
+    This last point is itself a live demonstration of why "the tests
+    pass" isn't the same claim as "the packaged app works" - the spec
+    file needed an actual build-and-run cycle to surface a bug no unit
+    test could have caught, the same category of gap Sparks Tool
+    compliance and Stage 1's live-Windows validation exist to close
+    elsewhere in this project.
+
+    **Explicitly not done, flagged rather than silently skipped**:
+    a real Windows `.exe` build and run (this dev/test environment is
+    Linux; PyInstaller does not cross-compile, so only a Linux binary
+    has been built and smoke-tested); cancelling a running scan (the
+    Scan Progress window's Close button closes the window, not the
+    underlying subprocess - `QThread.terminate()` is unsafe to call
+    while blocked in a subprocess wait, so this needs deliberate design,
+    not a quick fix); a desktop equivalent of the web UI's `/license`/
+    `/sbom` routes; and the PySide6 LGPL license entry in
+    `bom.cdx.json`/`THIRD-PARTY-NOTICES.txt`. Full accounting in
+    `NATIVE_APP_MIGRATION.md`, updated from a pre-build proposal to
+    reflect what's actually built. All 134 `stage2-resolve` + 60
+    `webui` + 43 `desktop` tests passing (237 total).
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or
