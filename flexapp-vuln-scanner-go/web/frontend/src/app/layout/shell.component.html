@@ -12,33 +12,12 @@
         <span
           class="rounded-full px-2 py-0.5 text-xs"
           style="border: 1px solid var(--p-surface-0); color: var(--p-surface-0);"
-        >v{{ version() }}-beta</span>
-      }
-      @if (session.user()?.demoMode) {
-        <span
-          class="rounded-full px-2 py-0.5 text-xs font-bold"
-          style="background: var(--p-orange-500); color: var(--p-surface-0);"
-          [title]="'header.demoModeHint' | transloco"
-        >{{ 'header.demoMode' | transloco }}</span>
+        >v{{ version() }}</span>
       }
     </div>
 
     <div class="flex items-center gap-4">
-      <app-alert-bell />
       <app-language-switcher severity="contrast" />
-      @if (session.user(); as user) {
-        <button
-          type="button"
-          class="lwl-micro flex items-center gap-1"
-          style="color: var(--p-surface-200); background: none; border: none; cursor: pointer; font-family: inherit;"
-          [title]="'header.changePassword' | transloco"
-          (click)="changePasswordVisible.set(true)"
-        >
-          <i class="pi pi-key"></i>
-          {{ user.username }}
-        </button>
-      }
-      <p-button size="small" severity="secondary" [label]="'header.signOut' | transloco" (onClick)="signOut()" />
     </div>
   </header>
 
@@ -72,8 +51,4 @@
 
 <p-dialog [(visible)]="aboutVisible" [modal]="true" [header]="'about.heading' | transloco" [style]="{ width: '32rem' }">
   <app-about [showHeading]="false" />
-</p-dialog>
-
-<p-dialog [(visible)]="changePasswordVisible" [modal]="true" [header]="'changePassword.title' | transloco" [style]="{ width: '28rem' }">
-  <app-change-password-form (saved)="changePasswordVisible.set(false)" (cancelled)="changePasswordVisible.set(false)" />
 </p-dialog>
