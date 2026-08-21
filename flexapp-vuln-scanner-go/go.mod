@@ -10,6 +10,9 @@ require (
 )
 
 require (
+	github.com/go-pdf/fpdf v0.9.0 // indirect
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
+	github.com/package-url/packageurl-go v0.1.7 // indirect
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

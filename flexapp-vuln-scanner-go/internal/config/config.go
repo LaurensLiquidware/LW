@@ -44,18 +44,24 @@ type Config struct {
 	// StageOneScript is the path to the PowerShell Stage 1 inventory
 	// script this process shells out to.
 	StageOneScript string
+
+	// CPEMappingsPath is the manual vendor/product -> CPE override table
+	// (see internal/cpemap) used during vulnerability matching and SBOM
+	// building.
+	CPEMappingsPath string
 }
 
 const (
 	envHTTPAddr         = "FVS_HTTP_ADDR"
-	envEnvironment       = "FVS_ENVIRONMENT"
-	envLogLevel          = "FVS_LOG_LEVEL"
-	envLogFile           = "FVS_LOG_FILE"
-	envDefaultOutputDir  = "FVS_DEFAULT_OUTPUT_DIR"
-	envCacheDir          = "FVS_CACHE_DIR"
-	envNVDAPIKey         = "FVS_NVD_API_KEY"
-	envScanHistoryFile   = "FVS_SCAN_HISTORY_FILE"
-	envStageOneScript    = "FVS_STAGE1_SCRIPT"
+	envEnvironment      = "FVS_ENVIRONMENT"
+	envLogLevel         = "FVS_LOG_LEVEL"
+	envLogFile          = "FVS_LOG_FILE"
+	envDefaultOutputDir = "FVS_DEFAULT_OUTPUT_DIR"
+	envCacheDir         = "FVS_CACHE_DIR"
+	envNVDAPIKey        = "FVS_NVD_API_KEY"
+	envScanHistoryFile  = "FVS_SCAN_HISTORY_FILE"
+	envStageOneScript   = "FVS_STAGE1_SCRIPT"
+	envCPEMappingsPath  = "FVS_CPE_MAPPINGS_PATH"
 )
 
 var validLogLevels = map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
@@ -73,6 +79,7 @@ func Load() (Config, error) {
 		NVDAPIKey:        strings.TrimSpace(os.Getenv(envNVDAPIKey)),
 		ScanHistoryFile:  firstNonEmpty(os.Getenv(envScanHistoryFile), "./scan-history.json"),
 		StageOneScript:   firstNonEmpty(os.Getenv(envStageOneScript), "./stage1-extract/Invoke-FlexAppInventory.ps1"),
+		CPEMappingsPath:  firstNonEmpty(os.Getenv(envCPEMappingsPath), "./config/cpe-mappings.yaml"),
 	}
 
 	if err := cfg.validate(); err != nil {
