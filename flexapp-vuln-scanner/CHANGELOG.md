@@ -174,6 +174,13 @@ end-to-end run against a real package justifies cutting a version.
 
 ### Added
 
+- Web UI: the index page's Output Directory / Open-folder fields now
+  prefill with a default (`<repo>/scan-out`) instead of starting empty,
+  so a first-time user isn't staring at a required field with no idea
+  what to type. An explicit value in the query string (redirected back
+  from a failed submission, or typed in the URL) still wins over the
+  default. 2 new tests.
+
 - Web UI: the file/folder browser now supports UNC share paths (e.g.
   `\\server\share\FlexAppShare`), not just local drive letters. The
   drive list can't enumerate network shares, so browsing one needed a

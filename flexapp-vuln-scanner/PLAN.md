@@ -1474,6 +1474,15 @@ a new pattern, not something to fix blind from this dev sandbox.
     strings on Windows. All 121 `stage2-resolve` + 58 `webui` tests
     passing.
 
+17. **New, same day: default the Output Directory field.** Requested
+    directly as one of a set of UI-simplification asks. The index
+    page's `output_dir`/`dir_path` fields now prefill with `<repo>/
+    scan-out` instead of empty, via a new `DEFAULT_OUTPUT_DIR` constant
+    in `app.py` - only applied when the query string doesn't already
+    specify a value, so a failed-submission redirect still shows exactly
+    what was typed rather than silently re-defaulting over it. 2 new
+    tests; verified with a screenshot showing the prefilled field.
+
 ## Open items I'm not deciding unilaterally
 
 - Whether `coverage-report.md`/`findings.md` should be per-package files or
