@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+	<assemblyIdentity version="1.0.0.0" processorArchitecture="*" name="Liquidware.FlexAppVulnScanner.Server" type="win32"/>
+	<!-- Stage 1 mounts the VHDX being scanned (Mount-DiskImage +
+	     Add-PartitionAccessPath, see stage1-extract/Mount-ClassicFlexApp.ps1),
+	     which needs Administrator. cmd/tray's own manifest already elevates
+	     when it spawns this as a child process (the child inherits the
+	     parent's token, so this manifest is a no-op in that path) -- this
+	     covers running flexapp-vuln-scanner-server.exe directly (a
+	     double-click, or a Scheduled Task not itself configured to run
+	     elevated). A Windows Service host bypasses this manifest entirely
+	     (the SCM starts services directly with the configured service
+	     account's token, without going through Explorer/UAC), so running
+	     as a service still needs that service account to actually have
+	     the required privileges -- this manifest doesn't grant them.
+	-->
+	<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+		<security>
+			<requestedPrivileges>
+				<requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
+			</requestedPrivileges>
+		</security>
+	</trustInfo>
+</assembly>

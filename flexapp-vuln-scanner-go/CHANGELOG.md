@@ -190,3 +190,25 @@
   `../flexapp-vuln-scanner/`, minus its Pester tests) is now committed
   to this project, and `scripts/release.sh` packages both directories
   into every release zip.
+- Fixed a real Windows scan failure caught testing the above:
+  "WARNING: Failed to process '...': A required privilege is not held
+  by the client" followed by "Stage 1 finished but no
+  '<package>.inventory.json' path was found." Stage 1 mounts the VHDX
+  being scanned (`Mount-DiskImage` + `Add-PartitionAccessPath`, see
+  `stage1-extract/Mount-ClassicFlexApp.ps1`), which requires
+  Administrator -- neither the tray launcher nor the server were
+  requesting elevation. `cmd/tray/app.manifest` and the new
+  `cmd/server/app.manifest` now both set
+  `requestedExecutionLevel="requireAdministrator"`
+  (`scripts/build-windows.sh` embeds the server's via `goversioninfo`
+  the same way the tray's already was), so double-clicking either shows
+  one UAC prompt and every child process inherits the elevated token.
+  `cmd/cli` deliberately keeps no such manifest -- a UAC prompt has
+  nothing to answer it in the unattended contexts the CLI is for, so
+  its doc comment now says to run it from an already-elevated context
+  (a Scheduled Task set to "Run with highest privileges", or an admin
+  shell) instead.
+- Added an Exit button to the tray launcher's main window, next to Show
+  Log, matching `ProfileUnityMSPConsole`'s launcher layout -- Exit was
+  previously reachable only from the tray icon's right-click menu, a
+  discoverability gap flagged in real Windows testing.

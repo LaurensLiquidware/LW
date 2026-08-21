@@ -5,6 +5,17 @@
 //
 // It calls exactly the same internal/pipeline functions the HTTP API's
 // ScanDeps does, so behavior can never drift between the two front ends.
+//
+// On Windows, running a scan (-package) shells out to Stage 1, which
+// mounts the VHDX being scanned (Mount-DiskImage, see
+// stage1-extract/Mount-ClassicFlexApp.ps1) -- an operation that requires
+// Administrator. Unlike cmd/tray and cmd/server, this binary deliberately
+// carries no requireAdministrator manifest: a UAC elevation prompt has no
+// way to display (and nothing to answer it) in the unattended contexts
+// this exists for. Run it from an already-elevated context instead -- a
+// Scheduled Task configured to "Run with highest privileges", or an
+// already-elevated shell -- or stick to -refresh (Stage 2 only, no
+// mounting) if the inventory already exists.
 package main
 
 import (
