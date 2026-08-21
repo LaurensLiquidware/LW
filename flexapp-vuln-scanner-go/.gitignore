@@ -9,6 +9,7 @@ internal/legal/THIRD-PARTY-NOTICES.txt
 # Generated at build time — see scripts/build-windows.sh
 cmd/server/resource_windows_amd64.syso
 cmd/tray/resource_windows_amd64.syso
+cmd/cli/resource_windows_amd64.syso
 
 # Local secrets / config
 .env
@@ -16,6 +17,8 @@ cmd/tray/resource_windows_amd64.syso
 # Build output
 /flexapp-vuln-scanner
 /flexapp-vuln-scanner.exe
+/flexapp-vuln-scanner-cli
+/flexapp-vuln-scanner-cli.exe
 /dist/
 /bin/
 /flexapp-vuln-scanner-*.zip

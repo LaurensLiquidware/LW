@@ -27,9 +27,12 @@ import (
 )
 
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
-		fmt.Println(version.Version)
-		return
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--version", "-version", "-v":
+			fmt.Println(version.Version)
+			return
+		}
 	}
 
 	if err := run(); err != nil {

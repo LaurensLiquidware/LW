@@ -43,6 +43,10 @@ type ScanJob struct {
 	progressPhase string
 	progressDone  int
 	progressTotal int
+	// version increments on every mutation, so SSEScanHandler can detect
+	// "anything changed since I last sent an event" without diffing the
+	// whole snapshot.
+	version int
 }
 
 // Cancel requests that a running job stop as soon as possible: the
@@ -60,6 +64,7 @@ func (j *ScanJob) setCanceled() {
 	defer j.mu.Unlock()
 	j.status = "canceled"
 	j.log = append(j.log, "Canceled by user.")
+	j.version++
 }
 
 // SetStatus implements pipeline.ProgressSink.
@@ -67,6 +72,7 @@ func (j *ScanJob) SetStatus(status string) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.status = status
+	j.version++
 }
 
 // AppendLog implements pipeline.ProgressSink. Splits on newlines so a
@@ -77,6 +83,7 @@ func (j *ScanJob) AppendLog(line string) {
 	defer j.mu.Unlock()
 	lines := splitLines(line)
 	j.log = append(j.log, lines...)
+	j.version++
 }
 
 // SetProgress implements pipeline.ProgressSink.
@@ -86,12 +93,14 @@ func (j *ScanJob) SetProgress(phase string, done, total int) {
 	j.progressPhase = phase
 	j.progressDone = done
 	j.progressTotal = total
+	j.version++
 }
 
 func (j *ScanJob) setResult(result *pipeline.Result) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.result = result
+	j.version++
 }
 
 func (j *ScanJob) setError(err error) {
@@ -100,6 +109,16 @@ func (j *ScanJob) setError(err error) {
 	j.status = "error"
 	j.err = err.Error()
 	j.log = append(j.log, "ERROR: "+err.Error())
+	j.version++
+}
+
+// Version returns the job's current mutation counter, for the SSE
+// handler to poll cheaply without re-marshaling the whole snapshot
+// just to detect "nothing changed since last time".
+func (j *ScanJob) Version() int {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return j.version
 }
 
 // Snapshot is a point-in-time, JSON-serializable view of a ScanJob, or

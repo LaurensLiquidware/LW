@@ -39,6 +39,12 @@ export class ScanService {
     return firstValueFrom(this.http.post<ScanSnapshot>(`/api/scans/${id}/cancel`, {}));
   }
 
+  /** URL for streaming a job's live snapshot over Server-Sent Events
+   * (GET /api/scans/{id}/events) -- used directly with EventSource. */
+  eventsUrl(id: string): string {
+    return `/api/scans/${id}/events`;
+  }
+
   openScan(inventoryPath: string): Promise<ScanResult> {
     return firstValueFrom(this.http.post<ScanResult>('/api/scans/open', { inventoryPath }));
   }

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -139,6 +141,67 @@ func TestCancelScanHandler_StopsARunningScan(t *testing.T) {
 	waitFor(t, func() bool { return job.Snapshot().Status == "canceled" })
 	if elapsed := time.Since(start); elapsed > 10*time.Second {
 		t.Errorf("took %v to cancel, want well under the script's 30s sleep", elapsed)
+	}
+}
+
+// TestSSEScanHandler_StreamsUpdatesUntilTerminal proves the SSE stream
+// actually carries live updates (not just an initial snapshot) and
+// closes itself once the job reaches a terminal status -- using a real
+// HTTP server and a real streaming client, since httptest.ResponseRecorder
+// can't exercise http.Flusher/streaming behavior faithfully.
+func TestSSEScanHandler_StreamsUpdatesUntilTerminal(t *testing.T) {
+	registry := NewJobRegistry()
+	job := registry.create("id1", "a.vhdx", "/tmp/a")
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /api/scans/{id}/events", SSEScanHandler(registry))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		job.SetStatus("stage1")
+		job.AppendLog("mounting package")
+		time.Sleep(100 * time.Millisecond)
+		job.setResult(&pipeline.Result{PackageName: "TestPkg"})
+		job.SetStatus("done")
+	}()
+
+	resp, err := http.Get(srv.URL + "/api/scans/" + job.ID + "/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if ct := resp.Header.Get("Content-Type"); ct != "text/event-stream" {
+		t.Errorf("Content-Type = %q, want text/event-stream", ct)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	var events []Snapshot
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		var snap Snapshot
+		if err := json.Unmarshal([]byte(strings.TrimPrefix(line, "data: ")), &snap); err != nil {
+			t.Fatal(err)
+		}
+		events = append(events, snap)
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(events) < 2 {
+		t.Fatalf("got %d events, want at least 2 (initial + at least one update): %+v", len(events), events)
+	}
+	last := events[len(events)-1]
+	if last.Status != "done" {
+		t.Errorf("last event status = %q, want done", last.Status)
+	}
+	if last.Result == nil || last.Result.PackageName != "TestPkg" {
+		t.Errorf("last event result = %+v", last.Result)
 	}
 }
 

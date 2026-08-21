@@ -91,8 +91,10 @@ trap 'rm -f "${cleanup_paths[@]}"' EXIT
 echo "build-windows: generating Windows resources (icon + version info)..."
 generate_syso cmd/tray flexapp-vuln-scanner flexapp-vuln-scanner.exe "FlexApp Vulnerability Scanner" cmd/tray/app.manifest
 generate_syso cmd/server flexapp-vuln-scanner-server flexapp-vuln-scanner-server.exe "FlexApp Vulnerability Scanner (Server)"
+generate_syso cmd/cli flexapp-vuln-scanner-cli flexapp-vuln-scanner-cli.exe "FlexApp Vulnerability Scanner (CLI)"
 
 echo "build-windows: cross-compiling windows/amd64..."
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-H=windowsgui" -o "$out_dir/flexapp-vuln-scanner.exe" ./cmd/tray
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o "$out_dir/flexapp-vuln-scanner-server.exe" ./cmd/server
-echo "build-windows: built $out_dir/flexapp-vuln-scanner.exe and $out_dir/flexapp-vuln-scanner-server.exe"
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o "$out_dir/flexapp-vuln-scanner-cli.exe" ./cmd/cli
+echo "build-windows: built $out_dir/flexapp-vuln-scanner.exe, $out_dir/flexapp-vuln-scanner-server.exe, and $out_dir/flexapp-vuln-scanner-cli.exe"

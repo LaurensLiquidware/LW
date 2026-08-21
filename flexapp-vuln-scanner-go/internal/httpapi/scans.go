@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"flexapp-vuln-scanner/internal/cpemap"
 	"flexapp-vuln-scanner/internal/pipeline"
@@ -101,6 +103,80 @@ func CancelScanHandler(registry *JobRegistry) http.HandlerFunc {
 		}
 		job.Cancel()
 		writeJSON(w, http.StatusOK, job.Snapshot())
+	}
+}
+
+// sseTerminal reports whether a status is terminal -- once reached,
+// nothing about the job will ever change again, so SSEScanHandler can
+// send one final event and close the stream.
+func sseTerminal(status string) bool {
+	return status == "done" || status == "error" || status == "canceled"
+}
+
+// SSEScanHandler streams a job's snapshot as Server-Sent Events,
+// pushing a new event whenever ScanJob.Version() changes (log lines,
+// progress, status, or the final result), instead of the client
+// polling GET /api/scans/{id} on a timer. Closes the stream once the
+// job reaches a terminal status, or immediately if the client
+// disconnects.
+func SSEScanHandler(registry *JobRegistry) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		job, ok := registry.Get(id)
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such scan job"})
+			return
+		}
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "streaming unsupported"})
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.WriteHeader(http.StatusOK)
+
+		sendSnapshot := func() (status string, err error) {
+			snap := job.Snapshot()
+			data, err := json.Marshal(snap)
+			if err != nil {
+				return snap.Status, err
+			}
+			if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+				return snap.Status, err
+			}
+			flusher.Flush()
+			return snap.Status, nil
+		}
+
+		status, err := sendSnapshot()
+		if err != nil || sseTerminal(status) {
+			return
+		}
+
+		lastVersion := job.Version()
+		ticker := time.NewTicker(200 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case <-ticker.C:
+				if v := job.Version(); v == lastVersion {
+					continue
+				} else {
+					lastVersion = v
+				}
+				status, err := sendSnapshot()
+				if err != nil || sseTerminal(status) {
+					return
+				}
+			}
+		}
 	}
 }
 

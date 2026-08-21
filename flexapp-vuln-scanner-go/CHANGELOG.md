@@ -115,3 +115,47 @@
   via curl and a real Playwright browser session (screenshots
   reviewed): clicking Cancel in the UI genuinely stops the running
   subprocess within about a second.
+- Added Server-Sent Events streaming for scan progress, replacing the
+  Angular Scan Progress screen's polling loop with a push-based one:
+  `GET /api/scans/{id}/events` (`internal/httpapi/scans.go`'s
+  `SSEScanHandler`) sends an immediate snapshot, then a new one each
+  time `ScanJob`'s new `version` mutation counter changes, closing the
+  stream on a terminal status. The Angular side now opens an
+  `EventSource` and falls back to the old polling loop if the
+  connection never delivers a single message (e.g. a proxy that
+  strips SSE). Verified with a new test
+  (`TestSSEScanHandler_StreamsUpdatesUntilTerminal`, a real streaming
+  `httptest.Server` request parsing `data:` lines), a real `curl -N`
+  capture showing progressive log delivery, and Playwright screenshots
+  of a live scan.
+- Added a CLI mode (`cmd/cli`, `flexapp-vuln-scanner-cli`) for
+  scripted/CI/cron use with no HTTP server involved: `-package` or
+  `-refresh` plus `-output` run Stage 1 and/or Stage 2 directly against
+  the same `internal/pipeline` code the server uses, printing progress
+  and a final summary to stdout and honoring `Ctrl+C`/SIGTERM via
+  `context`. Added to `Makefile`'s `build` target and
+  `scripts/build-windows.sh`'s Windows cross-compile (now producing
+  three binaries: tray, server, CLI). Verified with new tests
+  (`cmd/cli/main_test.go`, including a real end-to-end run against a
+  synthetic empty inventory that produces all six report files with no
+  network access) and a real Windows cross-compile confirmed to
+  produce a valid console-subsystem `flexapp-vuln-scanner-cli.exe`.
+- Added the Grype CVE gate from the Sparks Tool checklist:
+  `scripts/check-vulnerabilities.sh` runs Grype against `bom.cdx.json`
+  and fails the build on any Critical/High match. Confirmed working
+  end-to-end in this dev environment except for one specific, already-
+  documented limitation: Grype's own vulnerability-database download
+  (`grype.anchore.io`) is blocked by this sandbox's network egress
+  policy, the same restriction affecting OSV/NVD elsewhere in this
+  project. The script detects this exact failure mode (rather than a
+  real scan failure) and exits non-zero with an explicit message
+  instead of silently reporting a clean bill of health — verified by
+  running it for real against the actual SBOM and observing that exact
+  message. `scripts/release.sh` (previously an unmodified, partly
+  broken copy of `ProfileUnityMSPConsole`'s release script — dead
+  references to `.env.example`, `docs/MANUAL.md`, `cmd/gendemodb`)
+  now calls this script as its CVE gate in place of `govulncheck`, adds
+  a real `.env.example` documenting every `FVS_*` setting, drops the
+  manual-PDF and demo-database steps (neither applies to this project),
+  and packages `flexapp-vuln-scanner-cli`/`.exe` into both release
+  zips.

@@ -13,6 +13,7 @@ generate:
 
 build: generate frontend
 	go build -o flexapp-vuln-scanner ./cmd/server
+	go build -o flexapp-vuln-scanner-cli ./cmd/cli
 
 # Explicit, not ./..., because web/frontend/node_modules ships at least
 # one vendored .go file of its own (a Node package's Go implementation)

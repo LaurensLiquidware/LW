@@ -9,10 +9,11 @@
 # packages, since they go:embed its output (web/dist) -- there is no
 # fallback content once the Phase 1 placeholder is gone.
 #
-# Local tool prerequisites beyond Go/Node: cyclonedx-gomod, govulncheck
-# (both `go install`, see scripts/generate-sbom.sh's header), pandoc plus
-# a Chromium/Chrome binary for scripts/render-manual-pdf.sh, and
-# goversioninfo for scripts/build-windows.sh (go install
+# Local tool prerequisites beyond Go/Node: cyclonedx-gomod, cyclonedx-npm
+# (both `go install`/`npm install -g`, see scripts/generate-sbom.sh's
+# header), grype (go install github.com/anchore/grype/cmd/grype@latest,
+# see scripts/check-vulnerabilities.sh), and goversioninfo for
+# scripts/build-windows.sh (go install
 # github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest).
 set -euo pipefail
 
@@ -35,55 +36,35 @@ go test ./cmd/... ./internal/... ./web
 echo "== 4/9: regenerate SBOM (Go + npm merged) =="
 ./scripts/generate-sbom.sh
 
-echo "== 5/9: CVE gate (govulncheck) =="
-if ! command -v govulncheck >/dev/null 2>&1; then
-  echo "release: govulncheck not found on PATH -- go install golang.org/x/vuln/cmd/govulncheck@v1.1.4" >&2
-  exit 1
-fi
-govulncheck_output="$(mktemp)"
-trap 'rm -f "$govulncheck_output"' EXIT
-if govulncheck ./cmd/... ./internal/... ./web >"$govulncheck_output" 2>&1; then
-  echo "release: govulncheck found no known vulnerabilities."
-elif grep -q "fetching vulnerabilities" "$govulncheck_output"; then
-  echo "release: WARNING -- govulncheck could not reach its vulnerability database (network policy)." >&2
-  echo "release: this is an environment limitation, not a clean bill of health -- re-run this script" >&2
-  echo "release: from a network-unrestricted environment before treating this build as a real release." >&2
-  cat "$govulncheck_output" >&2
-else
-  echo "release: govulncheck found a real, known vulnerability -- fix it before releasing." >&2
-  cat "$govulncheck_output" >&2
-  exit 1
-fi
+echo "== 5/9: CVE gate (grype against the SBOM) =="
+./scripts/check-vulnerabilities.sh
 
 echo "== 6/9: generate THIRD-PARTY-NOTICES.txt from the SBOM =="
 python3 ./scripts/generate-notices.py bom.cdx.json THIRD-PARTY-NOTICES.txt
 
-echo "== 7/9: render the user manual to PDF =="
-manual_pdf="$(mktemp --suffix=.pdf)"
-trap 'rm -f "$govulncheck_output" "$manual_pdf"' EXIT
-./scripts/render-manual-pdf.sh "$manual_pdf"
-
-echo "== 8/10: build backend (embeds VERSION, frontend, SBOM, notices) =="
+echo "== 7/9: build backend + CLI (embeds VERSION, frontend, SBOM, notices) =="
 # Stage 4/6 rewrote bom.cdx.json and THIRD-PARTY-NOTICES.txt at the repo
 # root -- re-sync so internal/legal embeds the versions just generated,
 # not whatever was there before this script ran.
 ./scripts/sync-legal.sh
 go build -o "$repo_root/flexapp-vuln-scanner" ./cmd/server
-echo "release: built ./flexapp-vuln-scanner"
+go build -o "$repo_root/flexapp-vuln-scanner-cli" ./cmd/cli
+echo "release: built ./flexapp-vuln-scanner and ./flexapp-vuln-scanner-cli"
 
-echo "== 9/10: cross-compile Windows build (tray launcher + server, Liquidware icon + version info) =="
+echo "== 8/9: cross-compile Windows build (tray launcher + server + CLI, Liquidware icon + version info) =="
 if ! command -v goversioninfo >/dev/null 2>&1; then
   echo "release: goversioninfo not found on PATH -- go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest" >&2
   exit 1
 fi
 ./scripts/build-windows.sh "$repo_root"
 
-echo "== 10/10: produce release zips (Linux + Windows) =="
-# Every release bundles: the binary/binaries (Windows gets two -- the
-# tray launcher an operator double-clicks, and the actual headless
-# server it spawns), the user manual (PDF), a starting .env.example (see
-# internal/dotenv -- the server reads .env from its own working
-# directory, so operators need this to get running without
+echo "== 9/9: produce release zips (Linux + Windows) =="
+# Every release bundles: the binary/binaries (Windows gets three -- the
+# tray launcher an operator double-clicks, the headless server it spawns,
+# and the CLI for scripted/CI/cron use; Linux gets the server and CLI
+# binaries, since the tray launcher is Windows-only), a starting
+# .env.example (see internal/dotenv -- the server reads .env from its own
+# working directory, so operators need this to get running without
 # hand-exporting environment variables), the version history, and
 # everything a compliance reviewer needs to sign off on third-party
 # content -- the SBOM, the per-license breakdown, and the Sparks Tool
@@ -93,13 +74,12 @@ echo "== 10/10: produce release zips (Linux + Windows) =="
 # is shared.
 version="$(cat VERSION)"
 zip_dir="$(mktemp -d)"
-trap 'rm -f "$govulncheck_output" "$manual_pdf"; rm -rf "$zip_dir"' EXIT
+trap 'rm -rf "$zip_dir"' EXIT
 
 linux_zip="flexapp-vuln-scanner-${version}-linux-amd64.zip"
 linux_stage="$zip_dir/flexapp-vuln-scanner-${version}-linux-amd64"
 mkdir -p "$linux_stage"
-cp flexapp-vuln-scanner "$linux_stage/"
-cp "$manual_pdf" "$linux_stage/MANUAL.pdf"
+cp flexapp-vuln-scanner flexapp-vuln-scanner-cli "$linux_stage/"
 cp .env.example Spark_License.pdf bom.cdx.json THIRD-PARTY-NOTICES.txt CHANGELOG.md "$linux_stage/"
 (cd "$zip_dir" && zip -qr "$repo_root/$linux_zip" "flexapp-vuln-scanner-${version}-linux-amd64")
 echo "release: wrote $linux_zip"
@@ -107,17 +87,7 @@ echo "release: wrote $linux_zip"
 windows_zip="flexapp-vuln-scanner-${version}-windows-amd64.zip"
 windows_stage="$zip_dir/flexapp-vuln-scanner-${version}-windows-amd64"
 mkdir -p "$windows_stage"
-cp flexapp-vuln-scanner.exe flexapp-vuln-scanner-server.exe "$windows_stage/"
-cp "$manual_pdf" "$windows_stage/MANUAL.pdf"
+cp flexapp-vuln-scanner.exe flexapp-vuln-scanner-server.exe flexapp-vuln-scanner-cli.exe "$windows_stage/"
 cp .env.example Spark_License.pdf bom.cdx.json THIRD-PARTY-NOTICES.txt CHANGELOG.md "$windows_stage/"
 (cd "$zip_dir" && zip -qr "$repo_root/$windows_zip" "flexapp-vuln-scanner-${version}-windows-amd64")
 echo "release: wrote $windows_zip"
-
-echo "== extra: regenerate demo.db (separate release artifact, not bundled in the zips above) =="
-# demo.db is disposable and staleness-sensitive (its history is relative to
-# generation time) -- always regenerate a fresh one per release rather than
-# reuse a stale copy. Not committed to the repo; see README.md's "Demo
-# data" section for what this file is and how operators use it.
-rm -f demo.db
-go run ./cmd/gendemodb --out demo.db
-echo "release: wrote demo.db"
