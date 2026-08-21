@@ -9,9 +9,6 @@
     "compare": "Vergelijken",
     "about": "Over"
   },
-  "comingSoon": {
-    "message": "Binnenkort beschikbaar"
-  },
   "about": {
     "heading": "Over",
     "version": "Versie",
@@ -20,5 +17,60 @@
     "sbomLink": "Software Bill of Materials (bom.cdx.json)",
     "sbomDescription": "Een CycloneDX 1.6-inventarisatie van componenten van derden, zodat uw beveiligingsteam dit tegen uw eigen beleid kan toetsen.",
     "developer": "Ontwikkeld door Laurens van Duijn"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "newScan": "Nieuwe Scan",
+    "noScans": "Nog geen scans — start er een via \"Nieuwe Scan\".",
+    "package": "Pakket",
+    "status": "Status",
+    "coverage": "Dekking",
+    "severities": "Ernst",
+    "created": "Aangemaakt"
+  },
+  "newScan": {
+    "heading": "Nieuwe Scan",
+    "packagePath": "Pakketpad",
+    "packagePathPlaceholder": "bijv. D:\\FlexAppShare\\mijnapp.vhdx",
+    "outputDir": "Uitvoermap",
+    "advanced": "Geavanceerd",
+    "nvdApiKey": "NVD API-sleutel",
+    "nvdApiKeyHint": "Optioneel — verhoogt de NVD-limiet van 5 naar 50 verzoeken per 30 seconden.",
+    "start": "Scan Starten",
+    "genericError": "Kon de scan niet starten."
+  },
+  "scanProgress": {
+    "heading": "Scanvoortgang"
+  },
+  "results": {
+    "coverage": "Resolutiedekking",
+    "resolved": "Opgelost",
+    "severities": "Ernst",
+    "severity": "Ernst",
+    "id": "ID",
+    "component": "Component",
+    "version": "Versie",
+    "affectedFiles": "Betrokken Bestanden",
+    "files": "bestanden",
+    "summary": "Samenvatting",
+    "confidence": "Zekerheid",
+    "downloadPdf": "PDF-rapport",
+    "downloadSbom": "SBOM",
+    "downloadCsv": "CSV",
+    "noVulnData": "Voor deze scan is geen kwetsbaarheidsdata aangeleverd — dat is niet hetzelfde als \"geen kwetsbaarheden gevonden\".",
+    "noFindings": "Geen kwetsbaarheden gevonden.",
+    "noScanSpecified": "Geen scan opgegeven.",
+    "loadError": "Kon de resultaten van deze scan niet laden."
+  },
+  "compare": {
+    "heading": "Scans Vergelijken",
+    "oldDir": "Uitvoermap Oude Scan",
+    "newDir": "Uitvoermap Nieuwe Scan",
+    "run": "Vergelijken",
+    "unchanged": "ongewijzigd",
+    "newFindings": "Nieuwe Bevindingen",
+    "resolvedFindings": "Opgeloste Bevindingen",
+    "none": "Geen.",
+    "genericError": "Kon deze scans niet vergelijken."
   }
 }

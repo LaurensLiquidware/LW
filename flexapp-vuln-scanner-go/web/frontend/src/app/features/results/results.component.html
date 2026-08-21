@@ -1,0 +1,110 @@
+<div class="flex flex-col gap-4 p-6">
+  @if (loadError()) {
+    <p class="lwl-muted" style="color: var(--poor-color);">
+      {{ loadErrorIsRaw() ? loadError()! : (loadError()! | transloco) }}
+    </p>
+  }
+
+  @if (result(); as result) {
+    <div class="flex items-center justify-between">
+      <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ result.packageName }}</h1>
+      @if (jobId()) {
+        <div class="flex gap-2">
+          <a [href]="downloadUrl('pdf')" target="_blank" rel="noopener">
+            <p-button [label]="'results.downloadPdf' | transloco" icon="pi pi-file-pdf" severity="secondary" size="small" />
+          </a>
+          <a [href]="downloadUrl('sbom')" target="_blank" rel="noopener">
+            <p-button [label]="'results.downloadSbom' | transloco" icon="pi pi-file" severity="secondary" size="small" />
+          </a>
+          @if (result.hasVulnMatches) {
+            <a [href]="downloadUrl('csv')" target="_blank" rel="noopener">
+              <p-button [label]="'results.downloadCsv' | transloco" icon="pi pi-table" severity="secondary" size="small" />
+            </a>
+          }
+        </div>
+      }
+    </div>
+
+    <p-card>
+      <div class="flex flex-wrap gap-6">
+        <div>
+          <span class="lwl-micro">{{ 'results.coverage' | transloco }}</span>
+          <div class="lwl-metric-value">
+            @if (result.coverage.coveragePercent != null) {
+              {{ result.coverage.coveragePercent | number: '1.1-1' }}%
+            } @else {
+              N/A
+            }
+          </div>
+        </div>
+        <div>
+          <span class="lwl-micro">{{ 'results.resolved' | transloco }}</span>
+          <div class="lwl-metric-label">{{ result.coverage.resolvedComponents }} / {{ result.coverage.candidateComponents }}</div>
+        </div>
+        <div>
+          <span class="lwl-micro">{{ 'results.severities' | transloco }}</span>
+          <div class="lwl-metric-label">
+            {{ result.severityCounts['CRITICAL'] }}C
+            / {{ result.severityCounts['HIGH'] }}H
+            / {{ result.severityCounts['MEDIUM'] }}M
+            / {{ result.severityCounts['LOW'] }}L
+          </div>
+        </div>
+      </div>
+    </p-card>
+
+    @if (!result.hasVulnMatches) {
+      <p class="lwl-muted">{{ 'results.noVulnData' | transloco }}</p>
+    } @else if (allRows().length === 0) {
+      <p class="lwl-muted">{{ 'results.noFindings' | transloco }}</p>
+    } @else {
+      <p-table [value]="allRows()" dataKey="id">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>{{ 'results.severity' | transloco }}</th>
+            <th>{{ 'results.id' | transloco }}</th>
+            <th>{{ 'results.component' | transloco }}</th>
+            <th>{{ 'results.version' | transloco }}</th>
+            <th>{{ 'results.affectedFiles' | transloco }}</th>
+            <th>{{ 'results.summary' | transloco }}</th>
+            <th>{{ 'results.confidence' | transloco }}</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-row>
+          <tr>
+            <td><p-tag [value]="row.severityLevel || 'UNKNOWN'" [severity]="severityFor(row.severityLevel)" /></td>
+            <td>
+              @if (row.url) {
+                <a [href]="row.url" target="_blank" rel="noopener">{{ row.id }}</a>
+              } @else {
+                {{ row.id }}
+              }
+            </td>
+            <td>{{ row.product }}</td>
+            <td>{{ row.version }}</td>
+            <td>
+              @if (row.relativePaths.length === 1) {
+                <span class="lwl-cell">{{ row.relativePaths[0] }}</span>
+              } @else if (row.relativePaths.length > 1) {
+                <details>
+                  <summary class="lwl-cell">{{ row.relativePaths.length }} {{ 'results.files' | transloco }}</summary>
+                  <ul class="lwl-micro">
+                    @for (path of row.relativePaths; track path) {
+                      <li>{{ path }}</li>
+                    }
+                  </ul>
+                </details>
+              } @else {
+                <span class="lwl-muted">—</span>
+              }
+            </td>
+            <td class="lwl-cell">{{ row.summary }}</td>
+            <td class="lwl-micro">{{ row.confidence }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  } @else if (!loading() && !loadError()) {
+    <p class="lwl-muted">{{ 'results.noScanSpecified' | transloco }}</p>
+  }
+</div>

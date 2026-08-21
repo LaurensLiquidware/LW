@@ -1,0 +1,50 @@
+<div class="flex flex-col gap-4 p-6">
+  <div class="flex items-center justify-between">
+    <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'dashboard.title' | transloco }}</h1>
+    <p-button [label]="'dashboard.newScan' | transloco" icon="pi pi-plus" routerLink="/new-scan" />
+  </div>
+
+  @if (!loading() && scans().length === 0) {
+    <p class="lwl-muted">{{ 'dashboard.noScans' | transloco }}</p>
+  }
+
+  @if (scans().length > 0) {
+    <p-table [value]="scans()" dataKey="id">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>{{ 'dashboard.package' | transloco }}</th>
+          <th>{{ 'dashboard.status' | transloco }}</th>
+          <th>{{ 'dashboard.coverage' | transloco }}</th>
+          <th>{{ 'dashboard.severities' | transloco }}</th>
+          <th>{{ 'dashboard.created' | transloco }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-scan>
+        <tr class="lwl-row-clickable" (click)="open(scan)">
+          <td>{{ scan.packagePath }}</td>
+          <td><p-tag [value]="scan.status" [severity]="severityFor(scan.status)" /></td>
+          <td>
+            @if (scan.result?.coverage?.coveragePercent != null) {
+              {{ scan.result.coverage.coveragePercent | number: '1.1-1' }}%
+            } @else {
+              —
+            }
+          </td>
+          <td>
+            @if (scan.result) {
+              <span class="lwl-micro">
+                {{ scan.result.severityCounts['CRITICAL'] }}C
+                / {{ scan.result.severityCounts['HIGH'] }}H
+                / {{ scan.result.severityCounts['MEDIUM'] }}M
+                / {{ scan.result.severityCounts['LOW'] }}L
+              </span>
+            } @else {
+              —
+            }
+          </td>
+          <td>{{ scan.createdAt | date: 'short' }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+</div>

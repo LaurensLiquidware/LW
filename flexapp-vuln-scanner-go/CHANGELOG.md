@@ -42,3 +42,21 @@
   intends. Not done yet: SSE/streaming progress (clients currently must
   poll `GET /api/scans/{id}`), and the Angular screens that will call
   any of this — they still show "Coming Soon" placeholders.
+- Built the real Angular screens against the scan API (build-order step
+  4): Dashboard (polling job list), New Scan (form with auto-filled
+  output folder, Advanced NVD API key section), Scan Progress (polls a
+  job, hands off to Results on completion), Results (coverage summary,
+  severity counts, findings table with an expandable "Affected Files"
+  disclosure per finding — mirrors the Flask web UI's
+  `affected_files_cell` macro — and PDF/SBOM/CSV download links), and
+  Compare (old/new scan diff). Added `core/scan.service.ts` +
+  `core/models/scan.ts` as the typed API client, and a `saveError`/
+  `saveErrorIsRaw`-style pair on every form (matching
+  `ProfileUnityMSPConsole`'s settings screen convention) so translated
+  app copy and raw backend error text never get conflated. Verified:
+  `ng build` succeeds, `tsc --noEmit` is clean, and a real Playwright
+  pass against the running server confirms every screen renders
+  correctly — including a real end-to-end Results render against the
+  shared fixture (66.7% coverage, 2/3 resolved, correct "no vuln data"
+  notice) and a caught-and-fixed bug where an untranslated error case
+  showed a raw i18n key instead of its message.

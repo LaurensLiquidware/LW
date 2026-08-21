@@ -12,23 +12,24 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
-        loadComponent: () => import('./features/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { titleKey: 'nav.dashboard' },
+        loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
         path: 'new-scan',
-        loadComponent: () => import('./features/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { titleKey: 'nav.newScan' },
+        loadComponent: () => import('./features/new-scan/new-scan.component').then((m) => m.NewScanComponent),
+      },
+      {
+        path: 'scan-progress',
+        loadComponent: () =>
+          import('./features/scan-progress/scan-progress.component').then((m) => m.ScanProgressComponent),
       },
       {
         path: 'results',
-        loadComponent: () => import('./features/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { titleKey: 'nav.results' },
+        loadComponent: () => import('./features/results/results.component').then((m) => m.ResultsComponent),
       },
       {
         path: 'compare',
-        loadComponent: () => import('./features/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-        data: { titleKey: 'nav.compare' },
+        loadComponent: () => import('./features/compare/compare.component').then((m) => m.CompareComponent),
       },
       // No nested "about" route: it's shown as a dialog from the shell
       // (see shell.component.html) so it never needs a back button. The

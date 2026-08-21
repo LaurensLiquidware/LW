@@ -1,0 +1,62 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:870b1ed1-18fe-48b7-b9ab-506792297e9b",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-21T20:22:39Z",
+    "component": {
+      "type": "application",
+      "name": "D:\\FlexAppShare\\sample_20260101000000.vhdx",
+      "version": "0.0.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "outer-app",
+      "version": "9.9.9",
+      "bom-ref": "purl:pkg:maven/com.acme/outer-app@9.9.9",
+      "properties": [
+        {
+          "name": "flexapp-vuln:resolutionMethod",
+          "value": "jar-pom-properties"
+        },
+        {
+          "name": "flexapp-vuln:confidence",
+          "value": "exact-purl"
+        }
+      ],
+      "purl": "pkg:maven/com.acme/outer-app@9.9.9",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "bc70a2ea1dea659dd82d351ab4f0a9ef9d387ffd3b84491cb4d60cd8cc9bea36"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "OpenSSL",
+      "version": "1.1.1w",
+      "bom-ref": "cpe:cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*",
+      "properties": [
+        {
+          "name": "flexapp-vuln:resolutionMethod",
+          "value": "string-signature"
+        },
+        {
+          "name": "flexapp-vuln:confidence",
+          "value": "mapped-cpe"
+        }
+      ],
+      "cpe": "cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7ea69a20ca4aa8e96bb352d579db1bd2c073754480410f7bfca7916ff4ebe11c"
+        }
+      ]
+    }
+  ]
+}

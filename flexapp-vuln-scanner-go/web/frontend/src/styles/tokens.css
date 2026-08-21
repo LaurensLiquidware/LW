@@ -220,3 +220,25 @@ html {
   font-size: var(--text-sm);
   color: var(--p-text-color);
 }
+
+.lwl-row-clickable {
+  cursor: pointer;
+}
+
+.lwl-row-clickable:hover {
+  background: var(--p-content-hover-background);
+}
+
+.lwl-log {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow-y: auto;
+  background: var(--p-content-background);
+  border: 1px solid var(--frame-border-color);
+  border-radius: var(--radius-md, 6px);
+  padding: 0.75rem;
+  margin: 0;
+}
