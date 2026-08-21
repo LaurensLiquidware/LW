@@ -1,11 +1,15 @@
 package pipeline
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"flexapp-vuln-scanner/internal/cpemap"
 )
@@ -40,7 +44,7 @@ func copyFixture(t *testing.T, dstDir string) string {
 // test_run_stage1_missing_script_raises.
 func TestRunStage1_MissingScriptRaises(t *testing.T) {
 	sink := &fakeSink{}
-	_, err := RunStage1(sink, "/nonexistent/Invoke-FlexAppInventory.ps1", "whatever.vhdx", t.TempDir())
+	_, err := RunStage1(context.Background(), sink, "/nonexistent/Invoke-FlexAppInventory.ps1", "whatever.vhdx", t.TempDir())
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -49,6 +53,35 @@ func TestRunStage1_MissingScriptRaises(t *testing.T) {
 	}
 	if sink.status != "stage1" {
 		t.Errorf("sink.status = %q, want stage1", sink.status)
+	}
+}
+
+// TestRunStage1_CancelStopsSubprocessPromptly proves cancellation is
+// real, not just a documented intent: it kills the pwsh subprocess
+// rather than waiting for it to finish on its own.
+func TestRunStage1_CancelStopsSubprocessPromptly(t *testing.T) {
+	if _, err := exec.LookPath("pwsh"); err != nil {
+		t.Skip("pwsh not found on PATH")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		cancel()
+	}()
+
+	sink := &fakeSink{}
+	start := time.Now()
+	_, err := RunStage1(ctx, sink, "testdata/slow-stage1.ps1", "pkg", t.TempDir())
+	elapsed := time.Since(start)
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+	// The script sleeps 30s; a prompt cancel should return in well
+	// under that -- generous bound to stay robust on a loaded CI box.
+	if elapsed > 10*time.Second {
+		t.Errorf("elapsed = %v, want well under the script's 30s sleep", elapsed)
 	}
 }
 

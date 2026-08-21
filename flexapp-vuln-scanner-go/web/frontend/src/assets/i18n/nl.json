@@ -40,7 +40,9 @@
     "genericError": "Kon de scan niet starten."
   },
   "scanProgress": {
-    "heading": "Scanvoortgang"
+    "heading": "Scanvoortgang",
+    "cancel": "Annuleren",
+    "canceled": "Geannuleerd."
   },
   "results": {
     "coverage": "Resolutiedekking",

@@ -40,7 +40,9 @@
     "genericError": "Could not start the scan."
   },
   "scanProgress": {
-    "heading": "Scan Progress"
+    "heading": "Scan Progress",
+    "cancel": "Cancel",
+    "canceled": "Canceled."
   },
   "results": {
     "coverage": "Resolution Coverage",

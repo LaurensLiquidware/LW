@@ -6,6 +6,7 @@
 package nvd
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -118,7 +119,7 @@ func (c *Client) throttle() {
 // QueryCPE returns the raw NVD 2.0 API response for a CPE 2.3 string.
 // Cached forever once fetched -- a cache hit never touches the network
 // or the rate limiter.
-func (c *Client) QueryCPE(cpe23 string) (map[string]any, error) {
+func (c *Client) QueryCPE(ctx context.Context, cpe23 string) (map[string]any, error) {
 	if cached, ok, err := c.readCache(cpe23); err != nil {
 		return nil, err
 	} else if ok {
@@ -126,6 +127,9 @@ func (c *Client) QueryCPE(cpe23 string) (map[string]any, error) {
 	}
 
 	for attempt := 0; attempt <= max429Retries; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		c.throttle()
 
 		u, _ := url.Parse(c.BaseURL)
@@ -133,7 +137,7 @@ func (c *Client) QueryCPE(cpe23 string) (map[string]any, error) {
 		q.Set("cpeName", cpe23)
 		u.RawQuery = q.Encode()
 
-		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 		if err != nil {
 			return nil, err
 		}

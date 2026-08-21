@@ -87,6 +87,23 @@ func GetScanHandler(registry *JobRegistry) http.HandlerFunc {
 	}
 }
 
+// CancelScanHandler requests that a running job stop as soon as
+// possible -- kills the Stage 1 subprocess, or aborts an in-flight
+// Stage 2 HTTP call and stops the matching loop between items. A no-op
+// (still 200) if the job has already finished.
+func CancelScanHandler(registry *JobRegistry) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		job, ok := registry.Get(id)
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such scan job"})
+			return
+		}
+		job.Cancel()
+		writeJSON(w, http.StatusOK, job.Snapshot())
+	}
+}
+
 // scanFileKind maps a URL path segment to the Result.Files field it
 // serves, so a request can only ever reach a path this job's own
 // pipeline run actually produced -- never an arbitrary filesystem path.

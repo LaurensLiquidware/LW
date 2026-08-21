@@ -35,6 +35,10 @@ export class ScanService {
     return firstValueFrom(this.http.get<ScanSnapshot>(`/api/scans/${id}`));
   }
 
+  cancelScan(id: string): Promise<ScanSnapshot> {
+    return firstValueFrom(this.http.post<ScanSnapshot>(`/api/scans/${id}/cancel`, {}));
+  }
+
   openScan(inventoryPath: string): Promise<ScanResult> {
     return firstValueFrom(this.http.post<ScanResult>('/api/scans/open', { inventoryPath }));
   }

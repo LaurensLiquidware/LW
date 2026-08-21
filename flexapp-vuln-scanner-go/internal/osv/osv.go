@@ -6,6 +6,7 @@ package osv
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -103,7 +104,7 @@ type querybatchResponse struct {
 // QueryBatch returns {purl: [vulnID, ...]} for every purl given. Cached
 // purls never hit the network again. Uncached purls are sent to
 // /v1/querybatch in groups of c.BatchSize.
-func (c *Client) QueryBatch(purls []string) (map[string][]string, error) {
+func (c *Client) QueryBatch(ctx context.Context, purls []string) (map[string][]string, error) {
 	results := map[string][]string{}
 	var uncached []string
 
@@ -125,12 +126,15 @@ func (c *Client) QueryBatch(purls []string) (map[string][]string, error) {
 		batchSize = defaultBatchSize
 	}
 	for i := 0; i < len(uncached); i += batchSize {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		end := i + batchSize
 		if end > len(uncached) {
 			end = len(uncached)
 		}
 		batch := uncached[i:end]
-		batchResults, err := c.queryBatchUncached(batch)
+		batchResults, err := c.queryBatchUncached(ctx, batch)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +149,7 @@ func (c *Client) QueryBatch(purls []string) (map[string][]string, error) {
 	return results, nil
 }
 
-func (c *Client) queryBatchUncached(purls []string) (map[string][]string, error) {
+func (c *Client) queryBatchUncached(ctx context.Context, purls []string) (map[string][]string, error) {
 	out := map[string][]string{}
 	if len(purls) == 0 {
 		return out, nil
@@ -160,7 +164,7 @@ func (c *Client) queryBatchUncached(purls []string) (map[string][]string, error)
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.BaseURL+"/v1/querybatch", bytes.NewReader(buf))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/v1/querybatch", bytes.NewReader(buf))
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +200,7 @@ func (c *Client) queryBatchUncached(purls []string) (map[string][]string, error)
 
 // GetVulnerability fetches (or reads from cache) the full vulnerability
 // record for a single OSV vuln ID.
-func (c *Client) GetVulnerability(vulnID string) (map[string]any, error) {
+func (c *Client) GetVulnerability(ctx context.Context, vulnID string) (map[string]any, error) {
 	var cached map[string]any
 	ok, err := readCache(c.vulnCacheDir, vulnID, &cached)
 	if err != nil {
@@ -206,7 +210,11 @@ func (c *Client) GetVulnerability(vulnID string) (map[string]any, error) {
 		return cached, nil
 	}
 
-	resp, err := c.HTTPClient.Get(c.BaseURL + "/v1/vulns/" + vulnID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/v1/vulns/"+vulnID, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -229,8 +237,8 @@ func (c *Client) GetVulnerability(vulnID string) (map[string]any, error) {
 // onProgress(done, total), if non-nil, is called after each per-ID
 // detail fetch (the sequential part) -- not the batch lookup, which is
 // a single request regardless of purl count.
-func (c *Client) Resolve(purls []string, onProgress func(done, total int)) (map[string][]map[string]any, error) {
-	purlToIDs, err := c.QueryBatch(purls)
+func (c *Client) Resolve(ctx context.Context, purls []string, onProgress func(done, total int)) (map[string][]map[string]any, error) {
+	purlToIDs, err := c.QueryBatch(ctx, purls)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +257,10 @@ func (c *Client) Resolve(purls []string, onProgress func(done, total int)) (map[
 
 	vulnByID := map[string]map[string]any{}
 	for i, id := range uniqueIDs {
-		v, err := c.GetVulnerability(id)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		v, err := c.GetVulnerability(ctx, id)
 		if err != nil {
 			// Matches the Python client's behavior: log and skip rather
 			// than aborting the whole resolve on one bad ID.

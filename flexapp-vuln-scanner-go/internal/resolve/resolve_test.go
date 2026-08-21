@@ -1,6 +1,7 @@
 package resolve
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -74,7 +75,7 @@ func TestResolve_BuildsPurlsAndMatches(t *testing.T) {
 	}
 	nvdClient.BaseURL = nvdSrv.URL
 
-	result, err := ResolveWithClients(inv, openSSLMappings(), osvClient, nvdClient, nil)
+	result, err := ResolveWithClients(context.Background(), inv, openSSLMappings(), osvClient, nvdClient, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

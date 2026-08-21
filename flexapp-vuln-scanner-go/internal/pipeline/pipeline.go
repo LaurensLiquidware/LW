@@ -10,6 +10,7 @@ package pipeline
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -39,7 +40,8 @@ var wroteInventoryRe = regexp.MustCompile(`(?m)^Wrote (.+\.inventory\.json)`)
 
 // RunStage1 shells out to the Stage 1 PowerShell script, streaming its
 // output to sink, and returns the inventory JSON path it wrote.
-func RunStage1(sink ProgressSink, stage1Script, packagePath, outputDir string) (string, error) {
+// Canceling ctx kills the pwsh subprocess and returns ctx.Err().
+func RunStage1(ctx context.Context, sink ProgressSink, stage1Script, packagePath, outputDir string) (string, error) {
 	sink.SetStatus("stage1")
 
 	if _, err := os.Stat(stage1Script); err != nil {
@@ -51,7 +53,7 @@ func RunStage1(sink ProgressSink, stage1Script, packagePath, outputDir string) (
 		return "", fmt.Errorf("pwsh (PowerShell 7) not found on PATH - Stage 1 needs it to mount the package and run the inventory scan")
 	}
 
-	cmd := exec.Command(pwsh, "-NoLogo", "-NoProfile", "-File", stage1Script, "-Path", packagePath, "-OutputDir", outputDir)
+	cmd := exec.CommandContext(ctx, pwsh, "-NoLogo", "-NoProfile", "-File", stage1Script, "-Path", packagePath, "-OutputDir", outputDir)
 	sink.AppendLog("$ " + strings.Join(cmd.Args, " "))
 
 	stdout, err := cmd.StdoutPipe()
@@ -73,11 +75,17 @@ func RunStage1(sink ProgressSink, stage1Script, packagePath, outputDir string) (
 		outputLines = append(outputLines, line)
 	}
 
-	if err := cmd.Wait(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+	waitErr := cmd.Wait()
+	if err := ctx.Err(); err != nil {
+		// Canceled: report the cancellation, not the "killed" exit
+		// status it produced as a side effect.
+		return "", err
+	}
+	if waitErr != nil {
+		if exitErr, ok := waitErr.(*exec.ExitError); ok {
 			return "", fmt.Errorf("Stage 1 exited with code %d - see log above", exitErr.ExitCode())
 		}
-		return "", err
+		return "", waitErr
 	}
 
 	match := wroteInventoryRe.FindStringSubmatch(strings.Join(outputLines, "\n"))
@@ -89,8 +97,10 @@ func RunStage1(sink ProgressSink, stage1Script, packagePath, outputDir string) (
 
 // RunStage2 loads the inventory, resolves vulnerability matches, and
 // writes every report artifact, returning the result summary a results
-// view renders.
-func RunStage2(sink ProgressSink, inventoryPath, outputDir, cacheDir, nvdAPIKey string, mappings *cpemap.Mappings) (*Result, error) {
+// view renders. Canceling ctx aborts the OSV/NVD matching loop (an
+// in-flight HTTP request is aborted immediately; the loop itself is
+// checked between items) and returns ctx.Err().
+func RunStage2(ctx context.Context, sink ProgressSink, inventoryPath, outputDir, cacheDir, nvdAPIKey string, mappings *cpemap.Mappings) (*Result, error) {
 	sink.SetStatus("stage2")
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return nil, err
@@ -103,7 +113,7 @@ func RunStage2(sink ProgressSink, inventoryPath, outputDir, cacheDir, nvdAPIKey 
 	}
 
 	sink.AppendLog("Querying OSV.dev + NVD for vulnerability matches...")
-	vulnMatches, err := resolve.Resolve(inv, cacheDir, mappings, nvdAPIKey, sink.SetProgress)
+	vulnMatches, err := resolve.Resolve(ctx, inv, cacheDir, mappings, nvdAPIKey, sink.SetProgress)
 	if err != nil {
 		return nil, err
 	}

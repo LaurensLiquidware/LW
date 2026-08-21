@@ -4,6 +4,7 @@
 package resolve
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -58,7 +59,7 @@ type candidate struct {
 // Resolve matches every non-excluded file's identity against OSV.dev
 // (purl-expressible) or NVD (CPE-eligible), returning the combined
 // result. cacheDir is shared with the OSV/NVD on-disk response caches.
-func Resolve(inv *inventory.Inventory, cacheDir string, mappings *cpemap.Mappings, nvdAPIKey string, onProgress ProgressFunc) (*Result, error) {
+func Resolve(ctx context.Context, inv *inventory.Inventory, cacheDir string, mappings *cpemap.Mappings, nvdAPIKey string, onProgress ProgressFunc) (*Result, error) {
 	osvClient, err := osv.New(cacheDir)
 	if err != nil {
 		return nil, fmt.Errorf("set up osv client: %w", err)
@@ -67,13 +68,13 @@ func Resolve(inv *inventory.Inventory, cacheDir string, mappings *cpemap.Mapping
 	if err != nil {
 		return nil, fmt.Errorf("set up nvd client: %w", err)
 	}
-	return ResolveWithClients(inv, mappings, osvClient, nvdClient, onProgress)
+	return ResolveWithClients(ctx, inv, mappings, osvClient, nvdClient, onProgress)
 }
 
 // ResolveWithClients is Resolve with pre-built OSV/NVD clients, as a
 // seam for tests that need to point those clients at a mock server
 // (production code should call Resolve).
-func ResolveWithClients(inv *inventory.Inventory, mappings *cpemap.Mappings, osvClient *osv.Client, nvdClient *nvd.Client, onProgress ProgressFunc) (*Result, error) {
+func ResolveWithClients(ctx context.Context, inv *inventory.Inventory, mappings *cpemap.Mappings, osvClient *osv.Client, nvdClient *nvd.Client, onProgress ProgressFunc) (*Result, error) {
 	var candidates []candidate
 	purlSet := map[string]struct{}{}
 	cpeSet := map[string]struct{}{}
@@ -111,7 +112,7 @@ func ResolveWithClients(inv *inventory.Inventory, mappings *cpemap.Mappings, osv
 			}
 		}
 		var err error
-		osvMatches, err = osvClient.Resolve(purls, osvOnProgress)
+		osvMatches, err = osvClient.Resolve(ctx, purls, osvOnProgress)
 		if err != nil {
 			return nil, fmt.Errorf("could not reach api.osv.dev: %w", err)
 		}
@@ -120,7 +121,10 @@ func ResolveWithClients(inv *inventory.Inventory, mappings *cpemap.Mappings, osv
 	sortedCPEs := sortedKeys(cpeSet)
 	nvdMatches := map[string][]nvd.CVE{}
 	for i, cpe23 := range sortedCPEs {
-		response, err := nvdClient.QueryCPE(cpe23)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		response, err := nvdClient.QueryCPE(ctx, cpe23)
 		if err != nil {
 			return nil, fmt.Errorf("could not reach services.nvd.nist.gov: %w", err)
 		}

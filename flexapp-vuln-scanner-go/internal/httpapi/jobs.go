@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -27,14 +29,37 @@ type ScanJob struct {
 	OutputDir   string
 	CreatedAt   string
 
+	// cancel stops the job's running goroutine (kills the Stage 1
+	// subprocess, aborts an in-flight Stage 2 HTTP call). Set once at
+	// creation, before the goroutine starts, so it never races with
+	// Cancel() being called from an HTTP handler.
+	cancel context.CancelFunc
+
 	mu            sync.Mutex
-	status        string // queued, stage1, stage2, done, error
+	status        string // queued, stage1, stage2, done, error, canceled
 	log           []string
 	err           string
 	result        *pipeline.Result
 	progressPhase string
 	progressDone  int
 	progressTotal int
+}
+
+// Cancel requests that a running job stop as soon as possible: the
+// Stage 1 subprocess is killed, or an in-flight Stage 2 HTTP call is
+// aborted and the OSV/NVD matching loop stops between items. A no-op
+// once the job has already reached done/error/canceled.
+func (j *ScanJob) Cancel() {
+	if j.cancel != nil {
+		j.cancel()
+	}
+}
+
+func (j *ScanJob) setCanceled() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.status = "canceled"
+	j.log = append(j.log, "Canceled by user.")
 }
 
 // SetStatus implements pipeline.ProgressSink.
@@ -265,35 +290,27 @@ func (d ScanDeps) persistUpdate(id string, mutate func(*scanstore.Entry)) {
 func (d ScanDeps) StartScan(packagePath, outputDir, nvdAPIKey string) *ScanJob {
 	id := newJobID()
 	job := d.Registry.create(id, packagePath, outputDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	job.cancel = cancel
 	d.persistAdd(id, packagePath, outputDir, "scan")
-	go d.runJob(job, nvdAPIKey)
+	go d.runJob(ctx, job, nvdAPIKey)
 	return job
 }
 
-func (d ScanDeps) runJob(job *ScanJob, nvdAPIKey string) {
-	inventoryPath, err := pipeline.RunStage1(job, d.StageOneScript, job.PackagePath, job.OutputDir)
+func (d ScanDeps) runJob(ctx context.Context, job *ScanJob, nvdAPIKey string) {
+	inventoryPath, err := pipeline.RunStage1(ctx, job, d.StageOneScript, job.PackagePath, job.OutputDir)
 	if err != nil {
-		job.setError(err)
-		d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "error"; e.Error = err.Error() })
+		d.finishWithError(job, err)
 		return
 	}
 	d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "stage2"; e.InventoryPath = inventoryPath })
 
-	result, err := pipeline.RunStage2(job, inventoryPath, job.OutputDir, d.CacheDir, nvdAPIKey, d.Mappings)
+	result, err := pipeline.RunStage2(ctx, job, inventoryPath, job.OutputDir, d.CacheDir, nvdAPIKey, d.Mappings)
 	if err != nil {
-		job.setError(err)
-		d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "error"; e.Error = err.Error() })
+		d.finishWithError(job, err)
 		return
 	}
-	job.setResult(result)
-	job.SetStatus("done")
-	d.persistUpdate(job.ID, func(e *scanstore.Entry) {
-		e.Status = "done"
-		e.PackageName = result.PackageName
-		e.CoveragePercent = result.Coverage.CoveragePercent
-		e.SeverityCounts = result.SeverityCounts
-		e.InventoryPath = result.InventoryPath
-	})
+	d.finishWithResult(job, result)
 }
 
 // StartRefresh re-runs just the OSV/NVD matching + report step against
@@ -304,19 +321,36 @@ func (d ScanDeps) runJob(job *ScanJob, nvdAPIKey string) {
 func (d ScanDeps) StartRefresh(inventoryPath, outputDir, nvdAPIKey string) *ScanJob {
 	id := newJobID()
 	job := d.Registry.create(id, fmt.Sprintf("(refresh) %s", inventoryPath), outputDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	job.cancel = cancel
 	d.persistAdd(id, job.PackagePath, outputDir, "refresh")
-	go d.runRefreshJob(job, inventoryPath, nvdAPIKey)
+	go d.runRefreshJob(ctx, job, inventoryPath, nvdAPIKey)
 	return job
 }
 
-func (d ScanDeps) runRefreshJob(job *ScanJob, inventoryPath, nvdAPIKey string) {
+func (d ScanDeps) runRefreshJob(ctx context.Context, job *ScanJob, inventoryPath, nvdAPIKey string) {
 	job.AppendLog(fmt.Sprintf("Refreshing vulnerability matches for %s (Stage 1 not re-run)", inventoryPath))
-	result, err := pipeline.RunStage2(job, inventoryPath, job.OutputDir, d.CacheDir, nvdAPIKey, d.Mappings)
+	result, err := pipeline.RunStage2(ctx, job, inventoryPath, job.OutputDir, d.CacheDir, nvdAPIKey, d.Mappings)
 	if err != nil {
-		job.setError(err)
-		d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "error"; e.Error = err.Error() })
+		d.finishWithError(job, err)
 		return
 	}
+	d.finishWithResult(job, result)
+}
+
+// finishWithError records a job's terminal failure, distinguishing a
+// user-requested cancellation (context.Canceled) from a real error.
+func (d ScanDeps) finishWithError(job *ScanJob, err error) {
+	if errors.Is(err, context.Canceled) {
+		job.setCanceled()
+		d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "canceled" })
+		return
+	}
+	job.setError(err)
+	d.persistUpdate(job.ID, func(e *scanstore.Entry) { e.Status = "error"; e.Error = err.Error() })
+}
+
+func (d ScanDeps) finishWithResult(job *ScanJob, result *pipeline.Result) {
 	job.setResult(result)
 	job.SetStatus("done")
 	d.persistUpdate(job.ID, func(e *scanstore.Entry) {

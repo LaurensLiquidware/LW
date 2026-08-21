@@ -40,6 +40,7 @@ func NewRouter(scanDeps ScanAPIDeps) (http.Handler, error) {
 	mux.Handle("POST /api/scans/refresh", RefreshScanHandler(scanDeps.Scan))
 	mux.Handle("GET /api/scans", ListScansHandler(scanDeps.Scan))
 	mux.Handle("GET /api/scans/{id}", GetScanHandler(scanDeps.Scan.Registry))
+	mux.Handle("POST /api/scans/{id}/cancel", CancelScanHandler(scanDeps.Scan.Registry))
 	mux.Handle("GET /api/scans/{id}/files/{kind}", DownloadScanFileHandler(scanDeps.Scan.Registry))
 	mux.Handle("POST /api/scans/open", OpenScanHandler(scanDeps.Mappings))
 	mux.Handle("POST /api/scans/compare", CompareScanHandler(scanDeps.Mappings))

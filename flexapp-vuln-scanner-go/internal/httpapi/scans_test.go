@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -94,6 +95,50 @@ func TestListScansHandler_ReturnsNewestFirst(t *testing.T) {
 	}
 	if len(snaps) != 2 {
 		t.Fatalf("len(snaps) = %d, want 2", len(snaps))
+	}
+}
+
+// TestCancelScanHandler_StopsARunningScan proves cancellation is wired
+// end-to-end through the HTTP handler: starting a scan against a slow
+// Stage 1 script, then cancelling it, actually stops the subprocess and
+// leaves the job "canceled" rather than "error" or stuck running.
+func TestCancelScanHandler_StopsARunningScan(t *testing.T) {
+	if _, err := exec.LookPath("pwsh"); err != nil {
+		t.Skip("pwsh not found on PATH")
+	}
+	deps := testScanDeps(t)
+	deps.StageOneScript = "../pipeline/testdata/slow-stage1.ps1"
+
+	body, _ := json.Marshal(startScanRequest{PackagePath: "pkg", OutputDir: t.TempDir()})
+	req := httptest.NewRequest(http.MethodPost, "/api/scans", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	StartScanHandler(deps)(rec, req)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202", rec.Code)
+	}
+	var snap Snapshot
+	if err := json.Unmarshal(rec.Body.Bytes(), &snap); err != nil {
+		t.Fatal(err)
+	}
+
+	job, ok := deps.Registry.Get(snap.ID)
+	if !ok {
+		t.Fatal("job not found in registry")
+	}
+	waitFor(t, func() bool { return job.Snapshot().Status == "stage1" })
+
+	cancelReq := httptest.NewRequest(http.MethodPost, "/api/scans/"+snap.ID+"/cancel", nil)
+	cancelReq.SetPathValue("id", snap.ID)
+	cancelRec := httptest.NewRecorder()
+	CancelScanHandler(deps.Registry)(cancelRec, cancelReq)
+	if cancelRec.Code != http.StatusOK {
+		t.Fatalf("cancel status = %d", cancelRec.Code)
+	}
+
+	start := time.Now()
+	waitFor(t, func() bool { return job.Snapshot().Status == "canceled" })
+	if elapsed := time.Since(start); elapsed > 10*time.Second {
+		t.Errorf("took %v to cancel, want well under the script's 30s sleep", elapsed)
 	}
 }
 

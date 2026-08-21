@@ -1,6 +1,7 @@
 package osv
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +40,7 @@ func TestQueryBatch_SingleCall(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, 0)
-	result, err := c.QueryBatch([]string{"pkg:npm/lodash@4.17.15", "pkg:npm/left-pad@1.3.0"})
+	result, err := c.QueryBatch(context.Background(), []string{"pkg:npm/lodash@4.17.15", "pkg:npm/left-pad@1.3.0"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,11 +64,11 @@ func TestQueryBatch_CachesAndSkipsNetworkOnSecondCall(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, 0)
-	first, err := c.QueryBatch([]string{"pkg:npm/lodash@4.17.15"})
+	first, err := c.QueryBatch(context.Background(), []string{"pkg:npm/lodash@4.17.15"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := c.QueryBatch([]string{"pkg:npm/lodash@4.17.15"})
+	second, err := c.QueryBatch(context.Background(), []string{"pkg:npm/lodash@4.17.15"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +94,7 @@ func TestQueryBatch_SplitsByBatchSize(t *testing.T) {
 
 	// batch_size=2, 3 purls -> 2 HTTP calls (2 + 1)
 	c := newTestClient(t, srv.URL, 2)
-	result, err := c.QueryBatch([]string{"pkg:npm/a@1", "pkg:npm/b@1", "pkg:npm/c@1"})
+	result, err := c.QueryBatch(context.Background(), []string{"pkg:npm/a@1", "pkg:npm/b@1", "pkg:npm/c@1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,14 +119,14 @@ func TestQueryBatch_MixedCacheHitAndMiss(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, 0)
-	if _, err := c.QueryBatch([]string{"pkg:npm/lodash@4.17.15"}); err != nil {
+	if _, err := c.QueryBatch(context.Background(), []string{"pkg:npm/lodash@4.17.15"}); err != nil {
 		t.Fatal(err)
 	}
 	if calls != 1 {
 		t.Fatalf("calls = %d, want 1", calls)
 	}
 
-	result, err := c.QueryBatch([]string{"pkg:npm/lodash@4.17.15", "pkg:npm/new-pkg@1.0.0"})
+	result, err := c.QueryBatch(context.Background(), []string{"pkg:npm/lodash@4.17.15", "pkg:npm/new-pkg@1.0.0"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,11 +150,11 @@ func TestGetVulnerability_Caches(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, 0)
-	first, err := c.GetVulnerability("GHSA-aaaa")
+	first, err := c.GetVulnerability(context.Background(), "GHSA-aaaa")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := c.GetVulnerability("GHSA-aaaa")
+	second, err := c.GetVulnerability(context.Background(), "GHSA-aaaa")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +178,7 @@ func TestResolve_CombinesBatchAndDetailLookup(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, 0)
-	result, err := c.Resolve([]string{"pkg:npm/lodash@4.17.15"}, nil)
+	result, err := c.Resolve(context.Background(), []string{"pkg:npm/lodash@4.17.15"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +196,7 @@ func TestResolve_EmptyPurlList(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, 0)
-	result, err := c.Resolve([]string{}, nil)
+	result, err := c.Resolve(context.Background(), []string{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +222,7 @@ func TestResolve_ReportsProgressPerVulnID(t *testing.T) {
 	c := newTestClient(t, srv.URL, 0)
 	type progress struct{ done, total int }
 	var calls []progress
-	_, err := c.Resolve([]string{"pkg:npm/lodash@4.17.15"}, func(done, total int) {
+	_, err := c.Resolve(context.Background(), []string{"pkg:npm/lodash@4.17.15"}, func(done, total int) {
 		calls = append(calls, progress{done, total})
 	})
 	if err != nil {
@@ -247,7 +248,7 @@ func TestCachePersistsAcrossClientInstances(t *testing.T) {
 		t.Fatal(err)
 	}
 	client1.BaseURL = srv.URL
-	if _, err := client1.QueryBatch([]string{"pkg:npm/lodash@4.17.15"}); err != nil {
+	if _, err := client1.QueryBatch(context.Background(), []string{"pkg:npm/lodash@4.17.15"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -256,7 +257,7 @@ func TestCachePersistsAcrossClientInstances(t *testing.T) {
 		t.Fatal(err)
 	}
 	client2.BaseURL = srv.URL
-	result, err := client2.QueryBatch([]string{"pkg:npm/lodash@4.17.15"})
+	result, err := client2.QueryBatch(context.Background(), []string{"pkg:npm/lodash@4.17.15"})
 	if err != nil {
 		t.Fatal(err)
 	}

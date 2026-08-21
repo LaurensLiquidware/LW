@@ -1,6 +1,7 @@
 package nvd
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -46,11 +47,11 @@ func TestQueryCPE_Caches(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := newTestClient(t, srv.URL, "")
-	first, err := c.QueryCPE("cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*")
+	first, err := c.QueryCPE(context.Background(), "cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := c.QueryCPE("cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*")
+	second, err := c.QueryCPE(context.Background(), "cpe:2.3:a:openssl:openssl:1.1.1w:*:*:*:*:*:*:*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +70,7 @@ func TestQueryCPE_404ReturnsEmptyResultNotAnError(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := newTestClient(t, srv.URL, "")
-	result, err := c.QueryCPE("cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
+	result, err := c.QueryCPE(context.Background(), "cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,8 +88,8 @@ func TestQueryCPE_404IsCached(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := newTestClient(t, srv.URL, "")
-	c.QueryCPE("cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
-	c.QueryCPE("cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
+	c.QueryCPE(context.Background(), "cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
+	c.QueryCPE(context.Background(), "cpe:2.3:a:vendor:nonexistent-product:1.0:*:*:*:*:*:*:*")
 	if atomic.LoadInt32(&calls) != 1 {
 		t.Errorf("calls = %d, want 1", calls)
 	}
@@ -107,7 +108,7 @@ func TestQueryCPE_429RetriesAndSucceeds(t *testing.T) {
 	defer srv.Close()
 
 	c, clock := newTestClient(t, srv.URL, "")
-	result, err := c.QueryCPE("cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*")
+	result, err := c.QueryCPE(context.Background(), "cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +137,7 @@ func TestQueryCPE_429HonorsRetryAfterHeader(t *testing.T) {
 	defer srv.Close()
 
 	c, clock := newTestClient(t, srv.URL, "")
-	if _, err := c.QueryCPE("cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*"); err != nil {
+	if _, err := c.QueryCPE(context.Background(), "cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*"); err != nil {
 		t.Fatal(err)
 	}
 	if clock.t != 5*time.Second {
@@ -151,7 +152,7 @@ func TestQueryCPE_429GivesUpAfterMaxRetries(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := newTestClient(t, srv.URL, "")
-	if _, err := c.QueryCPE("cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*"); err == nil {
+	if _, err := c.QueryCPE(context.Background(), "cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*"); err == nil {
 		t.Fatal("expected an error after exhausting retries")
 	}
 }
@@ -167,7 +168,7 @@ func TestNoAPIKeySendsNoHeader(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := newTestClient(t, srv.URL, "")
-	c.QueryCPE("cpe:2.3:a:zlib:zlib:1.3:*:*:*:*:*:*:*")
+	c.QueryCPE(context.Background(), "cpe:2.3:a:zlib:zlib:1.3:*:*:*:*:*:*:*")
 	if sawHeader {
 		t.Errorf("apiKey header = %q, want none", gotHeader)
 	}
@@ -182,7 +183,7 @@ func TestAPIKeySentAsHeader(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := newTestClient(t, srv.URL, "secret-key")
-	c.QueryCPE("cpe:2.3:a:zlib:zlib:1.3:*:*:*:*:*:*:*")
+	c.QueryCPE(context.Background(), "cpe:2.3:a:zlib:zlib:1.3:*:*:*:*:*:*:*")
 	if gotHeader != "secret-key" {
 		t.Errorf("apiKey header = %q, want secret-key", gotHeader)
 	}
@@ -196,13 +197,13 @@ func TestRateLimitWithoutKeyThrottlesAfterFiveRequests(t *testing.T) {
 
 	c, clock := newTestClient(t, srv.URL, "")
 	for i := 0; i < 5; i++ {
-		c.QueryCPE(cpeFor(i))
+		c.QueryCPE(context.Background(), cpeFor(i))
 	}
 	if clock.t != 0 {
 		t.Errorf("clock.t = %v, want 0 (first 5 requests free)", clock.t)
 	}
 
-	c.QueryCPE(cpeFor(5))
+	c.QueryCPE(context.Background(), cpeFor(5))
 	if clock.t <= 0 {
 		t.Error("expected the 6th request to wait out the window")
 	}
@@ -216,13 +217,13 @@ func TestRateLimitWithKeyAllowsFifty(t *testing.T) {
 
 	c, clock := newTestClient(t, srv.URL, "secret-key")
 	for i := 0; i < 50; i++ {
-		c.QueryCPE(cpeFor(i))
+		c.QueryCPE(context.Background(), cpeFor(i))
 	}
 	if clock.t != 0 {
 		t.Errorf("clock.t = %v, want 0", clock.t)
 	}
 
-	c.QueryCPE(cpeFor(50))
+	c.QueryCPE(context.Background(), cpeFor(50))
 	if clock.t <= 0 {
 		t.Error("expected the 51st request to wait out the window")
 	}
@@ -236,12 +237,12 @@ func TestCachedHitsNeverThrottle(t *testing.T) {
 
 	c, clock := newTestClient(t, srv.URL, "")
 	for i := 0; i < 5; i++ {
-		c.QueryCPE(cpeFor(i))
+		c.QueryCPE(context.Background(), cpeFor(i))
 	}
 
 	for round := 0; round < 20; round++ {
 		for i := 0; i < 5; i++ {
-			c.QueryCPE(cpeFor(i))
+			c.QueryCPE(context.Background(), cpeFor(i))
 		}
 	}
 	if clock.t != 0 {

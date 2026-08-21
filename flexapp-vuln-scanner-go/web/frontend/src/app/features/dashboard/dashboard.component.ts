@@ -15,6 +15,7 @@ const STATUS_SEVERITY: Record<ScanStatus, 'success' | 'danger' | 'info' | 'warn'
   stage2: 'info',
   done: 'success',
   error: 'danger',
+  canceled: 'warn',
 };
 
 /** Dashboard: every scan job started this process's lifetime, plus
@@ -73,6 +74,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (scan.status === 'done' || scan.status === 'error') {
       this.router.navigate(['/results'], { queryParams: { jobId: scan.id } });
     } else {
+      // queued/stage1/stage2/canceled -- the progress screen shows a
+      // canceled job's status directly rather than routing it through
+      // Results, which has nothing to show for it.
       this.router.navigate(['/scan-progress'], { queryParams: { jobId: scan.id } });
     }
   }

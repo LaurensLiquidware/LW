@@ -60,7 +60,7 @@ export interface ScanDiff {
   unchangedCount: number;
 }
 
-export type ScanStatus = 'queued' | 'stage1' | 'stage2' | 'done' | 'error';
+export type ScanStatus = 'queued' | 'stage1' | 'stage2' | 'done' | 'error' | 'canceled';
 
 export interface ScanSnapshot {
   id: string;

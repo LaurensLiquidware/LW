@@ -233,10 +233,13 @@ Status as of the working implementation in `flexapp-vuln-scanner-go/`:
    findings as a real 2-page PDF, confirmed working end-to-end.
 4. **CLI** — not built. The Angular UI is the only interface right now;
    revisit if a headless/scriptable mode turns out to be needed.
-5. **Cancel a running scan** — not built. `internal/pipeline.RunStage1`
-   shells out via `os/exec` without a `context.Context` yet, so this
-   remains a design decision, not a mechanical port, same as flagged
-   originally.
+5. **Cancel a running scan** — built, and verified real (not just
+   wired up): `context.Context` threaded through `RunStage1`/
+   `RunStage2`/`resolve.Resolve`/the OSV/NVD clients, a `Cancel()` on
+   `ScanJob`, and `POST /api/scans/{id}/cancel`. A dedicated test
+   cancels a real 30-second-sleeping `pwsh` subprocess and confirms it
+   returns in well under that. Resolves what neither the PySide6 app
+   nor the original plan had solved.
 6. **Migration of existing scan history** — decided: starting fresh.
    The Go version's `JobRegistry` (`internal/httpapi/jobs.go`) is
    in-memory only, same limitation the Flask web UI already had (no

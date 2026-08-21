@@ -96,3 +96,22 @@
   live/historical merge) all pass, and a real two-process manual test
   (start a scan, kill the server, start a fresh one) confirms the
   scan reappears with `live: false` and its error/status intact.
+- Implemented real scan cancellation, resolving the open question
+  flagged (unresolved) in both the PySide6 desktop app and this
+  rewrite's plan. `context.Context` is now threaded through
+  `pipeline.RunStage1`/`RunStage2`, `resolve.Resolve`, and the
+  `osv`/`nvd` clients' HTTP calls; each `ScanJob` carries a
+  `context.CancelFunc`, and a new `POST /api/scans/{id}/cancel`
+  endpoint calls it. Canceling kills the Stage 1 `pwsh` subprocess
+  outright (`exec.CommandContext`) or aborts an in-flight OSV/NVD HTTP
+  request and stops the matching loop between items, landing the job
+  in a new `canceled` status (distinct from `error`), persisted the
+  same way. Added a Cancel button to the Scan Progress screen.
+  Verified with two new tests that prove this is real, not just
+  wired up: `TestRunStage1_CancelStopsSubprocessPromptly` cancels a
+  30-second-sleeping real `pwsh` subprocess and asserts it returns in
+  well under that, and `TestCancelScanHandler_StopsARunningScan` does
+  the same through the HTTP handler end-to-end. Also manually verified
+  via curl and a real Playwright browser session (screenshots
+  reviewed): clicking Cancel in the UI genuinely stops the running
+  subprocess within about a second.
