@@ -81,12 +81,19 @@ def _prefill(**kwargs: str) -> dict[str, str]:
     return {field: kwargs.get(field, "") for field in _BROWSE_TARGETS}
 
 
+# A sensible starting point so a first-time user isn't staring at an empty
+# required field with no idea what to type - created on demand by
+# new_scan()/open_directory(), not eagerly here (this module is imported
+# long before anyone actually runs a scan).
+DEFAULT_OUTPUT_DIR = str(paths.REPO_ROOT / "scan-out")
+
+
 @app.route("/")
 def index():
     prefill = _prefill(
         package_path=request.args.get("package_path", ""),
-        output_dir=request.args.get("output_dir", ""),
-        dir_path=request.args.get("dir_path", ""),
+        output_dir=request.args.get("output_dir", "") or DEFAULT_OUTPUT_DIR,
+        dir_path=request.args.get("dir_path", "") or DEFAULT_OUTPUT_DIR,
     )
     return render_template("index.html", jobs=jobs.REGISTRY.list_all(), prefill=prefill)
 

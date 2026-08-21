@@ -21,6 +21,22 @@ def test_index_loads():
     assert b"Run a New Scan" in resp.data
 
 
+def test_index_prefills_default_output_dir_when_not_specified():
+    resp = client().get("/")
+    html = resp.data.decode()
+    assert flask_app_module.DEFAULT_OUTPUT_DIR in html
+
+
+def test_index_respects_explicit_output_dir_over_default():
+    resp = client().get("/", query_string={
+        "output_dir": "C:\\custom\\out", "dir_path": "C:\\custom\\out2",
+    })
+    html = resp.data.decode()
+    assert "C:\\custom\\out" in html
+    assert "C:\\custom\\out2" in html
+    assert flask_app_module.DEFAULT_OUTPUT_DIR not in html
+
+
 def test_index_shows_severity_counts_for_a_done_job_with_findings(tmp_path):
     shutil.copy(FIXTURE, tmp_path / "sample.inventory.json")
     result = jobs.load_existing_result(tmp_path / "sample.inventory.json")
