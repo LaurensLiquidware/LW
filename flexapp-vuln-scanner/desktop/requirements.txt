@@ -1,8 +1,0 @@
-PySide6>=6.11
-pyinstaller>=6.0
-
-# The rest of the scanning logic reuses the repo root's requirements.txt
-# unchanged (requests, PyYAML, reportlab, cyclonedx-python-lib, etc.) -
-# install that too:
-#   pip install -r ../requirements.txt
-#   pip install -r requirements.txt

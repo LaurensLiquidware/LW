@@ -248,3 +248,19 @@
   "C = Critical, H = High, M = Medium, L = Low" legend, so the counts
   read at a glance instead of needing the letter abbreviations decoded
   every time.
+- Retired the original Python implementation now that this rewrite is
+  validated end-to-end on a real Windows machine (build order step 7 of
+  `GO_ANGULAR_REWRITE_PLAN.md`, now moved into this project from
+  `../flexapp-vuln-scanner/` so its history isn't lost): the entire
+  `../flexapp-vuln-scanner/` directory (`webui/`, `desktop/`,
+  `stage1-extract/` and `stage2-resolve/` reference implementations,
+  `schemas/`, and its own planning docs) has been deleted, per explicit
+  confirmation. Rewrote `README.md` to describe the finished tool as it
+  actually runs today (the three binaries and what each is for, the
+  Administrator requirement and why, `stage1-extract/`/`config/` needing
+  to sit next to the binary, `.env.example`) instead of the mid-rewrite
+  status it previously described, and updated `CLAUDE.md`'s Origin
+  section to match. Verified `go vet`/`go test` still pass with the
+  Python source gone -- nothing in this project ever read from it at
+  build or run time, only from doc comments citing it as the origin of
+  ported logic/tests, which remain accurate as historical attribution.

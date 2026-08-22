@@ -1,10 +1,22 @@
 # FlexApp Vulnerability Scanner: Go + Angular Rewrite Plan
 
-**Status: DRAFT — awaiting confirmation. No code has been written for this
-yet.** Per the project's audit-first convention and the uploaded Sparks Tool
-Project Review Checklist's Phase 1/2/3 sequencing, this is the written
-summary of what would change and why; nothing gets implemented until this is
-explicitly approved.
+**Status: COMPLETE.** All 7 build-order steps below finished and validated
+on a real Windows machine (real scans, real UAC elevation, real file
+picker, real Dashboard/Results/Compare screens against real VHDX
+packages). Per step 7, the Python source this plan describes retiring
+(`webui/`, `desktop/`, and by that point the rest of
+`../flexapp-vuln-scanner/` along with it) has been deleted; this document
+now lives at `flexapp-vuln-scanner-go/GO_ANGULAR_REWRITE_PLAN.md` as a
+historical record of the rewrite, left otherwise as originally written
+(including its now-completed "DRAFT" framing below) rather than rewritten
+after the fact.
+
+**Original status (superseded by the above): DRAFT — awaiting
+confirmation. No code has been written for this yet.** Per the project's
+audit-first convention and the uploaded Sparks Tool Project Review
+Checklist's Phase 1/2/3 sequencing, this is the written summary of what
+would change and why; nothing gets implemented until this is explicitly
+approved.
 
 ## Why (recap of the decision already made)
 
@@ -212,16 +224,29 @@ done and verified in `flexapp-vuln-scanner-go/`, not just planned. Item
    (`sync-version.sh`, `generate-sbom.sh`, `generate-notices.py`).
 6. Windows packaging (`build-windows.sh`, tray launcher) — first real
    Windows `.exe` build and smoke test happens on the user's machine, same
-   as the PySide6 app's validation did.
+   as the PySide6 app's validation did. ✅ Done: validated on a real
+   Windows machine, including several real bugs only that testing could
+   surface (a missing `stage1-extract/` in the release package, a missing
+   Administrator elevation manifest for VHDX mounting, a malformed XML
+   manifest, and the Results screen not falling back to the latest scan)
+   — all fixed and re-verified.
 7. Only after step 6 is validated on Windows: delete `webui/` and
-   `desktop/`.
+   `desktop/`. ✅ Done, and taken further: the entire
+   `../flexapp-vuln-scanner/` Python project (`webui/`, `desktop/`,
+   `stage1-extract/` and `stage2-resolve/` reference implementations,
+   `schemas/`, and its own planning docs) was deleted once Windows
+   validation above was complete, per explicit confirmation. This
+   document was moved into `flexapp-vuln-scanner-go/` first so the
+   rewrite's own history wasn't lost with it.
 
 ## Open questions (need answers before/along the way, not blocking the plan itself)
 
 Status as of the working implementation in `flexapp-vuln-scanner-go/`:
 
-1. **Project name/folder** — decided and built as `flexapp-vuln-scanner-go/`,
-   alongside the still-live Python `flexapp-vuln-scanner/`.
+1. **Project name/folder** — decided and built as `flexapp-vuln-scanner-go/`.
+   Originally alongside the still-live Python `flexapp-vuln-scanner/`;
+   that project has since been deleted entirely (build order step 7,
+   above) now that this rewrite is validated on Windows.
 2. **File/folder picker for package path** — resolved: built as a native
    dialog served directly by `cmd/server` itself
    (`internal/httpapi/picker_windows.go`, `GET /api/pick-file`/
