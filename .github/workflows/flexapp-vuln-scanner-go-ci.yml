@@ -1,0 +1,152 @@
+name: FlexApp Vulnerability Scanner (Go) CI
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "flexapp-vuln-scanner-go/**"
+      - ".github/workflows/flexapp-vuln-scanner-go-ci.yml"
+  pull_request:
+    paths:
+      - "flexapp-vuln-scanner-go/**"
+      - ".github/workflows/flexapp-vuln-scanner-go-ci.yml"
+
+defaults:
+  run:
+    working-directory: flexapp-vuln-scanner-go
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+          cache-dependency-path: flexapp-vuln-scanner-go/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: flexapp-vuln-scanner-go/web/frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: flexapp-vuln-scanner-go/web/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync version and legal files
+        run: |
+          ./scripts/sync-version.sh
+          ./scripts/sync-legal.sh
+
+      # Explicit packages, not ./... — web/frontend/node_modules ships at
+      # least one vendored .go file with no go.mod to bound it out.
+      - name: Vet
+        run: go vet ./cmd/... ./internal/... ./web
+
+      - name: Build
+        run: go build ./cmd/... ./internal/... ./web
+
+      - name: Test
+        run: go test ./cmd/... ./internal/... ./web
+
+      # Every build also produces the three Windows binaries (tray
+      # launcher, headless server, CLI), with the Liquidware icon/version
+      # info and the tray/server's requireAdministrator manifest embedded
+      # via scripts/build-windows.sh, so a Windows regression (a broken
+      # icon/version resource, a manifest the loader rejects, a build
+      # error only GOOS=windows hits) fails CI the same way a Linux one
+      # would.
+      - name: Install goversioninfo
+        run: |
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Build Windows binaries
+        run: ./scripts/build-windows.sh
+
+      - name: Upload Windows binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: flexapp-vuln-scanner-windows-amd64
+          path: |
+            flexapp-vuln-scanner-go/flexapp-vuln-scanner.exe
+            flexapp-vuln-scanner-go/flexapp-vuln-scanner-server.exe
+            flexapp-vuln-scanner-go/flexapp-vuln-scanner-cli.exe
+          retention-days: 14
+
+  # Enforces the Sparks Tool checklist: SBOM stays current, npm production
+  # deps are CVE-clean, and Grype finds zero Critical/High vulnerabilities
+  # in the full dependency graph (Go + npm). Unlike
+  # scripts/check-vulnerabilities.sh's local/offline behavior (which fails
+  # loudly but distinctly when it can't reach grype.anchore.io — some
+  # sandboxes block that host, see its own comments), GitHub-hosted
+  # runners have normal internet access, so this job gets a real
+  # pass/fail verdict rather than the "environment limitation" case.
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.13"
+          cache-dependency-path: flexapp-vuln-scanner-go/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: flexapp-vuln-scanner-go/web/frontend/package-lock.json
+
+      - name: Install SBOM/CVE tooling
+        run: |
+          go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0
+          go install github.com/anchore/grype/cmd/grype@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install frontend dependencies
+        working-directory: flexapp-vuln-scanner-go/web/frontend
+        run: npm ci
+
+      # cmd/server transitively go:embeds web/dist, VERSION_EMBED, and
+      # Spark_License.pdf -- without these, `go list`/cyclonedx-gomod's
+      # module-graph scan fails outright ("no matching files found").
+      - name: Build frontend
+        working-directory: flexapp-vuln-scanner-go/web/frontend
+        run: npm run build
+
+      - name: Sync version and legal files
+        run: |
+          ./scripts/sync-version.sh
+          ./scripts/sync-legal.sh
+
+      - name: npm audit (production dependencies only)
+        working-directory: flexapp-vuln-scanner-go/web/frontend
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Regenerate SBOM and notices
+        run: |
+          ./scripts/generate-sbom.sh
+          python3 ./scripts/generate-notices.py bom.cdx.json THIRD-PARTY-NOTICES.txt
+
+      - name: Verify checked-in SBOM/notices are current
+        run: |
+          # generate-sbom.sh stamps a fresh serialNumber/timestamp every run,
+          # which would make this diff fail even with an unchanged dependency
+          # tree — compare component lists only, not the whole file.
+          diff <(jq -S '.components' bom.cdx.json) <(git show HEAD:flexapp-vuln-scanner-go/bom.cdx.json | jq -S '.components') || {
+            echo "::error::bom.cdx.json's component list is out of date. Run ./scripts/generate-sbom.sh and ./scripts/generate-notices.py and commit the result." >&2
+            exit 1
+          }
+          diff THIRD-PARTY-NOTICES.txt <(git show HEAD:flexapp-vuln-scanner-go/THIRD-PARTY-NOTICES.txt) || {
+            echo "::error::THIRD-PARTY-NOTICES.txt is out of date. Run ./scripts/generate-notices.py and commit the result." >&2
+            exit 1
+          }
+
+      - name: Grype CVE gate (zero Critical/High)
+        run: ./scripts/check-vulnerabilities.sh
