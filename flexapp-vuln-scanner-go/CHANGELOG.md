@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2 — unreleased
+
+- Added native folder-picker Browse buttons to the Compare Scans
+  screen's "Old Scan Output Folder" and "New Scan Output Folder"
+  fields, matching the picker already on the New Scan screen (reuses
+  `PickerService`/`GET /api/pick-folder`; degrades to plain text entry
+  when the picker isn't available, e.g. non-Windows or the server run
+  without the tray launcher). Verified with `npx tsc --noEmit` and
+  `npm run build`.
+
 ## 0.1.1 — unreleased
 
 - Renamed the product, in every user-facing surface, from "FlexApp

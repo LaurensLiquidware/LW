@@ -7,11 +7,21 @@
     }
     <div class="flex flex-col gap-1">
       <label for="oldDir" class="lwl-micro">{{ 'compare.oldDir' | transloco }}</label>
-      <input pInputText id="oldDir" formControlName="oldDir" />
+      <div class="flex gap-2">
+        <input pInputText id="oldDir" formControlName="oldDir" class="flex-1" />
+        @if (pickerAvailable()) {
+          <p-button type="button" icon="pi pi-folder-open" [text]="true" (onClick)="browseOldDir()" />
+        }
+      </div>
     </div>
     <div class="flex flex-col gap-1">
       <label for="newDir" class="lwl-micro">{{ 'compare.newDir' | transloco }}</label>
-      <input pInputText id="newDir" formControlName="newDir" />
+      <div class="flex gap-2">
+        <input pInputText id="newDir" formControlName="newDir" class="flex-1" />
+        @if (pickerAvailable()) {
+          <p-button type="button" icon="pi pi-folder-open" [text]="true" (onClick)="browseNewDir()" />
+        }
+      </div>
     </div>
     <div class="flex justify-end">
       <p-button type="submit" [label]="'compare.run' | transloco" icon="pi pi-sort-alt" [loading]="loading()" [disabled]="form.invalid" />

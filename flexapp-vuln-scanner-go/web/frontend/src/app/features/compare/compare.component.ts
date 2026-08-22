@@ -8,6 +8,7 @@ import { MessageModule } from 'primeng/message';
 import { TagModule } from 'primeng/tag';
 
 import { ScanService } from '../../core/scan.service';
+import { PickerService } from '../../core/picker.service';
 import { ScanDiff } from '../../core/models/scan';
 
 /** Compare two single-package scan output directories: which findings
@@ -22,6 +23,12 @@ import { ScanDiff } from '../../core/models/scan';
 export class CompareComponent {
   private readonly fb = inject(FormBuilder);
   private readonly scanService = inject(ScanService);
+  private readonly pickerService = inject(PickerService);
+
+  /** Whether the tray launcher's native picker is reachable -- the
+   * Browse buttons only render once this is true, same degrade-to-text
+   * behavior as the New Scan screen. */
+  readonly pickerAvailable = this.pickerService.available;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -34,6 +41,26 @@ export class CompareComponent {
     oldDir: ['', Validators.required],
     newDir: ['', Validators.required],
   });
+
+  constructor() {
+    this.pickerService.checkAvailable();
+  }
+
+  async browseOldDir(): Promise<void> {
+    const path = await this.pickerService.pickFolder({ title: 'Select the Old Scan Output Folder' });
+    if (path) {
+      this.form.controls.oldDir.setValue(path);
+      this.form.controls.oldDir.markAsDirty();
+    }
+  }
+
+  async browseNewDir(): Promise<void> {
+    const path = await this.pickerService.pickFolder({ title: 'Select the New Scan Output Folder' });
+    if (path) {
+      this.form.controls.newDir.setValue(path);
+      this.form.controls.newDir.markAsDirty();
+    }
+  }
 
   async submit(): Promise<void> {
     if (this.form.invalid) {
