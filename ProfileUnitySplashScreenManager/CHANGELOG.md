@@ -6,6 +6,36 @@ in `bom.cdx.json`'s `metadata.component.version`, the version stamped into the
 executable's file metadata, and the version in the distributable's filename all
 come from the single `AppVersion` constant in `internal/version/version.go`.
 
+## 0.3.1
+
+Fixes found by rendering the interface for the first time.
+
+- **The window rendered almost entirely unstyled.** Angular's critical-CSS
+  inlining defers the real stylesheet as `media="print"` and promotes it with an
+  inline `onload` handler; the application's own CSP (`script-src 'self'`, no
+  `unsafe-inline`) blocked that handler, so `styles.css` never applied. Only the
+  small inlined block took effect, which is why the design tokens were present but
+  no layout was. Critical-CSS inlining is now off — it buys nothing when the CSS
+  is served from the executable over loopback — and the CSP is unchanged.
+- **`base-uri 'none'` rejected the page's own `<base href="/">`**, logging a CSP
+  violation on every load. Now `base-uri 'self'`.
+- **The hex brand texture rendered as large blue blobs** poking out from behind
+  the card. It was a crop of the source sheet at a scale where each hexagon was
+  about 50px. Regenerated from a larger region so the hexagons read as texture,
+  with a diagonal fade baked into the asset's alpha channel so it dissolves
+  instead of ending in a hard edge.
+- **The layout left a large dead area** below the content. The history panel now
+  takes the vertical slack and its table scrolls inside.
+- **The logo preview frame letterboxed** a correctly sized logo against the
+  transparency checkerboard. The frame now matches the 300x86 aspect ratio, so a
+  correct logo fills it edge to edge.
+- **The empty history state** was stranded at the top of a tall blank table with a
+  stray divider across it. It is now a centred panel that replaces the table.
+- The current logo's real pixel dimensions and format are shown on the detail
+  line, the history heading carries an archived count, the date column no longer
+  wraps, and a disabled primary button reads as clearly unavailable.
+- Added `-devtools`, which enables the WebView developer tools.
+
 ## 0.3.0
 
 **Rewritten as a Go service with an Angular user interface, shipping as one

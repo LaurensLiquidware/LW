@@ -1,5 +1,5 @@
 THIRD PARTY NOTICES
-ProfileUnity SplashScreen Logo Manager 0.3.0
+ProfileUnity SplashScreen Logo Manager 0.3.1
 
 This file lists the third-party components distributed inside this tool, with
 their license terms. Per section 3 of the Liquidware Sparks Tool License, third

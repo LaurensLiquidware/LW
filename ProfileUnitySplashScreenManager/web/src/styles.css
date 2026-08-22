@@ -284,6 +284,7 @@ body {
   flex: 1 1 auto;
   overflow: auto;
   background: var(--p-content-background);
+  min-height: 0;
 }
 
 .app-body::before {
@@ -291,12 +292,13 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 280px;
-  height: 200px;
+  width: 336px;
+  height: 240px;
   background-image: url('/brand/lwl-hex.png');
   background-size: contain;
   background-repeat: no-repeat;
-  opacity: 0.5;
+  /* The diagonal fade is baked into the asset's alpha channel, so there is no CSS
+     opacity here and the texture dissolves instead of ending behind the card. */
   pointer-events: none;
 }
 
@@ -306,7 +308,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  min-height: 0;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 /* Flat card with the guide's whisper-soft shadow and 8px radius. */
@@ -322,8 +325,10 @@ body {
   border: 1px solid var(--frame-border-color);
   border-radius: var(--radius-sm);
   background: var(--p-surface-50);
-  width: 150px;
-  height: 68px;
+  /* Matches the 300x86 splash logo's aspect ratio, so a correctly sized image
+     fills the frame rather than letterboxing. */
+  width: 210px;
+  height: 60px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -358,6 +363,33 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* Takes the vertical slack so the window has no dead space below the table. */
+  flex: 1 1 auto;
+}
+
+/* The table body scrolls inside the panel rather than growing the page. */
+.history-panel .history-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--frame-border-color);
+  border-radius: var(--radius-lg);
+  background: var(--p-surface-0);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.history-panel .history-table-wrap .p-datatable {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.history-panel .history-table-wrap .p-datatable-table-container {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* --------------------------------------------------------- PrimeNG trim -- */
@@ -370,4 +402,29 @@ body {
 /* Dense data cells, per .lwl-cell in the guide. */
 .p-datatable-table-container {
   font-size: var(--text-sm);
+}
+
+/* The empty history panel fills the space and centres its message, rather than
+   leaving a tall blank table with a stray divider across it. */
+.history-panel .empty-history {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  text-align: center;
+  padding: 2rem 1.5rem;
+  color: var(--p-text-muted-color);
+}
+
+.history-panel .empty-history .headline {
+  font-size: var(--text-base);
+  color: var(--p-text-color);
+}
+
+/* A disabled primary action should read as clearly unavailable, not merely dimmer. */
+.p-button:disabled,
+.p-button.p-disabled {
+  opacity: 0.45;
 }

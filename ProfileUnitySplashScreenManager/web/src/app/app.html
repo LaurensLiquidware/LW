@@ -47,6 +47,9 @@
             </h2>
             <p class="mt-1 truncate selectable" [title]="headline()">{{ headline() }}</p>
             <p class="lwl-muted mt-0.5 selectable">{{ subline() }}</p>
+            @if (dimensions(); as dims) {
+              <p class="lwl-micro mt-0.5">{{ dims }}</p>
+            }
 
             @if (sizeNote()) {
               <p class="status-fair mt-1">{{ sizeNote() }}</p>
@@ -122,8 +125,23 @@
 
       <!-- History -->
       <section class="history-panel">
-        <h2 class="lwl-card-title mb-2">Logo History</h2>
+        <div class="flex items-baseline gap-2 mb-2">
+          <h2 class="lwl-card-title">Logo History</h2>
+          @if ((state()?.history?.length ?? 0) > 0) {
+            <span class="lwl-micro">{{ state()!.history.length }} archived</span>
+          }
+        </div>
 
+        <div class="history-table-wrap">
+        @if ((state()?.history?.length ?? 0) === 0) {
+          <div class="empty-history">
+            <span class="headline">No logos have been archived yet</span>
+            <span>
+              The logo currently in place is archived here the first time you apply a new one,
+              so you can always go back.
+            </span>
+          </div>
+        } @else {
         <p-table
           [value]="state()?.history ?? []"
           [selection]="selectedHistory()"
@@ -131,14 +149,14 @@
           selectionMode="single"
           dataKey="id"
           scrollable="true"
-          scrollHeight="240px"
+          scrollHeight="flex"
           styleClass="lwl-cell"
-          [tableStyle]="{ 'min-width': '40rem' }">
+          [tableStyle]="{ 'min-width': '34rem' }">
           <ng-template #header>
             <tr>
-              <th style="width: 13rem">Date Archived</th>
+              <th style="width: 14rem">Date Archived</th>
               <th>Original File Name</th>
-              <th style="width: 5rem">Type</th>
+              <th style="width: 6rem">Type</th>
             </tr>
           </ng-template>
           <ng-template #body let-entry>
@@ -153,15 +171,9 @@
               <td>{{ entry.extension }}</td>
             </tr>
           </ng-template>
-          <ng-template #emptymessage>
-            <tr>
-              <td colspan="3" class="lwl-muted">
-                No logos have been archived yet. The logo currently in place is archived here the
-                first time you apply a new one.
-              </td>
-            </tr>
-          </ng-template>
         </p-table>
+        }
+        </div>
 
         <div class="flex gap-2 mt-3">
           <p-button

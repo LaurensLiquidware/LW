@@ -1,15 +1,15 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:9240b479-d735-42a6-a65f-ccccd8d536f4",
+  "serialNumber": "urn:uuid:e61cee57-bd7b-4e16-9840-d1259d4fe01f",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-08-22T16:26:28Z",
+    "timestamp": "2026-08-22T16:55:59Z",
     "component": {
       "type": "application",
       "bom-ref": "ProfileUnitySplashScreenManager",
       "name": "ProfileUnitySplashScreenManager",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "description": "Sets the ProfileUnity client splash screen logo (Liquidware KB 12914471137293), with archive and restore history. Go service with an embedded Angular user interface in a WebView2 window.",
       "licenses": [
         {
@@ -21,7 +21,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "e8d4c44b05e45f0c30006eb8d88808099d527259dc9d77ea8cd4548fadf1b1d7"
+          "content": "30b82ca9ac9edf84cf811aed9ccf5a630d5b5e74f6e7dee808ee8441923887ec"
         }
       ]
     },

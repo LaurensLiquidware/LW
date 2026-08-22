@@ -77,6 +77,16 @@ export class App implements OnDestroy {
     return `Recommended size is ${w}×${h}; this image is ${info.width}×${info.height}.`;
   });
 
+  /** The previewed or live image's real pixel size, for the detail line. */
+  readonly dimensions = computed(() => {
+    const st = this.state();
+    const info = st?.pending ? st.pending.info : st?.live[0]?.info;
+    if (!info) {
+      return '';
+    }
+    return `${info.width} × ${info.height} pixels · ${info.format.toUpperCase()}`;
+  });
+
   readonly headline = computed(() => {
     const st = this.state();
     if (!st) {

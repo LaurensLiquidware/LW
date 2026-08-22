@@ -222,7 +222,9 @@ func (s *Server) uiHandler() http.Handler {
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; "+
 				"img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; "+
-				"base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+				// 'self', not 'none': the built page carries <base href="/">, which
+				// 'none' refuses outright and logs a console error.
+				"base-uri 'self'; form-action 'none'; frame-ancestors 'none'")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 

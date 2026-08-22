@@ -36,6 +36,15 @@ in 0.3.0 as a Go service with an Angular interface in a WebView2 window. See
 - **Everything ships inside the binary.** No CDN, no external font, no runtime
   fetch. The build fails if a runtime asset references an external host — don't
   work around that check, fix the asset.
+- **Critical-CSS inlining must stay off** (`optimization.styles.inlineCritical:
+  false` in `web/angular.json`). Angular's inliner defers the real stylesheet as
+  `media="print"` and promotes it with an inline `onload` handler, which the API's
+  CSP (`script-src 'self'`, no `unsafe-inline`) blocks — so the stylesheet never
+  applies and the window renders unstyled. It also buys nothing here: the CSS is
+  served from the executable over loopback. Do not "fix" this by loosening the CSP.
+- **Render the UI in Chromium before believing it works.** WebView2 is Chromium, so
+  `playwright` against the real Go server catches layout and CSP problems that no
+  Go test can. Check the console for CSP violations, not just the screenshot.
 - **Windows-specific code goes behind the `windows` build tag** in
   `internal/platform`. The `!windows` stub exists so the core and the API stay
   testable; its `PSM_BROWSE_PATH` / `PSM_CLIPBOARD_PATH` development affordances

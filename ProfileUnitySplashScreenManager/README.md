@@ -1,6 +1,6 @@
 # ProfileUnity SplashScreen Logo Manager
 
-**Version 0.3.0**
+**Version 0.3.1**
 
 > **IMPORTANT: READ BEFORE DOWNLOADING OR USING.** This is a Liquidware
 > **Sparks Tool** — a community/field-contributed utility, **not a Liquidware

@@ -14,7 +14,7 @@ package version
 // AppVersion is the application version, semantic versioning MAJOR.MINOR.PATCH.
 // Bump it for every release, including fix-only releases, and add a CHANGELOG.md
 // entry. Do not hardcode this string anywhere else.
-const AppVersion = "0.3.0"
+const AppVersion = "0.3.1"
 
 // ProductName is the user-facing product name.
 const ProductName = "ProfileUnity SplashScreen Logo Manager"
