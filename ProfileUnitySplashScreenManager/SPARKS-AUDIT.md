@@ -11,6 +11,133 @@
 
 ---
 
+# 0.3.0 — re-assessment after the Go / Angular rewrite
+
+**Audit date:** 2026-08-22
+**Applies to:** `ProfileUnitySplashScreenManager.exe` 0.3.0 (Go service + embedded Angular UI in a WebView2 window)
+**Supersedes:** the 0.2.0 assessment below, which described the PowerShell + WPF implementation. That implementation has been removed; its findings are kept because several of them explain why the rewrite is built the way it is.
+
+The rewrite changes most of the compliance answers, in both directions. Two whole defect classes disappear; the dependency and licensing picture gets materially worse.
+
+## Summary table — 0.3.0
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 1 | Double-byte / Unicode handling | **Pass** | Go paths are literal and its strings are UTF-8. Verified over the real API with CJK, Cyrillic, accented-Latin and bracketed names. UI rendering still needs a Windows pass |
+| 2 | Regional date, time, number formats | **Pass** | Go's time formatting is culture-invariant, and history now stores RFC 3339 **with an offset** — the requirement 0.2.0 deferred |
+| 3 | External URL / CDN references | **Pass, and now enforced** | The build fails if any runtime asset references an external host. One retained endpoint (image search, in the user's own browser), disclosed and disableable |
+| 4 | Open source identified + CycloneDX 1.6 JSON SBOM | **Fail — escalation required** | SBOM is generated from what actually ships and validates against the 1.6 schema. But **9 of 23 components are proprietary** (PrimeUI Commercial License) |
+| 5 | Zero Critical / High CVEs (Grype scan of SBOM) | **Not run — blocking** | Grype is installed and parses our SBOM (22 packages catalogued at the time of that run), but its vulnerability database host is blocked by this environment's network policy |
+| 6 | Version number visible to end user | **Pass** | One constant; window title, header tag, About dialog, `-version`, exe metadata, SBOM and zip name all derive from it |
+| 7 | License PDF + SBOM packaged and visible | **Pass** | Both at the top level of the zip with the notices; README and About dialog point at all three |
+| 8 | UI consistency (style guide / PrimeNG) | **Pass on fidelity, fail on licensing** | Now genuinely on the design system's own stack, with its tokens copied verbatim and Inter self-hosted. The licence is the problem, not the look |
+
+## What got better
+
+**Two defect classes are gone by construction, not by fix.** Both were real bugs found and hand-fixed in 0.2.0:
+
+- **Wildcard metacharacters in filenames.** Go's file APIs take literal paths and never glob, so `logo[1].png` — the name browsers give repeat downloads, which is exactly what this tool's search-and-import workflow produces — needs no special handling. In PowerShell this required switching fifteen call sites to `-LiteralPath`, and getting one wrong reintroduced the bug. Verified end to end: browsing and applying `newlogo[1].png` over the real API works.
+- **Locale-dependent timestamps.** Go's `time.Format` is culture-invariant, so the manifest cannot be written in a form the reader then rejects. PowerShell's `:` in a custom format string is the culture's time separator, which is what broke the history grid on some locales.
+
+**§2 is now fully met rather than partly deferred.** History timestamps are RFC 3339 with an offset. The 0.2.0 audit recorded "store UTC with offset" as a deferred exception; it is closed.
+
+**§3 is enforced instead of asserted.** `cmd/build` scans every built script, stylesheet and markup file for external hosts and fails the build on a hit. A CDN reference cannot reach a release by accident — which matters because AI-generated front-end code reaches for CDNs by default, exactly as the checklist warns.
+
+**§4's SBOM and notices are generated from what shipped.** npm entries come from the Angular builder's own attribution output for the packages it actually bundled, so build-only tooling is correctly excluded; Go entries come from the module list the linker stamped into the binary. Neither can drift from the dependency set. The build also **fails if a Go dependency's license is not recorded** — that guard fired during development on a transitive module (`go-winloader`), which is what it is for.
+
+**Security posture is deliberate rather than incidental.** A local HTTP server on an elevated process is worth being careful about: loopback-only on an ephemeral port, a per-run token injected into the page by the WebView rather than passed in a URL, foreign `Origin`/`Referer` refused, no CORS headers, a restrictive CSP on the UI, and — the important one — **the interface cannot name a file to apply.** Browse and clipboard import record the candidate inside the service and the interface applies "the pending file", so the API is never a "copy any path into `Program Files`" primitive. There is a test asserting that a client-supplied path is ignored.
+
+## What got worse
+
+### E1 — PrimeNG 18+ is proprietary *(blocking; escalation, not a fix)*
+
+PrimeNG was MIT through 17.x. **18.x through 22.x are under the PrimeUI Commercial License** — `© 2026 PrimeTek Informatics. All rights reserved.` Read from the package's own `LICENSE.md`, not inferred: the npm `license` field says only `SEE LICENSE IN LICENSE.md`.
+
+Nine of the twenty-three shipped components are PrimeTek's: `primeng`, `@primeuix/{themes,styled,styles,motion,utils}`, `@primeicons/{angular,core}`, `@primeui/license-manager`.
+
+Checklist §4 requires escalation for anything "source-available-but-not-open", which this is. It is not a fix; it needs a decision.
+
+The license's own restriction: *"Redistributing the software so that third parties can develop with it requires a separate OEM License."* Shipping a compiled application is not that, so distributing the tool is most likely fine — but that reading should be confirmed rather than assumed.
+
+### E2 — the license key ships inside the executable *(blocking; needs a written exception)*
+
+PrimeNG takes the key as a client-side config value (`providePrimeNG({ license })`), so it compiles into the JavaScript bundle and therefore into the `.exe`. Verification is an offline Ed25519 signature check — `@noble/ed25519` is in the bundle, which confirms the mechanism ships.
+
+This is PrimeTek's intended mechanism for distributing an application: the developer is licensed, end users need no key. It is still a problem here:
+
+- A **per-developer commercial key belonging to Liquidware becomes extractable** from any copy of a Sparks Tool that may be distributed widely.
+- §3 states plainly: no *"credentials, API keys, tokens ... in source, config, comments, or commit history."* A key in shipped configuration is within the spirit of that.
+
+There is no third option. Build without the key and PrimeNG injects a red **"Invalid PrimeUI License"** banner, fixed bottom-right at `z-index:2147483647`, inside a *closed* shadow root — PrimeTek's own source comments say the host id is deliberately non-obvious to slow down hide-by-selector attempts. So either the key ships, or every user sees a licensing banner.
+
+**Implemented so the choice stays with the reviewer:** the key comes from `PRIMEUI_LICENSE_KEY` at build time, with no default and never committed; the generated file is git-ignored; and `bom.cdx.json` records whether a key was embedded in that build (`liquidware:build:primeui-license-key-embedded`). Nothing sensitive is in the repository either way. **Embedding it in a distributed build requires a written §3 exception.**
+
+### E3 — the dependency surface grew from 1 to 22 *(accepted, not blocking)*
+
+0.2.0 shipped one third-party component (ps2exe). 0.3.0 ships 23. Smaller than feared — Angular's tree-shaking means only 17 npm packages reach the bundle rather than the hundreds in `node_modules` — but §5's CVE surface is now real rather than theoretical, and every future dependency bump needs an SBOM regeneration and a rescan.
+
+License breakdown of the 23: 9 PrimeUI proprietary, 7 MIT, 3 BSD-3-Clause, 1 Apache-2.0, 1 0BSD, 1 ISC, 1 OFL-1.1, plus Microsoft's WebView2 loader (BSD-3-Clause). Nothing copyleft, nothing unlicensed.
+
+### E3b — a Microsoft redistributable ships inside the executable *(found late, now recorded)*
+
+`github.com/jchv/go-webview2` embeds Microsoft's `WebView2Loader.dll` and loads it from memory when it is not present on disk, so a Microsoft binary is redistributed inside our `.exe`. It was missing from the first SBOM I generated, and was only caught by inspecting the executable's version resources — the string `Microsoft Edge Embedded Browser WebView Loader` turned up where our own version metadata should have been.
+
+It is now recorded as a component (version `1.0.992.28`, read from the DLL itself rather than hardcoded, with a SHA-256), and its licence is BSD-3-Clause per the SDK's own `LICENSE.txt`. That licence's binary-redistribution clause *requires* the copyright notice and disclaimer to accompany the distribution, so this was a real obligation and not merely bookkeeping; the vendor's full text is now reproduced in `THIRD-PARTY-NOTICES.txt`.
+
+Worth stating as a process point: a transitive Go dependency embedding a vendor binary is invisible to `go list` and to the module license check. The generic lesson is that the SBOM has to be reconciled against the built artefact, not only against the dependency graph.
+
+### E4 — a new runtime prerequisite *(disclosed)*
+
+WebView2 must be present. It ships with Windows 11 and patched Windows 10, but a locked-down VDI image — this tool's actual habitat — may not have it. Handled by detecting it at startup and explaining, rather than presenting a blank window. Bundling a fixed-version runtime was considered and declined: roughly 150 MB, and its own SBOM and license entries.
+
+### E5 — a build-time toolchain floor *(documented)*
+
+Rebuilding the interface needs Node.js **22.22.3 or newer**, the Angular CLI's floor. The build checks and fails with a clear message.
+
+## §5 — where the CVE scan actually stands
+
+Better than 0.2.0, still not closed:
+
+- Grype **is** installed here (built from source through the Go module proxy; Syft v1.51.0, DB schema 6).
+- It **parses our SBOM correctly** — `gathered packages packages=22`. So the SBOM is not merely schema-valid, it is consumable by the required scanner.
+- The scan itself cannot run: `grype.anchore.io` returns **403 under this environment's network policy**, so the vulnerability database cannot be fetched, and a scan against no database is not evidence.
+
+One command on a networked machine closes it:
+
+```
+grype db update && grype sbom:./bom.cdx.json --fail-on high
+```
+
+Record the Grype version, the database version and build date, and save the output to a file.
+
+## Verification performed for 0.3.0
+
+- **`go build`, `go vet` and the full test suite pass** for both `linux/amd64` and `windows/amd64`. Windows needs `go vet -unsafeptr=false`; the single flagged conversion is the clipboard read, isolated in `copyFromNative` with the reasoning in a comment.
+- **67 Go tests pass, race-clean**, at 82% statement coverage of the API package and 75% of the store. They cover the manifest, history, archive/restore, the data-loss cases from 0.2.0, the PowerShell manifest compatibility path, and the HTTP API against a live server.
+- **A real Windows GUI executable is produced here**: `PE32+ executable (GUI) x86-64`, 9 sections including `.rsrc`, with `requireAdministrator`, `permonitorv2`, `longPathAware`, the version block and the icon all confirmed present in the binary. This is a genuine improvement on 0.2.0, where nothing could be compiled at all.
+- **The application was run end to end** against a fixture tree: the real Angular bundle, `styles.css`, the Inter woff2 and the brand SVG are all served out of the binary; the token is enforced (401 without, 403 on a foreign origin); and browse → preview → apply → archive → clipboard import → apply → restore → delete-all-history completes correctly, ending with `[]` in the manifest and an empty history directory.
+- **A bracketed filename and a CJK filename were driven through the real API**, not just unit-tested.
+- **The SBOM validates against the CycloneDX 1.6 JSON schema.**
+- **The `!windows` development affordances were proven absent from the Windows binary** by string search, so the stub's `PSM_BROWSE_PATH` cannot be used against the shipped tool.
+- **No secret is in the repository or its history**: swept for JWTs, `primeui`/`primeng` key patterns and credential keywords across the worktree and the full git history.
+
+## Still open for 0.3.0
+
+| | Item | Owner |
+|---|---|---|
+| **E1** | PrimeNG proprietary-license escalation under §4 | reviewer decision |
+| **E2** | Written §3 exception to embed the license key in a distributed build | reviewer decision |
+| **E5** | Grype scan against the final SBOM | networked machine |
+| — | Windows run-time evidence: the UI itself, the clipboard path, the native file dialog, the splash preview, DPI scaling, and the WebView2-missing message. **None of the UI has been rendered.** | Windows machine |
+| — | Code signing. The executable is unsigned, so SmartScreen will flag first run | release process |
+
+
+---
+
+# 0.2.0 — PowerShell implementation (superseded)
+
+---
+
 ## Summary table
 
 Status columns show the Phase 1 verdict and, after the arrow, where the item stands after Phase 3.

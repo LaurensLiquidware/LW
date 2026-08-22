@@ -1,0 +1,287 @@
+<div class="app-shell">
+  <!-- Fixed 48px brand header bar -->
+  <header class="app-header">
+    <img class="wordmark" src="/brand/liquidware-wordmark-light.svg" alt="Liquidware" />
+    <span class="divider"></span>
+    <span class="title">ProfileUnity SplashScreen Logo</span>
+    <span class="flex-1"></span>
+    @if (about()) {
+      <span class="lwl-micro selectable" style="color: rgb(255 255 255 / 0.8)">v{{ about()!.version }}</span>
+    }
+    <p-button
+      label="About"
+      severity="secondary"
+      [text]="true"
+      size="small"
+      styleClass="!text-white"
+      (onClick)="openAbout()" />
+  </header>
+
+  <div class="app-body">
+    <div class="app-content">
+      @if (detached) {
+        <p-message severity="error">
+          This page is not running inside the ProfileUnity SplashScreen Logo Manager host process,
+          so it cannot reach the local service. Start the application from its executable.
+        </p-message>
+      }
+
+      @for (warning of state()?.warnings ?? []; track warning) {
+        <p-message severity="warn">{{ warning }}</p-message>
+      }
+
+      <!-- Current / previewed logo -->
+      <section class="lwl-card">
+        <div class="flex gap-4 items-start">
+          <div class="logo-frame transparent-aware">
+            @if (previewUrl()) {
+              <img [src]="previewUrl()!" alt="Splash screen logo preview" />
+            } @else {
+              <span class="empty">No preview</span>
+            }
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <h2 class="lwl-card-title">
+              {{ hasPending() ? 'Previewed Logo' : 'Current Splash Logo' }}
+            </h2>
+            <p class="mt-1 truncate selectable" [title]="headline()">{{ headline() }}</p>
+            <p class="lwl-muted mt-0.5 selectable">{{ subline() }}</p>
+
+            @if (sizeNote()) {
+              <p class="status-fair mt-1">{{ sizeNote() }}</p>
+            }
+            @if (state()?.live?.[0]?.infoError) {
+              <p class="status-poor mt-1">{{ state()!.live[0].infoError }}</p>
+            }
+
+            <!-- Image search -->
+            @if (about()?.searchEnabled) {
+              <div class="flex gap-2 items-center mt-3 flex-wrap">
+                <label for="searchTerm" class="lwl-muted">Search Images</label>
+                <input
+                  id="searchTerm"
+                  pInputText
+                  class="w-64"
+                  [ngModel]="searchTerm()"
+                  (ngModelChange)="searchTerm.set($event)"
+                  (keyup.enter)="search()"
+                  [disabled]="busy()"
+                  placeholder="e.g. company logo" />
+                <p-button
+                  label="Search"
+                  severity="secondary"
+                  [outlined]="true"
+                  [disabled]="busy()"
+                  (onClick)="search()" />
+              </div>
+            }
+
+            <!-- Actions -->
+            <div class="flex gap-2 items-center mt-3 flex-wrap">
+              <p-button
+                label="Browse…"
+                severity="secondary"
+                [outlined]="true"
+                [disabled]="busy() || !state()?.targetDirExists"
+                (onClick)="browse()" />
+              <p-button
+                label="Import From Clipboard"
+                severity="secondary"
+                [outlined]="true"
+                [disabled]="busy()"
+                (onClick)="importClipboard()" />
+              <p-button
+                label="Set As Splash Logo"
+                [disabled]="!canApply()"
+                (onClick)="apply()" />
+              @if (hasPending()) {
+                <p-button
+                  label="Discard"
+                  severity="secondary"
+                  [text]="true"
+                  [disabled]="busy()"
+                  (onClick)="discard()" />
+              }
+              <p-button
+                label="Preview Splash Screen"
+                severity="secondary"
+                [outlined]="true"
+                [disabled]="busy() || !state()?.previewExists"
+                [pTooltip]="state()?.previewExists ? state()!.previewExe : 'LwL.ProfileUnity.Client.CtxInit.exe was not found in the target folder.'"
+                tooltipPosition="top"
+                (onClick)="previewSplash()" />
+            </div>
+
+            @if (status()) {
+              <p class="mt-3 selectable" [class]="'status-' + status()!.kind">{{ status()!.text }}</p>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- History -->
+      <section class="history-panel">
+        <h2 class="lwl-card-title mb-2">Logo History</h2>
+
+        <p-table
+          [value]="state()?.history ?? []"
+          [selection]="selectedHistory()"
+          (selectionChange)="selectedHistory.set($event)"
+          selectionMode="single"
+          dataKey="id"
+          scrollable="true"
+          scrollHeight="240px"
+          styleClass="lwl-cell"
+          [tableStyle]="{ 'min-width': '40rem' }">
+          <ng-template #header>
+            <tr>
+              <th style="width: 13rem">Date Archived</th>
+              <th>Original File Name</th>
+              <th style="width: 5rem">Type</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-entry>
+            <tr [pSelectableRow]="entry">
+              <td>{{ entry.dateArchived | date: 'medium' }}</td>
+              <td class="truncate" [title]="entry.originalName">
+                {{ entry.originalName }}
+                @if (entry.fileMissing) {
+                  <span class="status-poor lwl-micro ml-2">file missing on disk</span>
+                }
+              </td>
+              <td>{{ entry.extension }}</td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="3" class="lwl-muted">
+                No logos have been archived yet. The logo currently in place is archived here the
+                first time you apply a new one.
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+
+        <div class="flex gap-2 mt-3">
+          <p-button
+            label="Restore Selected"
+            severity="secondary"
+            [outlined]="true"
+            [disabled]="busy() || !selectedHistory() || selectedHistory()?.fileMissing"
+            (onClick)="restoreSelected()" />
+          <p-button
+            label="Delete Selected From History"
+            severity="danger"
+            [outlined]="true"
+            [disabled]="busy() || !selectedHistory()"
+            (onClick)="deleteSelected()" />
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- About: version plus the Sparks Tool licence and SBOM, per section 7 -->
+<p-dialog
+  header="About"
+  [visible]="aboutOpen()"
+  (visibleChange)="aboutOpen.set($event)"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '38rem' }">
+  @if (about(); as info) {
+    <div class="flex flex-col gap-3">
+      <div>
+        <h3 class="lwl-card-title">{{ info.product }}</h3>
+        <p class="lwl-muted selectable">Version {{ info.version }} · {{ info.company }}</p>
+      </div>
+
+      <p-message severity="warn">
+        <div class="flex flex-col gap-2">
+          <strong>IMPORTANT: READ BEFORE DOWNLOADING OR USING.</strong>
+          <span>
+            This is a Liquidware Sparks Tool — a community/field-contributed utility,
+            <strong>not a Liquidware commercial product</strong>. It is provided outside
+            Liquidware's standard product development lifecycle, <strong>“AS IS” with no
+            warranty, support, or maintenance</strong>, and is used at your own risk.
+          </span>
+        </div>
+      </p-message>
+
+      <div>
+        <h4 class="lwl-card-title">Included Documents</h4>
+        <p class="lwl-muted mt-1">
+          <strong>Spark_License.pdf</strong> — the Liquidware Sparks Tool License and Disclaimer.
+        </p>
+        <p class="lwl-muted mt-1">
+          <strong>bom.cdx.json</strong> — a CycloneDX 1.6 Software Bill of Materials: an inventory
+          of the third-party components in this tool, provided so your security team can review it
+          against your own policy.
+        </p>
+        <div class="flex gap-2 mt-2 flex-wrap">
+          <p-button
+            label="Open License PDF"
+            severity="secondary"
+            [outlined]="true"
+            size="small"
+            [disabled]="!info.licensePresent"
+            (onClick)="openDocument('license')" />
+          <p-button
+            label="Open SBOM"
+            severity="secondary"
+            [outlined]="true"
+            size="small"
+            [disabled]="!info.sbomPresent"
+            (onClick)="openDocument('sbom')" />
+          <p-button
+            label="Open Third-Party Notices"
+            severity="secondary"
+            [outlined]="true"
+            size="small"
+            [disabled]="!info.noticesPresent"
+            (onClick)="openDocument('notices')" />
+        </div>
+        @if (!info.licensePresent || !info.sbomPresent || !info.noticesPresent) {
+          <p class="status-poor lwl-micro mt-2">
+            One or more documents were not found next to the executable. They ship in the same
+            folder; if the tool was copied out of its distribution, copy them alongside it.
+          </p>
+        }
+      </div>
+
+      <div>
+        <h4 class="lwl-card-title">Environment</h4>
+        <dl class="lwl-micro mt-1 grid gap-x-3 gap-y-1" style="grid-template-columns: auto 1fr">
+          <dt>Target folder</dt>
+          <dd class="selectable break-all">{{ info.targetDir }}</dd>
+          <dt>History and manifest</dt>
+          <dd class="selectable break-all">{{ info.dataDir }}</dd>
+          <dt>Program folder</dt>
+          <dd class="selectable break-all">{{ info.exeDir }}</dd>
+          <dt>Elevated</dt>
+          <dd>{{ info.elevated ? 'yes' : 'no' }}</dd>
+          <dt>WebView2 runtime</dt>
+          <dd class="selectable">{{ info.webViewVersion || 'not detected' }}</dd>
+          <dt>Network access</dt>
+          <dd>
+            @if (info.searchEnabled) {
+              Image search opens {{ info.searchHost }} in your default browser. Everything else is
+              local.
+            } @else {
+              Image search is disabled in this build. The tool makes no network requests.
+            }
+          </dd>
+        </dl>
+      </div>
+
+      <p class="lwl-micro">
+        Sets the ProfileUnity client splash screen logo per Liquidware KB 12914471137293.
+      </p>
+    </div>
+  } @else {
+    <p class="lwl-muted">Loading…</p>
+  }
+</p-dialog>
+
+<p-confirmdialog />

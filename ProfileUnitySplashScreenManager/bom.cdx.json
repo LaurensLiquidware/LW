@@ -1,35 +1,423 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:db14616b-3059-4cc6-b19a-8ff6574f6c50",
+  "serialNumber": "urn:uuid:45491ccb-842f-4d78-9cd9-852e396fb9d2",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-08-22T15:12:00Z",
+    "timestamp": "2026-08-22T16:09:52Z",
     "component": {
       "type": "application",
       "bom-ref": "ProfileUnitySplashScreenManager",
       "name": "ProfileUnitySplashScreenManager",
-      "version": "0.2.0",
-      "publisher": "Liquidware",
-      "description": "Sets the ProfileUnity client splash screen logo (Liquidware KB 12914471137293), with archive/restore history. Single-file PowerShell + WPF.",
+      "version": "0.3.0",
+      "description": "Sets the ProfileUnity client splash screen logo (Liquidware KB 12914471137293), with archive and restore history. Go service with an embedded Angular user interface in a WebView2 window.",
       "licenses": [
         {
           "license": {
             "name": "Liquidware Sparks Tool License and Disclaimer v1.0"
           }
         }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7ef72c485cdeb3f62aed66f83bd308a26a2cbd67bd5d33344ca6317bfd45b0d7"
+        }
       ]
     },
     "properties": [
       {
         "name": "liquidware:sbom:scope",
-        "value": "Describes the PowerShell script distribution, which has no third-party components: the tool binds only to Windows-inbox .NET Framework assemblies (PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing), and its embedded brand assets are first-party Liquidware artwork."
+        "value": "Describes the shipped executable. npm entries are the packages the Angular builder actually bundled, taken from its own attribution output, so build-only tooling (the Angular CLI, TypeScript, Tailwind, the compiler) is deliberately excluded: it is not distributed. Go entries are the modules the linker recorded in the binary."
       },
       {
-        "name": "liquidware:sbom:finalisation",
-        "value": "Build-Exe.ps1 rewrites this file when it compiles the executable, adding ps2exe at the version actually resolved at build time plus the executable's SHA-256. The copy shipped alongside an .exe is that rewritten one; re-run the Grype scan against it, per section 5 of the Sparks Tool Project Review Checklist."
+        "name": "liquidware:sbom:proprietary-components",
+        "value": "The PrimeNG and PrimeUI packages are proprietary (PrimeUI Commercial License), not open source. PrimeNG was MIT through 17.x; 18.x and later are commercial. This requires an escalation under section 4 of the Sparks Tool Project Review Checklist."
+      },
+      {
+        "name": "liquidware:build:primeui-license-key-embedded",
+        "value": "false"
       }
     ]
   },
-  "components": []
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@angular/common@22.1.3",
+      "name": "@angular/common",
+      "version": "22.1.3",
+      "purl": "pkg:npm/@angular/common@22.1.3",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@angular/core@22.1.3",
+      "name": "@angular/core",
+      "version": "22.1.3",
+      "purl": "pkg:npm/@angular/core@22.1.3",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@angular/forms@22.1.3",
+      "name": "@angular/forms",
+      "version": "22.1.3",
+      "purl": "pkg:npm/@angular/forms@22.1.3",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@angular/platform-browser@22.1.3",
+      "name": "@angular/platform-browser",
+      "version": "22.1.3",
+      "purl": "pkg:npm/@angular/platform-browser@22.1.3",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@noble/ed25519@2.3.0",
+      "name": "@noble/ed25519",
+      "version": "2.3.0",
+      "purl": "pkg:npm/@noble/ed25519@2.3.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@noble/hashes@2.2.0",
+      "name": "@noble/hashes",
+      "version": "2.2.0",
+      "purl": "pkg:npm/@noble/hashes@2.2.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@primeicons/angular@8.0.0",
+      "name": "@primeicons/angular",
+      "version": "8.0.0",
+      "purl": "pkg:npm/@primeicons/angular@8.0.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@primeicons/core@8.0.0",
+      "name": "@primeicons/core",
+      "version": "8.0.0",
+      "purl": "pkg:npm/@primeicons/core@8.0.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@primeui/license-manager@1.0.0",
+      "name": "@primeui/license-manager",
+      "version": "1.0.0",
+      "purl": "pkg:npm/@primeui/license-manager@1.0.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@primeuix/motion@1.0.0",
+      "name": "@primeuix/motion",
+      "version": "1.0.0",
+      "purl": "pkg:npm/@primeuix/motion@1.0.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@primeuix/styled@1.0.0",
+      "name": "@primeuix/styled",
+      "version": "1.0.0",
+      "purl": "pkg:npm/@primeuix/styled@1.0.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@primeuix/styles@3.0.0",
+      "name": "@primeuix/styles",
+      "version": "3.0.0",
+      "purl": "pkg:npm/@primeuix/styles@3.0.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@primeuix/themes@3.0.0",
+      "name": "@primeuix/themes",
+      "version": "3.0.0",
+      "purl": "pkg:npm/@primeuix/themes@3.0.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/@primeuix/utils@0.8.1",
+      "name": "@primeuix/utils",
+      "version": "0.8.1",
+      "purl": "pkg:npm/@primeuix/utils@0.8.1",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/primeng@22.1.0",
+      "name": "primeng",
+      "version": "22.1.0",
+      "purl": "pkg:npm/primeng@22.1.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "name": "PrimeUI Commercial License (PrimeTek Informatics), proprietary; see LICENSE.md in the package",
+            "url": "https://primeui.dev/licenses/commercial"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/rxjs@7.8.2",
+      "name": "rxjs",
+      "version": "7.8.2",
+      "purl": "pkg:npm/rxjs@7.8.2",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tslib@2.8.1",
+      "name": "tslib",
+      "version": "2.8.1",
+      "purl": "pkg:npm/tslib@2.8.1",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "0BSD"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:golang/github.com/jchv/go-webview2@v0.0.0-20260205173254-56598839c808",
+      "name": "github.com/jchv/go-webview2",
+      "version": "v0.0.0-20260205173254-56598839c808",
+      "purl": "pkg:golang/github.com/jchv/go-webview2@v0.0.0-20260205173254-56598839c808",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:golang/github.com/jchv/go-winloader@v0.0.0-20250406163304-c1995be93bd1",
+      "name": "github.com/jchv/go-winloader",
+      "version": "v0.0.0-20250406163304-c1995be93bd1",
+      "purl": "pkg:golang/github.com/jchv/go-winloader@v0.0.0-20250406163304-c1995be93bd1",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:golang/golang.org/x/image@v0.34.0",
+      "name": "golang.org/x/image",
+      "version": "v0.34.0",
+      "purl": "pkg:golang/golang.org/x/image@v0.34.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:golang/golang.org/x/sys@v0.40.0",
+      "name": "golang.org/x/sys",
+      "version": "v0.40.0",
+      "purl": "pkg:golang/golang.org/x/sys@v0.40.0",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "microsoft-webview2-loader",
+      "name": "Microsoft Edge WebView2 Loader (WebView2Loader.dll)",
+      "version": "1.0.992.28",
+      "description": "Embedded in the executable by github.com/jchv/go-webview2 and loaded from memory when not present on disk. Part of the Microsoft Edge WebView2 SDK.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c4674acf95f0800793a4a6d61132adf5dfa694c218e482d86093494c4e84100a"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://developer.microsoft.com/microsoft-edge/webview2/"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "inter-variable-font",
+      "name": "Inter",
+      "version": "3.19",
+      "description": "Inter variable font (roman), self-hosted so no font is fetched at runtime. Supplied with the Liquidware design system.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "OFL-1.1"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "17fe38ab302c7e5dbfb5c3d87801092d79be958500db6412ed3bc0f126bd53d3"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://rsms.me/inter/"
+        }
+      ]
+    }
+  ]
 }

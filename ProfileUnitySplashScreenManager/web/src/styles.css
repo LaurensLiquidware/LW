@@ -1,0 +1,373 @@
+/* ==========================================================================
+   ProfileUnity SplashScreen Logo Manager -- global styles
+
+   Everything here is local. Section 3 of the Sparks Tool Project Review
+   Checklist forbids CDN-loaded runtime dependencies, so Inter is served from the
+   binary. The style guide's primeicons-cdn.css pulls the icon font from unpkg and
+   is deliberately not used; the icon font is not used at all, in fact -- this UI
+   has no glyph icons, and PrimeNG 22 renders its own control icons as inline SVG,
+   so importing primeicons.css would only add five unused font files (it declares
+   .eot/.svg/.ttf/.woff/.woff2 for legacy engines) to the executable.
+
+   The design tokens below are copied verbatim from the Liquidware style guide's
+   colors_and_type.css, so brand values are the guide's own, not approximations.
+   ========================================================================== */
+
+@import "tailwindcss";
+@plugin "tailwindcss-primeui";
+
+/* PrimeNG's generated theme is placed in its own layer so Tailwind utilities can
+   override component styles without !important. Matches the cssLayer order
+   configured in app.config.ts. */
+@layer theme, base, primeng;
+
+/* Inter, self-hosted. The variable font covers 100-900 in one file, so the
+   guide's weight tokens are all reachable. Italic is not shipped: nothing in
+   this UI uses it, and it would add ~240 kB to the executable. */
+@font-face {
+  font-family: 'Inter var';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url('/fonts/Inter-roman-var.woff2') format('woff2');
+}
+
+:root {
+/* --- BEGIN tokens copied from the style guide's colors_and_type.css --- */
+
+  /* === Brand =============================================================== */
+  --lwl-flame: #03a9f4;          /* the droplet/flame accent in the wordmark */
+  --lwl-mark-circle: #0b72ba;    /* the circular app-icon background */
+  --lwl-wordmark-gray: #636466;  /* "Liquidware" wordmark on light bg */
+
+  /* === Primary (brand blue) scale ========================================= */
+  --p-primary-50:  #f2f8fc;
+  --p-primary-100: #c2ddef;
+  --p-primary-200: #91c2e2;
+  --p-primary-300: #61a8d5;
+  --p-primary-400: #308dc9;
+  --p-primary-500: #0072bc;   /* base brand blue */
+  --p-primary-600: #0061a0;   /* primary action color (light scheme) */
+  --p-primary-700: #005084;   /* hover */
+  --p-primary-800: #003f67;   /* active */
+  --p-primary-900: #002e4b;
+  --p-primary-950: #001d2f;   /* login page backdrop */
+
+  /* === Surface (neutral) scale = Tailwind "zinc" ========================== */
+  --p-surface-0:   #ffffff;
+  --p-surface-50:  #fafafa;
+  --p-surface-100: #f4f4f5;
+  --p-surface-200: #e4e4e7;
+  --p-surface-300: #d4d4d8;
+  --p-surface-400: #a1a1aa;
+  --p-surface-500: #71717a;
+  --p-surface-600: #52525b;
+  --p-surface-700: #3f3f46;
+  --p-surface-800: #27272a;
+  --p-surface-900: #18181b;
+  --p-surface-950: #09090b;
+
+  /* === Semantic status: Good / Fair / Poor (GFP) ========================== */
+  /* GFP is the core data-language of Stratusphere: every metric is scored. */
+  --good-color:        #16a34a;  /* green-600 */
+  --good-color-hover:  #15803d;  /* green-700 */
+  --good-chart-color:  #22c55e;  /* green-500 (chart fills) */
+  --fair-color:        #ca8a04;  /* yellow-600 */
+  --fair-color-hover:  #a16207;  /* yellow-700 */
+  --fair-chart-color:  #eab308;  /* yellow-500 */
+  --poor-color:        #dc2626;  /* red-600 */
+  --poor-color-hover:  #b91c1c;  /* red-700 */
+  --poor-chart-color:  #ef4444;  /* red-500 */
+
+  /* === Data-table heatmap cells (exact values from the product) ========== */
+  /* Detailed Views shades each metric cell by severity. These hexes are the
+     literal `s` (background) values emitted by the v1 API. */
+  --cell-warn:   #FFFF99;  /* pale yellow — mild (black text) */
+  --cell-elev:   #FFCC66;  /* orange — moderate (black text)  */
+  --cell-crit:   #ff6666;  /* red — severe (white text)       */
+  --cell-good:   #01DF01;  /* bright green — healthy/high grade */
+
+  /* === UX letter-grade scale ============================================= */
+  /* The overall UX rating (0–3) is surfaced as a letter grade with a colored
+     fill that walks green → yellow → red. A+/A/A- are greens, B+/B mid, etc. */
+  --grade-aplus: #00d000;  /* A+  */
+  --grade-a:     #15c015;  /* A   */
+  --grade-aminus:#01DF01;  /* A-  */
+  --grade-b:     #c8f000;  /* B / B+ upper */
+  --grade-bplus: #FFFF99;  /* B+ (as shown: pale yellow fill, black text) */
+  --grade-c:     #FFCC66;  /* C band (orange) */
+  --grade-d:     #ff9966;  /* D band */
+  --grade-f:     #ff6666;  /* F band (red) */
+
+  /* === Links ============================================================== */
+  /* Widget titles that drill down render as primary-blue links. */
+  --link-color: var(--p-primary-500);
+  --link-color-dark: #4aa3e0;
+
+  /* === Semantic surface roles (light scheme = default) ==================== */
+  --p-content-background: var(--p-surface-50);   /* app canvas */
+  --p-card-background:    var(--p-surface-50);
+  --p-text-color:         var(--p-surface-800);  /* body text */
+  --p-text-hover-color:   var(--p-surface-900);
+  --p-text-muted-color:   var(--p-surface-500);  /* secondary text */
+  --p-text-hover-muted-color: var(--p-surface-600);
+  --p-primary-color:      var(--p-primary-600);  /* primary action */
+  --p-primary-hover-color: var(--p-primary-700);
+  --p-primary-active-color: var(--p-primary-800);
+  --highlight:            #cdeefd;               /* selection / row highlight */
+  --frame-border-color:   var(--p-surface-300);
+
+  /* === App chrome ========================================================= */
+  --header-height: 48px;
+  --header-bg: var(--p-primary-600);   /* app header bar */
+  --header-font-size: 16px;
+  --search-width: 40rem;               /* 640px */
+
+  /* === Radii (PrimeNG borderRadius scale) ================================= */
+  --radius-none: 0;
+  --radius-xs: 0.125rem;  /* 1.75px */
+  --radius-sm: 0.25rem;   /* 3.5px  — buttons, form fields (most common) */
+  --radius-md: 0.375rem;  /* 5.25px */
+  --radius-lg: 0.5rem;    /* 7px    — cards */
+  --radius-xl: 0.75rem;   /* 10.5px */
+  --radius-2xl: 1rem;     /* 14px   — login form panel (rounded-2xl) */
+
+  /* === Elevation / shadow ================================================= */
+  /* Cards & widgets sit on a flat surface with whisper-soft shadows. */
+  --box-shadow:
+    0 0 1px color-mix(in srgb, var(--p-surface-700), transparent 20%),
+    0 1px 2px color-mix(in srgb, var(--p-surface-900), transparent 90%);
+  --card-shadow:
+    0 0 1px color-mix(in srgb, black, transparent 40%),
+    0 1px 2px color-mix(in srgb, black, transparent 80%);
+  --widget-shadow:
+    0 1px 1px var(--p-surface-400),
+    0 0 1px var(--p-surface-500);
+
+  /* === Glass / frost (context menus, overlays) ============================ */
+  --frost-bg: rgba(255, 255, 255, 0.75);
+  --frost-border: 1px solid rgba(0, 0, 0, 0.1);
+  --frost-blur: blur(5px);
+
+  /* === Spacing rhythm ===================================================== */
+  /* Tailwind spacing scale on a 14px root. Widgets gap at 0.857rem (12px). */
+  --gap-grid: 1rem;       /* 14px — dashboard/summary grid gap */
+  --card-width: 350px;    /* canonical dashboard widget width */
+  --card-height: 17.5rem; /* 245px — widget height */
+  --nav-width: 250px;     /* pinned side-nav width */
+
+  /* === Form field density ================================================= */
+  --field-pad-x: 0.5rem;
+  --field-pad-y: 0.25rem;
+
+  /* === Type tokens ======================================================== */
+  --font-sans: 'Inter var', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+
+  /* Sizes are expressed against the 14px root used by the app. */
+  --text-xs:   0.75rem;   /* 10.5px — badges, version tag, micro-labels */
+  --text-sm:   0.857rem;  /* 12px   — table cells, dense UI */
+  --text-base: 1rem;      /* 14px   — body / default */
+  --text-md:   1.143rem;  /* 16px   — header, card titles emphasis */
+  --text-lg:   1.25rem;   /* 17.5px */
+  --text-xl:   1.5rem;    /* 21px   — widget secondary numbers */
+  --text-2xl:  1.714rem;  /* 24px   — primary metric numbers */
+  --text-3xl:  2rem;      /* 28px */
+  --text-4xl:  2.5rem;    /* 35px   — page hero numbers */
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+
+  --weight-normal: 400;   /* button labels are 400, not bold */
+  --weight-medium: 500;   /* card titles */
+  --weight-semibold: 600; /* metric labels, emphasis */
+  --weight-bold: 700;/* --- END tokens copied from the style guide --- */
+}
+
+/* ---------------------------------------------------------------- base ---- */
+
+html {
+  /* The guide's type scale is expressed against a 14px root. */
+  font-size: 14px;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  color: var(--p-text-color);
+  background: var(--p-content-background);
+  /* Inter: l with a tail, per the guide. */
+  font-feature-settings: 'cv05' 1;
+  -webkit-font-smoothing: antialiased;
+  /* A desktop window, not a scrolling document. */
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Text the user may genuinely want to copy -- paths, versions, messages. */
+.selectable {
+  user-select: text;
+  cursor: text;
+}
+
+/* ------------------------------------------------------- semantic type ---- */
+
+.lwl-card-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--p-text-color);
+  line-height: var(--leading-tight);
+}
+
+.lwl-muted {
+  color: var(--p-text-muted-color);
+}
+
+.lwl-micro {
+  font-size: var(--text-xs);
+  color: var(--p-text-muted-color);
+}
+
+.lwl-cell {
+  font-size: var(--text-sm);
+}
+
+.status-good  { color: var(--good-color); }
+.status-fair  { color: var(--fair-color); }
+.status-poor  { color: var(--poor-color); }
+
+/* ------------------------------------------------------------- layout ---- */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Fixed 48px header bar, per the guide's --header-height. */
+.app-header {
+  flex: 0 0 var(--header-height);
+  height: var(--header-height);
+  background: var(--header-bg);
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0 1rem;
+  color: #fff;
+}
+
+.app-header .divider {
+  width: 1px;
+  height: 20px;
+  background: rgb(255 255 255 / 0.2);
+}
+
+.app-header .title {
+  font-size: var(--header-font-size);
+}
+
+.app-header .wordmark {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+
+/* The hex brand texture bleeds subtly from the top-left of the content area,
+   the same treatment the guide describes for its login and loading screens. */
+.app-body {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: auto;
+  background: var(--p-content-background);
+}
+
+.app-body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 200px;
+  background-image: url('/brand/lwl-hex.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.app-content {
+  position: relative;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+/* Flat card with the guide's whisper-soft shadow and 8px radius. */
+.lwl-card {
+  background: var(--p-surface-0);
+  border: 1px solid var(--frame-border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 1rem;
+}
+
+.logo-frame {
+  border: 1px solid var(--frame-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--p-surface-50);
+  width: 150px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.logo-frame img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.logo-frame .empty {
+  font-size: var(--text-xs);
+  color: var(--p-text-muted-color);
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+/* Checkerboard so a transparent logo is legible rather than invisible. */
+.logo-frame.transparent-aware {
+  background-image:
+    linear-gradient(45deg, var(--p-surface-100) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--p-surface-100) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--p-surface-100) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--p-surface-100) 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+
+.history-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* --------------------------------------------------------- PrimeNG trim -- */
+
+/* The guide puts button labels at 400, not bold. */
+:root {
+  --p-button-label-font-weight: var(--weight-normal);
+}
+
+/* Dense data cells, per .lwl-cell in the guide. */
+.p-datatable-table-container {
+  font-size: var(--text-sm);
+}
