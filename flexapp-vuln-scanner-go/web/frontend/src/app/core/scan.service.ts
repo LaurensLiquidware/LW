@@ -11,9 +11,14 @@ import { ScanDiff, ScanResult, ScanSnapshot } from './models/scan';
 export class ScanService {
   private readonly http = inject(HttpClient);
 
-  startScan(packagePath: string, outputDir: string, nvdApiKey?: string): Promise<ScanSnapshot> {
+  startScan(packagePath: string, outputDir: string, nvdApiKey?: string, skipDefenderScan?: boolean): Promise<ScanSnapshot> {
     return firstValueFrom(
-      this.http.post<ScanSnapshot>('/api/scans', { packagePath, outputDir, nvdApiKey: nvdApiKey || undefined }),
+      this.http.post<ScanSnapshot>('/api/scans', {
+        packagePath,
+        outputDir,
+        nvdApiKey: nvdApiKey || undefined,
+        skipDefenderScan: skipDefenderScan || undefined,
+      }),
     );
   }
 

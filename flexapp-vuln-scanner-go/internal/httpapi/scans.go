@@ -15,6 +15,10 @@ type startScanRequest struct {
 	PackagePath string `json:"packagePath"`
 	OutputDir   string `json:"outputDir"`
 	NVDAPIKey   string `json:"nvdApiKey,omitempty"`
+	// SkipDefenderScan lets the New Scan form disable the Windows
+	// Defender scan for this one run -- it defaults to false (Defender
+	// runs) when omitted, matching the checkbox's default-checked state.
+	SkipDefenderScan bool `json:"skipDefenderScan,omitempty"`
 }
 
 // StartScanHandler starts a new scan (Stage 1 + Stage 2) on a
@@ -32,7 +36,7 @@ func StartScanHandler(deps ScanDeps) http.HandlerFunc {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "packagePath and outputDir are required"})
 			return
 		}
-		job := deps.StartScan(req.PackagePath, req.OutputDir, req.NVDAPIKey)
+		job := deps.StartScan(req.PackagePath, req.OutputDir, req.NVDAPIKey, req.SkipDefenderScan)
 		writeJSON(w, http.StatusAccepted, job.Snapshot())
 	}
 }

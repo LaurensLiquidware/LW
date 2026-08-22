@@ -33,6 +33,7 @@
     "packagePath": "Pakketpad",
     "packagePathPlaceholder": "bijv. D:\\FlexAppShare\\mijnapp.vhdx",
     "outputDir": "Uitvoermap",
+    "runDefenderScan": "Windows Defender malwarescan uitvoeren",
     "advanced": "Geavanceerd",
     "nvdApiKey": "NVD API-sleutel",
     "nvdApiKeyHint": "Optioneel — verhoogt de NVD-limiet van 5 naar 50 verzoeken per 30 seconden.",
@@ -42,7 +43,18 @@
   "scanProgress": {
     "heading": "Scanvoortgang",
     "cancel": "Annuleren",
-    "canceled": "Geannuleerd."
+    "canceled": "Geannuleerd.",
+    "log": "Logboek",
+    "task": {
+      "queued": "In wachtrij",
+      "stage1": "Fase 1: Pakket koppelen en bestandsinventaris opbouwen",
+      "stage2": "Fase 2: Kwetsbaarheden vergelijken",
+      "stage2Osv": "Fase 2: OSV.dev bevragen",
+      "stage2Nvd": "Fase 2: NVD bevragen",
+      "done": "Voltooid",
+      "error": "Fout",
+      "canceled": "Geannuleerd"
+    }
   },
   "results": {
     "coverage": "Resolutiedekking",

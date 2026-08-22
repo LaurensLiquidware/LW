@@ -33,6 +33,11 @@
       </div>
     </div>
 
+    <div class="flex items-center gap-2">
+      <p-checkbox formControlName="runDefenderScan" inputId="runDefenderScan" [binary]="true" />
+      <label for="runDefenderScan" class="lwl-micro">{{ 'newScan.runDefenderScan' | transloco }}</label>
+    </div>
+
     <p-panel [header]="'newScan.advanced' | transloco" [toggleable]="true" [collapsed]="true">
       <div class="flex flex-col gap-1">
         <label for="nvdApiKey" class="lwl-micro">{{ 'newScan.nvdApiKey' | transloco }}</label>

@@ -311,19 +311,24 @@ func (d ScanDeps) persistUpdate(id string, mutate func(*scanstore.Entry)) {
 
 // StartScan runs Stage 1 (mount + inventory) then Stage 2 (OSV/NVD
 // matching + reports) on a background goroutine, returning immediately
-// with the created job.
-func (d ScanDeps) StartScan(packagePath, outputDir, nvdAPIKey string) *ScanJob {
+// with the created job. skipDefenderScan is this scan's own request
+// (the New Scan form's checkbox); it's OR'd with the deps-level
+// SkipDefenderScan default (an operator-level "this install never
+// scans" setting, e.g. FVS_SKIP_DEFENDER_SCAN) so a global disable
+// can't be silently overridden by a per-request value that never asked
+// to skip.
+func (d ScanDeps) StartScan(packagePath, outputDir, nvdAPIKey string, skipDefenderScan bool) *ScanJob {
 	id := newJobID()
 	job := d.Registry.create(id, packagePath, outputDir)
 	ctx, cancel := context.WithCancel(context.Background())
 	job.cancel = cancel
 	d.persistAdd(id, packagePath, outputDir, "scan")
-	go d.runJob(ctx, job, nvdAPIKey)
+	go d.runJob(ctx, job, nvdAPIKey, d.SkipDefenderScan || skipDefenderScan)
 	return job
 }
 
-func (d ScanDeps) runJob(ctx context.Context, job *ScanJob, nvdAPIKey string) {
-	inventoryPath, err := pipeline.RunStage1(ctx, job, d.StageOneScript, job.PackagePath, job.OutputDir, d.SkipDefenderScan)
+func (d ScanDeps) runJob(ctx context.Context, job *ScanJob, nvdAPIKey string, skipDefenderScan bool) {
+	inventoryPath, err := pipeline.RunStage1(ctx, job, d.StageOneScript, job.PackagePath, job.OutputDir, skipDefenderScan)
 	if err != nil {
 		d.finishWithError(job, err)
 		return

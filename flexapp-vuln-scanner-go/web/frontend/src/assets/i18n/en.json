@@ -33,6 +33,7 @@
     "packagePath": "Package Path",
     "packagePathPlaceholder": "e.g. D:\\FlexAppShare\\myapp.vhdx",
     "outputDir": "Output Folder",
+    "runDefenderScan": "Run Windows Defender malware scan",
     "advanced": "Advanced",
     "nvdApiKey": "NVD API Key",
     "nvdApiKeyHint": "Optional — raises the NVD rate limit from 5 to 50 requests per 30 seconds.",
@@ -42,7 +43,18 @@
   "scanProgress": {
     "heading": "Scan Progress",
     "cancel": "Cancel",
-    "canceled": "Canceled."
+    "canceled": "Canceled.",
+    "log": "Log",
+    "task": {
+      "queued": "Queued",
+      "stage1": "Stage 1: Mounting package and building file inventory",
+      "stage2": "Stage 2: Matching vulnerabilities",
+      "stage2Osv": "Stage 2: Querying OSV.dev",
+      "stage2Nvd": "Stage 2: Querying NVD",
+      "done": "Done",
+      "error": "Error",
+      "canceled": "Canceled"
+    }
   },
   "results": {
     "coverage": "Resolution Coverage",

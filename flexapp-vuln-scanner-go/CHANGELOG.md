@@ -329,3 +329,24 @@
   Defender integration (the scan itself running against a real mounted
   VHDX) still needs verification on a real Windows machine, the same
   boundary every other Windows-only piece of this project has.
+- Made the Windows Defender scan a per-scan choice instead of only a
+  server-level/CLI-level default: the New Scan form now has a "Run
+  Windows Defender malware scan" checkbox (checked by default, matching
+  the scan-unless-skipped default), sent as `skipDefenderScan` on
+  `POST /api/scans`. The deps-level `FVS_SKIP_DEFENDER_SCAN` (an
+  operator-level "this install never scans" setting) is OR'd with the
+  per-request value, so a global disable can't be silently overridden by
+  a request that never asked to skip it.
+- Redesigned the Scan Progress screen: the full raw log -- previously
+  the main thing on the page, growing without bound -- is now a
+  scrollable panel on the left (there to check if something failed, not
+  something to stare at while a scan is healthy), and the main area
+  shows a plain-language "what's happening right now" line (e.g. "Stage
+  2: Querying OSV.dev") with a progress bar (indeterminate before the
+  first progress event arrives, determinate once a done/total count is
+  known) as the primary view. Verified with a live server + Playwright:
+  the checkbox renders checked by default with no console errors, and
+  the new two-column layout renders correctly for both an in-progress
+  and a failed job (log panel showing the real `pwsh` invocation and
+  output, main area showing the plain-language status and the error
+  message).

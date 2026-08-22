@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TranslocoModule } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { PanelModule } from 'primeng/panel';
@@ -20,7 +21,7 @@ const PACKAGE_FILTER = 'FlexApp Packages (*.vhdx;*.zip)|*.vhdx;*.zip|All Files (
  * Flask web UI had), plus an Advanced section for the NVD API key. */
 @Component({
   selector: 'app-new-scan',
-  imports: [ReactiveFormsModule, TranslocoModule, ButtonModule, InputTextModule, MessageModule, PanelModule],
+  imports: [ReactiveFormsModule, TranslocoModule, ButtonModule, CheckboxModule, InputTextModule, MessageModule, PanelModule],
   changeDetection: ChangeDetectionStrategy.Default,
   templateUrl: './new-scan.component.html',
 })
@@ -46,6 +47,10 @@ export class NewScanComponent {
     packagePath: ['', Validators.required],
     outputDir: ['./scan-out', Validators.required],
     nvdApiKey: [''],
+    // Checked (scan runs) by default -- unchecking is the opt-out for
+    // this one run, e.g. a machine deliberately running a different
+    // antivirus product, or just to save the extra scan time.
+    runDefenderScan: [true],
   });
 
   constructor() {
@@ -87,9 +92,9 @@ export class NewScanComponent {
     this.submitting.set(true);
     this.error.set(null);
     this.errorIsRaw.set(false);
-    const { packagePath, outputDir, nvdApiKey } = this.form.getRawValue();
+    const { packagePath, outputDir, nvdApiKey, runDefenderScan } = this.form.getRawValue();
     try {
-      const job = await this.scanService.startScan(packagePath, outputDir, nvdApiKey || undefined);
+      const job = await this.scanService.startScan(packagePath, outputDir, nvdApiKey || undefined, !runDefenderScan);
       this.router.navigate(['/scan-progress'], { queryParams: { jobId: job.id } });
     } catch (err) {
       if (err instanceof HttpErrorResponse && err.error?.error) {

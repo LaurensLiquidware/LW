@@ -4,6 +4,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
 
 import { ScanService } from '../../core/scan.service';
 import { ScanSnapshot } from '../../core/models/scan';
@@ -17,10 +18,15 @@ const TERMINAL_STATUSES = new Set(['done', 'error', 'canceled']);
  * itself fails to open (e.g. an intermediary that doesn't support
  * SSE) -- the browser's own EventSource already retries a dropped
  * connection on its own, so this fallback only covers the "never
- * connected in the first place" case. */
+ * connected in the first place" case.
+ *
+ * Layout is a plain-language "what's running now" progress bar as the
+ * main view, with the full raw log demoted to a panel on the left --
+ * useful to check if something failed, but not the thing you stare at
+ * while a scan is healthy. */
 @Component({
   selector: 'app-scan-progress',
-  imports: [TranslocoModule, ProgressBarModule, TagModule, ButtonModule],
+  imports: [TranslocoModule, ProgressBarModule, TagModule, ButtonModule, CardModule],
   changeDetection: ChangeDetectionStrategy.Default,
   templateUrl: './scan-progress.component.html',
 })
@@ -62,6 +68,26 @@ export class ScanProgressComponent implements OnInit, OnDestroy {
   isRunning(): boolean {
     const status = this.job()?.status;
     return status === 'queued' || status === 'stage1' || status === 'stage2';
+  }
+
+  /** A single, plain-language "what's happening right now" line -- the
+   * primary thing this screen shows, with the full log demoted to a
+   * secondary panel (see the template) for when something needs
+   * checking rather than being the main view. */
+  currentTaskKey(): string {
+    const job = this.job();
+    if (!job) {
+      return '';
+    }
+    if (job.status === 'stage2') {
+      if (job.progressPhase === 'osv') {
+        return 'scanProgress.task.stage2Osv';
+      }
+      if (job.progressPhase === 'nvd') {
+        return 'scanProgress.task.stage2Nvd';
+      }
+    }
+    return `scanProgress.task.${job.status}`;
   }
 
   async cancel(): Promise<void> {
