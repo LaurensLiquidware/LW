@@ -264,3 +264,14 @@
   Python source gone -- nothing in this project ever read from it at
   build or run time, only from doc comments citing it as the origin of
   ported logic/tests, which remain accurate as historical attribution.
+- Fixed a CI compliance-job failure caught on the first real run of the
+  new GitHub Actions workflow: `scripts/generate-sbom.sh` fetched
+  `cyclonedx-npm` via unpinned `npx --yes @cyclonedx/cyclonedx-npm`,
+  which resolves whatever's newest on the npm registry at invocation
+  time. A newer release started emitting per-component `cdx:npm:
+  package:constraint:engine:*` properties the committed `bom.cdx.json`
+  didn't have, making CI's "is the committed SBOM current" check fail
+  on pure tooling drift, not a real dependency change. Pinned to
+  `@cyclonedx/cyclonedx-npm@6.0.1` and regenerated `bom.cdx.json` with
+  it so the committed file matches what CI now deterministically
+  produces.
