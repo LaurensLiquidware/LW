@@ -15,13 +15,26 @@
     MpCmdRun.exe's own exit code is not a reliable "clean vs. infected"
     signal by itself -- Microsoft doesn't document it precisely, and a
     nonzero exit can also mean a scan-execution problem (access denied,
-    a locked file) rather than a real detection. To get a real answer,
-    this cross-checks Get-MpThreatDetection (part of the built-in
-    Defender module, ConfigDefender / Windows Defender) for any
-    detection whose InitialDetectionTime is at or after this scan's
-    start time and whose Resources reference a path under the scanned
-    root -- that is treated as the actual verdict, not the raw exit
-    code.
+    a locked file) rather than a real detection. The verdict is instead
+    built from two sources, either of which is enough to call it
+    "threats-found":
+
+      1. Parsing MpCmdRun's own scan-summary text (the "<===LIST OF
+         DETECTED THREATS===>" block) for "Threat :" entries and their
+         listed resources. This is the authoritative, always-present
+         source -- confirmed against real scans where it's the ONLY
+         source that reported anything.
+      2. Cross-checking Get-MpThreatDetection (part of the built-in
+         Defender module) for any detection whose InitialDetectionTime
+         is at or after this scan's start time and whose Resources
+         reference the scanned path -- kept as a second source because,
+         when it does have an entry, it carries a SeverityID the text
+         output doesn't. It has proven unreliable on its own: real scans
+         against a detection-only (-DisableRemediation) run have shown
+         zero matching entries even though MpCmdRun's own text output
+         plainly listed the threat -- most likely because
+         Get-MpThreatDetection's history is tied to actions Defender
+         took, and there's no action to record here.
 
     Detection-only: the scan runs with -DisableRemediation, so Defender
     reports what it finds but never quarantines/removes/cleans anything
@@ -74,6 +87,49 @@ function Find-MpCmdRunPath {
     }
 
     return $null
+}
+
+function ConvertFrom-MpCmdRunScanOutput {
+    # Parses MpCmdRun.exe -Scan's plain-text summary for its
+    # "<===LIST OF DETECTED THREATS===>" block, e.g.:
+    #
+    #   Threat : Virus:DOS/EICAR_Test_File
+    #       Resources : 2 total
+    #           file:_C:\mount\a.zip->eicar.com
+    #           containerfile:_C:\mount\a.zip
+    #   --------------------------------------------------------------
+    #
+    # Each "Threat :" line starts a new entry; subsequent indented lines
+    # up to the next "Threat :" line or a dashed separator are its
+    # resources (the "Resources : N total" count line is skipped, and
+    # each resource's "file:_"/"containerfile:_"-style prefix is
+    # stripped so the resource strings this returns match the same
+    # convention Get-MpThreatDetection's Resources use). No severity is
+    # available from this text -- only Get-MpThreatDetection carries a
+    # SeverityID.
+    param([string]$Text)
+
+    $threats = @()
+    $current = $null
+    foreach ($line in ($Text -split "`r?`n")) {
+        if ($line -match '^\s*Threat\s*:\s*(.+?)\s*$') {
+            if ($current) { $threats += [PSCustomObject]$current }
+            $current = [ordered]@{ threatName = $Matches[1]; resources = @() }
+            continue
+        }
+        if (-not $current) { continue }
+        if ($line -match '^\s*Resources\s*:\s*\d+\s*total\s*$') { continue }
+        if ($line -match '^\s*-{5,}\s*$') { continue }
+        $trimmed = $line.Trim()
+        # Restricted to MpCmdRun's documented resource-type prefixes --
+        # NOT a generic "letters-then-colon" match, which would also hit
+        # a bare "C:\..." path's own drive-letter colon and truncate it.
+        if ($trimmed -match '^(?:file|containerfile|registry|process|service|driver|resource):_?(.+)$') {
+            $current.resources += $Matches[1]
+        }
+    }
+    if ($current) { $threats += [PSCustomObject]$current }
+    return $threats
 }
 
 function Invoke-DefenderScan {
@@ -149,20 +205,16 @@ function Invoke-DefenderScan {
     }
     $result.details = $output.Trim()
 
+    # Primary source: MpCmdRun's own text output, which has proven to be
+    # the only source that reliably reports anything for a
+    # detection-only (-DisableRemediation) scan.
+    $parsedThreats = @(ConvertFrom-MpCmdRunScanOutput -Text $output)
+
+    # Secondary source: only useful when it has a match, since it adds a
+    # SeverityID the text output doesn't carry -- but it is NOT required
+    # to have one; see the .DESCRIPTION note on why it's unreliable here.
     $detections = @()
     try {
-        # Get-MpThreatDetection's Resources entries are URI-like, not bare
-        # paths -- "file:_C:\mount\evil.exe", or for a nested archive hit
-        # (as with the EICAR test file inside a .zip) a chain like
-        # "containerfile:_C:\mount\a.zip->...->eicar.com". A prefix match
-        # against the raw scanned path (-like "$Path*") never matches
-        # either shape, silently turning every real detection into
-        # status "error" instead of "threats-found" -- caught by an
-        # actual EICAR-in-zip scan on Windows, not by this project's own
-        # synthetic test fixture, which encoded the same "file:_" prefix
-        # but never exercised this match against it. -like "*$Path*"
-        # matches the scanned path wherever it appears in the resource
-        # string.
         $detections = @(Get-MpThreatDetection -ErrorAction Stop |
             Where-Object {
                 $_.InitialDetectionTime -ge $scanStart.AddMinutes(-1) -and
@@ -170,17 +222,10 @@ function Invoke-DefenderScan {
             })
     }
     catch {
-        # Get-MpThreatDetection itself unavailable (module missing, or
-        # Defender's real-time service isn't running) -- fall back to
-        # the exit code alone rather than failing this check outright.
-        if ($exitCode -eq 0) {
-            $result.status = 'clean'
-        }
-        else {
-            $result.status = 'error'
-            $result.message = "MpCmdRun.exe exited with code $exitCode and Get-MpThreatDetection is unavailable to confirm whether that was a real detection:`n$output"
-        }
-        return [PSCustomObject]$result
+        # Module missing, or Defender's real-time service isn't running
+        # -- not fatal, since $parsedThreats can still confirm a
+        # detection on its own.
+        $detections = @()
     }
 
     if ($detections.Count -gt 0) {
@@ -193,12 +238,22 @@ function Invoke-DefenderScan {
             }
         })
     }
+    elseif ($parsedThreats.Count -gt 0) {
+        $result.status = 'threats-found'
+        $result.threats = @($parsedThreats | ForEach-Object {
+            [ordered]@{
+                threatName = $_.threatName
+                resources  = @($_.resources)
+                severity   = ''
+            }
+        })
+    }
     elseif ($exitCode -eq 0) {
         $result.status = 'clean'
     }
     else {
         $result.status = 'error'
-        $result.message = "MpCmdRun.exe exited with code $exitCode but no matching detection was found via Get-MpThreatDetection:`n$output"
+        $result.message = "MpCmdRun.exe exited with code $exitCode but no threat could be parsed from its output or confirmed via Get-MpThreatDetection:`n$output"
     }
 
     return [PSCustomObject]$result

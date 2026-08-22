@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.6 — unreleased
+
+- Fixed the Defender scan still reporting real detections as `error`
+  after 0.1.5's path-matching fix: `Get-MpThreatDetection` turned out
+  to return zero entries at all for a detection-only
+  (`-DisableRemediation`) scan on a real Windows machine -- even with
+  correct matching there was nothing to match, most likely because
+  Get-MpThreatDetection's history is tied to remediation actions
+  Defender took, and there's none to record when remediation is
+  disabled. `Invoke-DefenderScan.ps1` now parses MpCmdRun's own
+  "<===LIST OF DETECTED THREATS===>" text output directly (new
+  `ConvertFrom-MpCmdRunScanOutput` function) as the primary source of
+  truth, with `Get-MpThreatDetection` kept as a secondary source used
+  only when it does have a match (it carries a `SeverityID` the text
+  output doesn't). Verified against the exact scan-summary text from
+  the real EICAR-in-zip scan that surfaced this, plus a fake
+  `MpCmdRun.exe` stub exercising the full function end-to-end for both
+  the threats-found and clean cases.
+
 ## 0.1.5 — unreleased
 
 - Fixed a real-detection bug in the Defender scan's verdict cross-check:
