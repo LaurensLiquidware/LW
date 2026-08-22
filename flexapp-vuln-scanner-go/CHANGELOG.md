@@ -212,3 +212,19 @@
   Log, matching `ProfileUnityMSPConsole`'s launcher layout -- Exit was
   previously reachable only from the tray icon's right-click menu, a
   discoverability gap flagged in real Windows testing.
+- Fixed a broken launcher caught immediately after the elevation manifest
+  change above: "The application has failed to start because its
+  side-by-side configuration is incorrect" on `flexapp-vuln-scanner.exe`.
+  Two real manifest bugs, both from the same edit: the new `trustInfo`
+  element was placed after `dependency`/`application`, violating the
+  order `<assembly>`'s children must appear in per the manifest schema;
+  and its explanatory comment used a literal double hyphen (`--`)
+  several times, which XML comments cannot contain at all -- either one
+  on its own is enough to make the Windows manifest parser reject the
+  whole file and refuse to start the process. Fixed the ordering in
+  `cmd/tray/app.manifest` (`trustInfo` now directly follows
+  `assemblyIdentity`, matching Visual Studio's own generated
+  `requireAdministrator` template) and removed every double hyphen from
+  both manifest files' comments. Verified with `xmllint --noout` against
+  both files (clean) and a real Windows cross-compile; full end-to-end
+  launch behavior still needs confirming on a real Windows machine.
