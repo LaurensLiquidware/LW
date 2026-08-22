@@ -1,0 +1,35 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:db14616b-3059-4cc6-b19a-8ff6574f6c50",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-22T15:12:00Z",
+    "component": {
+      "type": "application",
+      "bom-ref": "ProfileUnitySplashScreenManager",
+      "name": "ProfileUnitySplashScreenManager",
+      "version": "0.2.0",
+      "publisher": "Liquidware",
+      "description": "Sets the ProfileUnity client splash screen logo (Liquidware KB 12914471137293), with archive/restore history. Single-file PowerShell + WPF.",
+      "licenses": [
+        {
+          "license": {
+            "name": "Liquidware Sparks Tool License and Disclaimer v1.0"
+          }
+        }
+      ]
+    },
+    "properties": [
+      {
+        "name": "liquidware:sbom:scope",
+        "value": "Describes the PowerShell script distribution, which has no third-party components: the tool binds only to Windows-inbox .NET Framework assemblies (PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing), and its embedded brand assets are first-party Liquidware artwork."
+      },
+      {
+        "name": "liquidware:sbom:finalisation",
+        "value": "Build-Exe.ps1 rewrites this file when it compiles the executable, adding ps2exe at the version actually resolved at build time plus the executable's SHA-256. The copy shipped alongside an .exe is that rewritten one; re-run the Grype scan against it, per section 5 of the Sparks Tool Project Review Checklist."
+      }
+    ]
+  },
+  "components": []
+}

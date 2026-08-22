@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     ProfileUnity SplashScreen Logo Manager (Liquidware-branded)
 .DESCRIPTION
@@ -21,6 +21,14 @@ param(
 )
 
 # ---------------------------------------------------------------------------
+# Version -- single source of truth (Sparks checklist section 6).
+# Build-Exe.ps1 reads this literal to stamp the executable's file metadata and
+# to name the distributable, and bom.cdx.json's metadata.component.version must
+# match it. Change it here and nowhere else.
+# ---------------------------------------------------------------------------
+$AppVersion = '0.2.0'
+
+# ---------------------------------------------------------------------------
 # Self-elevate
 # ---------------------------------------------------------------------------
 $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -41,14 +49,32 @@ Add-Type -AssemblyName System.Drawing
 # Config / data locations
 # ---------------------------------------------------------------------------
 $AllowedExtensions = @('.bmp', '.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff')
+$InvariantCulture  = [System.Globalization.CultureInfo]::InvariantCulture
+# Timestamps are written and read with this exact pattern under the invariant
+# culture. ':' in a .NET custom format string is the *culture's* time-separator
+# placeholder, not a literal -- formatting without an explicit culture writes
+# '14.39.00' on a locale whose separator is '.', which then fails to parse back.
+$TimestampFormat   = 'yyyy-MM-dd HH:mm:ss'
 $LogoBaseName      = 'client-custom-logo-300x86'
+# Resolved so the About dialog can point at the license PDF and the SBOM whether
+# this is running as a .ps1 (PSScriptRoot) or as a compiled .exe (module path).
+$ScriptDir = if ($PSScriptRoot) {
+    $PSScriptRoot
+} else {
+    Split-Path -Parent ([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName)
+}
+$LicensePdfPath = Join-Path $ScriptDir 'Spark_License.pdf'
+$SbomPath       = Join-Path $ScriptDir 'bom.cdx.json'
+
 $DataDir           = Join-Path $env:ProgramData 'Liquidware\ProfileUnitySplashScreenLogoManager'
 $HistoryDir        = Join-Path $DataDir 'History'
 $ManifestPath      = Join-Path $DataDir 'manifest.json'
 $CurrentMetaPath   = Join-Path $DataDir 'current.json'
 
 foreach ($d in @($DataDir, $HistoryDir)) {
-    if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
+    if (-not (Test-Path -LiteralPath $d)) {
+        New-Item -ItemType Directory -Path $d -Force | Out-Null
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -75,10 +101,37 @@ function ConvertFrom-Base64Image([string]$b64) {
 # ---------------------------------------------------------------------------
 # Manifest helpers
 # ---------------------------------------------------------------------------
+# Formats 'now' for storage. Explicit invariant culture so the separator can
+# never come from the host's locale.
+function Get-TimestampString {
+    (Get-Date).ToString($TimestampFormat, $InvariantCulture)
+}
+
+# Parses a stored timestamp back for sorting. Manifests written by builds before
+# 0.2.0 may carry a locale-formatted separator, so fall back through progressively
+# looser parses rather than letting the sort throw and take the history grid down.
+function ConvertTo-SortableDate([string]$value) {
+    if ([string]::IsNullOrWhiteSpace($value)) { return [datetime]::MinValue }
+    $parsed = [datetime]::MinValue
+    if ([datetime]::TryParseExact($value, $TimestampFormat, $InvariantCulture,
+            [System.Globalization.DateTimeStyles]::None, [ref]$parsed)) {
+        return $parsed
+    }
+    if ([datetime]::TryParse($value, $InvariantCulture,
+            [System.Globalization.DateTimeStyles]::None, [ref]$parsed)) {
+        return $parsed
+    }
+    if ([datetime]::TryParse($value, [System.Globalization.CultureInfo]::CurrentCulture,
+            [System.Globalization.DateTimeStyles]::None, [ref]$parsed)) {
+        return $parsed
+    }
+    return [datetime]::MinValue
+}
+
 function Get-Manifest {
-    if (Test-Path $ManifestPath) {
+    if (Test-Path -LiteralPath $ManifestPath) {
         try {
-            $raw = Get-Content $ManifestPath -Raw
+            $raw = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8
             if ([string]::IsNullOrWhiteSpace($raw)) { return @() }
             $items = $raw | ConvertFrom-Json
             return @($items)
@@ -88,50 +141,81 @@ function Get-Manifest {
 }
 
 function Save-Manifest($items) {
-    @($items) | ConvertTo-Json -Depth 5 | Set-Content -Path $ManifestPath -Encoding UTF8
+    # -InputObject, not the pipeline: piping an empty collection to ConvertTo-Json
+    # sends nothing downstream, so Set-Content is never given a value and the file
+    # keeps its previous contents -- which meant deleting the last history entry
+    # left a phantom row behind whose backing file was already gone. -InputObject
+    # also guarantees a JSON array even for a single entry.
+    $json = ConvertTo-Json -InputObject @($items) -Depth 5
+    if ([string]::IsNullOrWhiteSpace($json)) { $json = '[]' }
+    Set-Content -LiteralPath $ManifestPath -Value $json -Encoding UTF8
 }
 
 function Get-CurrentMeta {
-    if (Test-Path $CurrentMetaPath) {
-        try { return (Get-Content $CurrentMetaPath -Raw | ConvertFrom-Json) } catch { return $null }
+    if (Test-Path -LiteralPath $CurrentMetaPath) {
+        try { return (Get-Content -LiteralPath $CurrentMetaPath -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
     }
     return $null
 }
 
+# Returns every client-custom-logo-300x86.* file in the target folder. Normally
+# there is exactly one; more than one means a previous archive-then-copy was
+# interrupted, or a file was dropped in by hand. That matters because
+# ProfileUnity may well read a different one than this tool is managing, so
+# callers surface it rather than silently picking the first.
+function Get-AllLiveLogos {
+    if (-not (Test-Path -LiteralPath $TargetDir)) { return @() }
+    @(Get-ChildItem -LiteralPath $TargetDir -Filter "$LogoBaseName.*" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending)
+}
+
 function Get-ExistingLiveLogo {
-    if (-not (Test-Path $TargetDir)) { return $null }
-    Get-ChildItem -Path $TargetDir -Filter "$LogoBaseName.*" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    @(Get-AllLiveLogos) | Select-Object -First 1
 }
 
 # Archive whatever is currently live into history, then remove it
 function Archive-CurrentLogo {
-    $existing = Get-ExistingLiveLogo
-    if (-not $existing) { return }
+    $existing = @(Get-AllLiveLogos)
+    if ($existing.Count -eq 0) { return }
 
-    $meta = Get-CurrentMeta
-    $originalName = if ($meta -and $meta.OriginalName) { $meta.OriginalName } else { "unknown-original$($existing.Extension)" }
-
-    $timestamp  = Get-Date -Format 'yyyyMMdd-HHmmss'
-    $storedFile = "{0}__{1}{2}" -f $timestamp, ([IO.Path]::GetFileNameWithoutExtension($originalName) -replace '[^\w\-]', '_'), $existing.Extension
-    Copy-Item -Path $existing.FullName -Destination (Join-Path $HistoryDir $storedFile) -Force
-
+    $meta     = Get-CurrentMeta
     $manifest = @(Get-Manifest)
-    $manifest += [pscustomobject]@{
-        Id           = [guid]::NewGuid().ToString()
-        StoredFile   = $storedFile
-        OriginalName = $originalName
-        Extension    = $existing.Extension
-        DateArchived = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
-    }
-    Save-Manifest $manifest
 
-    Remove-Item -Path $existing.FullName -Force
-    Remove-Item -Path $CurrentMetaPath -Force -ErrorAction SilentlyContinue
+    # Archive all of them, newest first, so a stray left behind by an interrupted
+    # run is preserved rather than deleted unrecorded.
+    foreach ($file in $existing) {
+        $originalName = if ($meta -and $meta.OriginalName -and $file -eq $existing[0]) {
+            $meta.OriginalName
+        } else {
+            "unknown-original$($file.Extension)"
+        }
+
+        $timestamp  = Get-Date -Format 'yyyyMMdd-HHmmss'
+        $safeName   = [IO.Path]::GetFileNameWithoutExtension($originalName) -replace '[^\w\-]', '_'
+        $storedFile = "{0}__{1}__{2}{3}" -f $timestamp, $safeName, [guid]::NewGuid().ToString('N').Substring(0, 8), $file.Extension
+        Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $HistoryDir $storedFile) -Force
+
+        $manifest += [pscustomobject]@{
+            Id           = [guid]::NewGuid().ToString()
+            StoredFile   = $storedFile
+            OriginalName = $originalName
+            Extension    = $file.Extension
+            DateArchived = Get-TimestampString
+        }
+
+        Remove-Item -LiteralPath $file.FullName -Force
+    }
+
+    Save-Manifest $manifest
+    Remove-Item -LiteralPath $CurrentMetaPath -Force -ErrorAction SilentlyContinue
 }
 
 function Set-NewLogo([string]$SourcePath) {
-    if (-not (Test-Path $TargetDir)) {
+    if (-not (Test-Path -LiteralPath $TargetDir)) {
         throw "Target directory not found: $TargetDir. Is the ProfileUnity Client installed here?"
+    }
+    if (-not (Test-Path -LiteralPath $SourcePath)) {
+        throw "Source file no longer exists: $SourcePath"
     }
     $ext = [IO.Path]::GetExtension($SourcePath).ToLowerInvariant()
     if ($AllowedExtensions -notcontains $ext) {
@@ -143,37 +227,46 @@ function Set-NewLogo([string]$SourcePath) {
         default { $ext }
     }
 
+    # Archiving deletes the live logo before the copy runs, so if the source *is*
+    # the live logo the copy would find nothing and the machine would be left with
+    # no splash logo at all. Refuse before anything is touched.
+    foreach ($live in @(Get-AllLiveLogos)) {
+        if ($live.FullName -eq (Convert-Path -LiteralPath $SourcePath)) {
+            throw "That file is already the live splash logo -- nothing to apply."
+        }
+    }
+
     Archive-CurrentLogo
 
     $targetFile = Join-Path $TargetDir "$LogoBaseName$normExt"
-    Copy-Item -Path $SourcePath -Destination $targetFile -Force
+    Copy-Item -LiteralPath $SourcePath -Destination $targetFile -Force
 
     $meta = [pscustomobject]@{
         OriginalName   = [IO.Path]::GetFileName($SourcePath)
         StoredFileName = "$LogoBaseName$normExt"
-        DateSet        = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+        DateSet        = Get-TimestampString
     }
-    $meta | ConvertTo-Json | Set-Content -Path $CurrentMetaPath -Encoding UTF8
+    $meta | ConvertTo-Json | Set-Content -LiteralPath $CurrentMetaPath -Encoding UTF8
 
     return $targetFile
 }
 
 function Restore-FromHistoryEntry($entry) {
     $srcPath = Join-Path $HistoryDir $entry.StoredFile
-    if (-not (Test-Path $srcPath)) { throw "History file is missing on disk: $($entry.StoredFile)" }
-    if (-not (Test-Path $TargetDir)) { throw "Target directory not found: $TargetDir" }
+    if (-not (Test-Path -LiteralPath $srcPath)) { throw "History file is missing on disk: $($entry.StoredFile)" }
+    if (-not (Test-Path -LiteralPath $TargetDir)) { throw "Target directory not found: $TargetDir" }
 
     Archive-CurrentLogo
 
     $targetFile = Join-Path $TargetDir "$LogoBaseName$($entry.Extension)"
-    Copy-Item -Path $srcPath -Destination $targetFile -Force
+    Copy-Item -LiteralPath $srcPath -Destination $targetFile -Force
 
     $meta = [pscustomobject]@{
         OriginalName   = $entry.OriginalName
         StoredFileName = "$LogoBaseName$($entry.Extension)"
-        DateSet        = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+        DateSet        = Get-TimestampString
     }
-    $meta | ConvertTo-Json | Set-Content -Path $CurrentMetaPath -Encoding UTF8
+    $meta | ConvertTo-Json | Set-Content -LiteralPath $CurrentMetaPath -Encoding UTF8
 
     return $targetFile
 }
@@ -182,16 +275,38 @@ function Remove-HistoryEntry($entry) {
     $manifest = @(Get-Manifest | Where-Object { $_.Id -ne $entry.Id })
     Save-Manifest $manifest
     $p = Join-Path $HistoryDir $entry.StoredFile
-    if (Test-Path $p) { Remove-Item $p -Force }
+    if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force }
 }
 
-function Get-ImageDimensionsText([string]$path) {
+# Returns the image's pixel dimensions as integers so callers can compare values
+# rather than formatted strings, plus an Ok flag distinguishing "not 300x86" from
+# "this file could not be decoded at all".
+$RecommendedWidth  = 300
+$RecommendedHeight = 86
+
+function Get-ImageDimensions([string]$path) {
     try {
         $img = [System.Drawing.Image]::FromFile($path)
-        $w = $img.Width; $h = $img.Height
-        $img.Dispose()
-        return "$w x $h"
-    } catch { return 'unknown' }
+        try {
+            return [pscustomobject]@{ Ok = $true; Width = $img.Width; Height = $img.Height }
+        } finally {
+            $img.Dispose()
+        }
+    } catch {
+        return [pscustomobject]@{ Ok = $false; Width = 0; Height = 0 }
+    }
+}
+
+# Non-blocking note about the size, per the KB's recommended 300x86.
+function Get-DimensionNote($dims) {
+    if (-not $dims.Ok) {
+        return '  This file could not be read as an image.'
+    }
+    if ($dims.Width -ne $RecommendedWidth -or $dims.Height -ne $RecommendedHeight) {
+        return ('  Recommended size is {0}x{1} -- this file is {2}x{3}.' -f `
+            $RecommendedWidth, $RecommendedHeight, $dims.Width, $dims.Height)
+    }
+    return ''
 }
 
 # Saves whatever image is currently on the clipboard (e.g. from a browser's
@@ -202,7 +317,10 @@ function Save-ClipboardImageToFile {
         if (-not [System.Windows.Clipboard]::ContainsImage()) { return $null }
         $img = [System.Windows.Clipboard]::GetImage()
         if (-not $img) { return $null }
-        $tempPath = Join-Path $env:TEMP ("pu-logo-search-{0}.png" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        # GUID rather than a second-precision timestamp: two imports inside the
+        # same second would otherwise write to the same path.
+        $tempPath = Join-Path $env:TEMP ("pu-logo-search-{0}-{1}.png" -f `
+            (Get-Date -Format 'yyyyMMdd-HHmmss'), [guid]::NewGuid().ToString('N').Substring(0, 8))
         $encoder = New-Object System.Windows.Media.Imaging.PngBitmapEncoder
         $encoder.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create($img))
         $stream = [IO.File]::Open($tempPath, [IO.FileMode]::Create)
@@ -217,9 +335,13 @@ function Save-ClipboardImageToFile {
 # ---------------------------------------------------------------------------
 # XAML UI -- Liquidware / Stratusphere UX brand tokens applied:
 #   Primary 600/700/800 #0061A0/#005084/#003F67, Surface (zinc) neutrals,
-#   4px (sm) radius on buttons/fields, 8px (lg) radius on cards,
-#   14px base type / 16px header, 48px fixed header bar, whisper-soft
-#   card shadow, Good/Poor (#16A34A / #DC2626) reused as status feedback.
+#   4px radius on buttons/fields and 8px on cards (the guide's --radius-sm and
+#   --radius-lg are 0.25rem/0.5rem against its 14px root, i.e. 3.5px/7px -- the
+#   half-pixel difference is not renderable, so the nominal values are used),
+#   14px base type (--text-base) / 12px dense grid cells (--text-sm) /
+#   16px header and card titles (--text-md) / 10.5px version tag (--text-xs),
+#   48px fixed header bar (--header-height), whisper-soft card shadow,
+#   Good/Fair/Poor (#16A34A / #CA8A04 / #DC2626) reused as status feedback.
 # ---------------------------------------------------------------------------
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -300,6 +422,33 @@ function Save-ClipboardImageToFile {
             </Setter>
         </Style>
 
+        <!-- Header-bar text button: white on brand blue, one step darker on hover -->
+        <Style x:Key="HeaderButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Primary700}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Primary800}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="DataGridColumnHeader">
             <Setter Property="Background" Value="{StaticResource Surface100}"/>
             <Setter Property="Foreground" Value="{StaticResource Surface800}"/>
@@ -335,6 +484,9 @@ function Save-ClipboardImageToFile {
                 <Image Name="ImgLogo" DockPanel.Dock="Left" Height="22" Width="65" VerticalAlignment="Center" Stretch="Uniform" SnapsToDevicePixels="True"/>
                 <Border DockPanel.Dock="Left" Width="1" Height="20" Background="#33FFFFFF" Margin="14,0"/>
                 <TextBlock DockPanel.Dock="Left" Text="ProfileUnity SplashScreen Logo" Foreground="White" FontSize="16" VerticalAlignment="Center"/>
+                <Button Name="BtnAbout" DockPanel.Dock="Right" Content="About" Style="{StaticResource HeaderButton}" VerticalAlignment="Center"/>
+                <TextBlock Name="TxtVersion" DockPanel.Dock="Right" Foreground="#CCFFFFFF" FontSize="10.5"
+                           VerticalAlignment="Center" Margin="0,0,10,0"/>
             </DockPanel>
         </Border>
 
@@ -369,13 +521,13 @@ function Save-ClipboardImageToFile {
                             <Image Name="ImgCurrent" Stretch="Uniform" Margin="4"/>
                         </Border>
                         <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Current Splash Logo" FontWeight="Medium" FontSize="14" Foreground="{StaticResource Surface800}"/>
-                            <TextBlock Name="TxtCurrentInfo" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{StaticResource Surface500}" FontSize="13"/>
+                            <TextBlock Text="Current Splash Logo" FontWeight="Medium" FontSize="16" Foreground="{StaticResource Surface800}"/>
+                            <TextBlock Name="TxtCurrentInfo" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{StaticResource Surface500}" FontSize="14"/>
 
                             <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                <TextBlock Text="Search Images:" VerticalAlignment="Center" FontSize="13" Foreground="{StaticResource Surface800}" Margin="0,0,8,0"/>
+                                <TextBlock Text="Search Images:" VerticalAlignment="Center" FontSize="14" Foreground="{StaticResource Surface800}" Margin="0,0,8,0"/>
                                 <Border BorderBrush="{StaticResource Surface300}" BorderThickness="1" CornerRadius="4" Background="{StaticResource Surface0}">
-                                    <TextBox Name="TxtSearchQuery" Width="220" Padding="8,6" BorderThickness="0" Background="Transparent" FontSize="13" VerticalContentAlignment="Center"/>
+                                    <TextBox Name="TxtSearchQuery" Width="220" Padding="8,6" BorderThickness="0" Background="Transparent" FontSize="14" VerticalContentAlignment="Center"/>
                                 </Border>
                                 <Button Name="BtnSearchImages" Content="Search" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0"/>                            </StackPanel>
 
@@ -389,13 +541,13 @@ function Save-ClipboardImageToFile {
                     </Grid>
                 </Border>
 
-                <TextBlock Grid.Row="1" Text="Logo History" FontWeight="Medium" FontSize="14" Foreground="{StaticResource Surface800}" Margin="0,0,0,8"/>
+                <TextBlock Grid.Row="1" Text="Logo History" FontWeight="Medium" FontSize="16" Foreground="{StaticResource Surface800}" Margin="0,0,0,8"/>
 
                 <Border Grid.Row="2" BorderBrush="{StaticResource Surface300}" BorderThickness="1" CornerRadius="8" Background="{StaticResource Surface0}">
                     <DataGrid Name="GridHistory" AutoGenerateColumns="False" IsReadOnly="True" BorderThickness="0"
                               RowHeight="30" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource Surface200}"
                               SelectionMode="Single" CanUserAddRows="False" Background="Transparent" RowBackground="Transparent"
-                              FontSize="13" HeadersVisibility="Column">
+                              FontSize="12" HeadersVisibility="Column">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Date Archived" Binding="{Binding DateArchived}" Width="170"/>
                             <DataGridTextColumn Header="Original File Name" Binding="{Binding OriginalName}" Width="*"/>
@@ -409,7 +561,7 @@ function Save-ClipboardImageToFile {
                     <Button Name="BtnDelete" Content="Delete Selected From History" Style="{StaticResource SecondaryButton}"/>
                 </StackPanel>
 
-                <TextBlock Grid.Row="4" Name="TxtStatus" Margin="0,12,0,0" Foreground="{StaticResource GoodColor}" TextWrapping="Wrap" FontSize="13"/>
+                <TextBlock Grid.Row="4" Name="TxtStatus" Margin="0,12,0,0" Foreground="{StaticResource GoodColor}" TextWrapping="Wrap" FontSize="14"/>
             </Grid>
         </Grid>
     </Grid>
@@ -432,12 +584,20 @@ $BtnImportClipboard = $window.FindName('BtnImportClipboard')
 $BtnSet          = $window.FindName('BtnSet')
 $BtnPreviewSplash = $window.FindName('BtnPreviewSplash')
 $GridHistory     = $window.FindName('GridHistory')
+$BtnAbout        = $window.FindName('BtnAbout')
+$TxtVersion      = $window.FindName('TxtVersion')
 $BtnRestore      = $window.FindName('BtnRestore')
 $BtnDelete       = $window.FindName('BtnDelete')
 $TxtStatus       = $window.FindName('TxtStatus')
 
 $ImgLogo.Source  = ConvertFrom-Base64Image $Base64_LogoHeader
 $ImgHexBg.Source = ConvertFrom-Base64Image $Base64_HexBg
+
+# Version is visible without opening anything: window title plus a header tag
+# at --text-xs, which the style guide documents as the version-tag size.
+$window.Title    = "ProfileUnity SplashScreen Logo Manager $AppVersion"
+$TxtVersion.Text = "v$AppVersion"
+
 
 $GoodBrush    = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(0x16,0xA3,0x4A))
 $PoorBrush    = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(0xDC,0x26,0x26))
@@ -456,10 +616,13 @@ function Show-Status([string]$msg, [bool]$isError = $false) {
     $TxtStatus.Text = $msg
 }
 
+# Returns $true only if the file actually decoded as an image, so callers can
+# treat an undecodable file as a validation failure instead of enabling a commit
+# that would copy a non-image into Client.NET.
 function Load-ImagePreview([System.Windows.Controls.Image]$imgControl, [string]$path) {
-    if (-not $path -or -not (Test-Path $path)) {
+    if (-not $path -or -not (Test-Path -LiteralPath $path)) {
         $imgControl.Source = $null
-        return
+        return $false
     }
     try {
         $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
@@ -469,8 +632,10 @@ function Load-ImagePreview([System.Windows.Controls.Image]$imgControl, [string]$
         $bmp.EndInit()
         $bmp.Freeze()
         $imgControl.Source = $bmp
+        return $true
     } catch {
         $imgControl.Source = $null
+        return $false
     }
 }
 
@@ -481,21 +646,27 @@ function Refresh-UI {
     $BtnSet.IsEnabled = $false
     $TxtCurrentInfo.Foreground = $MutedBrush
 
-    if (-not (Test-Path $TargetDir)) {
+    if (-not (Test-Path -LiteralPath $TargetDir)) {
         $TxtCurrentInfo.Text = "Target directory not found. Is the ProfileUnity Client installed here?"
         $ImgCurrent.Source = $null
         $BtnBrowse.IsEnabled = $false
         $BtnRestore.IsEnabled = $false
     } else {
         $BtnBrowse.IsEnabled = $true
-        $existing = Get-ExistingLiveLogo
+        $allLive  = @(Get-AllLiveLogos)
+        $existing = $allLive | Select-Object -First 1
         if ($existing) {
             $meta = Get-CurrentMeta
-            $dims = Get-ImageDimensionsText $existing.FullName
+            $dims = Get-ImageDimensions $existing.FullName
             $originalNote = if ($meta -and $meta.OriginalName) { " (original file: $($meta.OriginalName))" } else { '' }
-            $dimsWarning = if ($dims -ne '300 x 86') { "  Note: recommended size is 300x86 -- this file is $dims." } else { '' }
-            $TxtCurrentInfo.Text = "$($existing.Name)$originalNote`nSet $(if ($meta) { $meta.DateSet } else { 'unknown' })$dimsWarning"
-            Load-ImagePreview $ImgCurrent $existing.FullName
+            $dimsWarning  = Get-DimensionNote $dims
+            # More than one client-custom-logo-300x86.* file means ProfileUnity
+            # may read a different one than this tool is managing.
+            $strayWarning = if ($allLive.Count -gt 1) {
+                "  Warning: $($allLive.Count) logo files are present in the target folder ($(($allLive | ForEach-Object { $_.Name }) -join ', ')). ProfileUnity may not use the one shown here -- setting or restoring a logo will archive all of them."
+            } else { '' }
+            $TxtCurrentInfo.Text = "$($existing.Name)$originalNote`nSet $(if ($meta) { $meta.DateSet } else { 'unknown' })$dimsWarning$strayWarning"
+            Load-ImagePreview $ImgCurrent $existing.FullName | Out-Null
         } else {
             $TxtCurrentInfo.Text = "No custom splash logo is currently set. The default ProfileUnity logo is in use."
             $ImgCurrent.Source = $null
@@ -503,7 +674,7 @@ function Refresh-UI {
         $BtnRestore.IsEnabled = $true
     }
 
-    $manifest = @(Get-Manifest) | Sort-Object { [datetime]$_.DateArchived } -Descending
+    $manifest = @(Get-Manifest) | Sort-Object { ConvertTo-SortableDate $_.DateArchived } -Descending
     $GridHistory.ItemsSource = $manifest
 }
 
@@ -513,17 +684,199 @@ function Set-PendingPreview([string]$path) {
         Show-Status "Unsupported file type '$ext'. Allowed: $($AllowedExtensions -join ', ')" $true
         return $false
     }
-    $script:PendingLogoPath = $path
-    Load-ImagePreview $ImgCurrent $script:PendingLogoPath
+    if (-not (Test-Path -LiteralPath $path)) {
+        Show-Status "File not found: $path" $true
+        return $false
+    }
 
-    $dims = Get-ImageDimensionsText $script:PendingLogoPath
-    $dimsNote = if ($dims -ne '300 x 86') { "  Recommended size is 300x86 -- this file is $dims." } else { '' }
+    # Decode before committing to anything. A file with an image extension that
+    # is not actually an image would otherwise be copied into Client.NET, where
+    # ProfileUnity would render no logo at all.
+    if (-not (Load-ImagePreview $ImgCurrent $path)) {
+        $ImgCurrent.Source = $null
+        $BtnSet.IsEnabled = $false
+        $script:PendingLogoPath = $null
+        Show-Status "'$([IO.Path]::GetFileName($path))' could not be read as an image. Pick a different file." $true
+        return $false
+    }
+
+    $script:PendingLogoPath = $path
+
+    $dims = Get-ImageDimensions $script:PendingLogoPath
+    $dimsNote = Get-DimensionNote $dims
     $TxtCurrentInfo.Text = "Previewing: $([IO.Path]::GetFileName($script:PendingLogoPath))$dimsNote`nNot yet set -- click 'Set as Splash Logo' to apply."
     $TxtCurrentInfo.Foreground = $FairBrush
 
     $BtnSet.IsEnabled = $true
     return $true
 }
+
+# ---------------------------------------------------------------------------
+# About dialog -- Sparks checklist sections 6 and 7: surfaces the version, and
+# points the user at both the Sparks Tool License PDF and the SBOM that ship
+# alongside this tool, reproducing the license's core disclaimers here so they
+# are seen rather than merely findable.
+# ---------------------------------------------------------------------------
+function Show-AboutDialog {
+    [xml]$aboutXaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About" Height="520" Width="600" FontFamily="Segoe UI" FontSize="14"
+        Background="#FAFAFA" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Primary600" Color="#0061A0"/>
+        <SolidColorBrush x:Key="Primary700" Color="#005084"/>
+        <SolidColorBrush x:Key="Primary800" Color="#003F67"/>
+        <SolidColorBrush x:Key="Surface0"   Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="Surface300" Color="#D4D4D8"/>
+        <SolidColorBrush x:Key="Surface500" Color="#71717A"/>
+        <SolidColorBrush x:Key="Surface800" Color="#27272A"/>
+        <SolidColorBrush x:Key="PoorColor"  Color="#DC2626"/>
+
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource Surface800}"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Surface300}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E4E4E7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource Primary600}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Primary700}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Primary800}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{StaticResource Primary600}">
+            <DockPanel LastChildFill="False" Margin="16,0">
+                <Image Name="AboutImgLogo" DockPanel.Dock="Left" Height="22" Width="65" VerticalAlignment="Center" Stretch="Uniform" SnapsToDevicePixels="True"/>
+                <Border DockPanel.Dock="Left" Width="1" Height="20" Background="#33FFFFFF" Margin="14,0"/>
+                <TextBlock DockPanel.Dock="Left" Text="About" Foreground="White" FontSize="16" VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20">
+            <StackPanel>
+                <TextBlock Text="ProfileUnity SplashScreen Logo Manager" FontWeight="Medium" FontSize="16" Foreground="{StaticResource Surface800}"/>
+                <TextBlock Name="AboutTxtVersion" Margin="0,4,0,0" Foreground="{StaticResource Surface500}"/>
+
+                <Border Background="{StaticResource Surface0}" BorderBrush="{StaticResource Surface300}" BorderThickness="1"
+                        CornerRadius="8" Padding="16" Margin="0,16,0,0">
+                    <StackPanel>
+                        <TextBlock Text="IMPORTANT: READ BEFORE DOWNLOADING OR USING." FontWeight="Medium"
+                                   Foreground="{StaticResource PoorColor}" TextWrapping="Wrap"/>
+                        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{StaticResource Surface800}"
+                                   Text="This is a Liquidware Sparks Tool -- a community/field-contributed utility, not a Liquidware commercial product. It is provided outside Liquidware's standard product development lifecycle, AS IS, with no warranty, support, or maintenance, and is used at your own risk."/>
+                        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{StaticResource Surface500}"
+                                   Text="See the Liquidware Sparks Tool License and Disclaimer for the full terms, including third party terms that apply in addition to or in lieu of that license."/>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="Included Documents" FontWeight="Medium" FontSize="16" Margin="0,20,0,0" Foreground="{StaticResource Surface800}"/>
+
+                <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{StaticResource Surface800}"
+                           Text="Spark_License.pdf -- the Liquidware Sparks Tool License and Disclaimer."/>
+                <TextBlock Name="AboutTxtLicenseState" Margin="0,2,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Surface500}"/>
+
+                <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{StaticResource Surface800}"
+                           Text="bom.cdx.json -- a CycloneDX 1.6 Software Bill of Materials: an inventory of the third-party components in this tool, provided so your security team can review it against your own policy."/>
+                <TextBlock Name="AboutTxtSbomState" Margin="0,2,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Surface500}"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                    <Button Name="AboutBtnLicense" Content="Open License PDF" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"/>
+                    <Button Name="AboutBtnSbom" Content="Open SBOM" Style="{StaticResource SecondaryButton}"/>
+                </StackPanel>
+
+                <TextBlock Margin="0,20,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Surface500}"
+                           Text="Sets the ProfileUnity client splash screen logo per Liquidware KB 12914471137293. Uses one external service: the Search Images button opens an image search in your default browser, which sends the term you type to Google. Every other function of this tool is local and works with no network access."/>
+                <TextBlock Name="AboutTxtPaths" Margin="0,10,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Surface500}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Background="#F4F4F5" BorderBrush="{StaticResource Surface300}" BorderThickness="0,1,0,0" Padding="20,12">
+            <Button Name="AboutBtnClose" Content="Close" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"/>
+        </Border>
+    </Grid>
+</Window>
+'@
+
+    $aboutReader = New-Object System.Xml.XmlNodeReader $aboutXaml
+    $about = [Windows.Markup.XamlReader]::Load($aboutReader)
+    $about.Owner = $window
+    $about.Icon  = ConvertFrom-Base64Image $Base64_AppIcon
+    $about.FindName('AboutImgLogo').Source = ConvertFrom-Base64Image $Base64_LogoHeader
+
+    $about.FindName('AboutTxtVersion').Text = "Version $AppVersion"
+    $about.FindName('AboutTxtPaths').Text   = "Program folder: $ScriptDir`nHistory and manifest: $DataDir`nTarget folder: $TargetDir"
+
+    $licenseBtn   = $about.FindName('AboutBtnLicense')
+    $sbomBtn      = $about.FindName('AboutBtnSbom')
+    $licenseState = $about.FindName('AboutTxtLicenseState')
+    $sbomState    = $about.FindName('AboutTxtSbomState')
+
+    $licensePresent = Test-Path -LiteralPath $LicensePdfPath
+    $sbomPresent    = Test-Path -LiteralPath $SbomPath
+
+    $licenseState.Text = if ($licensePresent) { $LicensePdfPath } else { "Not found next to this tool -- expected at $LicensePdfPath" }
+    $sbomState.Text    = if ($sbomPresent)    { $SbomPath }       else { "Not found next to this tool -- expected at $SbomPath" }
+    $licenseBtn.IsEnabled = $licensePresent
+    $sbomBtn.IsEnabled    = $sbomPresent
+
+    $licenseBtn.Add_Click({
+        try { Start-Process -FilePath $LicensePdfPath } catch { [System.Windows.MessageBox]::Show("Could not open the license PDF: $($_.Exception.Message)", 'About', 'OK', 'Warning') | Out-Null }
+    })
+    $sbomBtn.Add_Click({
+        try { Start-Process -FilePath $SbomPath } catch { [System.Windows.MessageBox]::Show("Could not open the SBOM: $($_.Exception.Message)", 'About', 'OK', 'Warning') | Out-Null }
+    })
+    $about.FindName('AboutBtnClose').Add_Click({ $about.Close() })
+
+    $about.ShowDialog() | Out-Null
+}
+
+$BtnAbout.Add_Click({ Show-AboutDialog })
 
 $BtnSearchImages.Add_Click({
     $query = $TxtSearchQuery.Text.Trim()
@@ -593,7 +946,7 @@ $BtnSet.Add_Click({
 })
 
 $BtnPreviewSplash.Add_Click({
-    if (-not (Test-Path $CtxInitExePath)) {
+    if (-not (Test-Path -LiteralPath $CtxInitExePath)) {
         Show-Status "Preview executable not found: $CtxInitExePath" $true
         return
     }

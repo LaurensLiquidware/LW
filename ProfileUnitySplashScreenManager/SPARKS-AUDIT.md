@@ -3,26 +3,121 @@
 **Project:** ProfileUnitySplashScreenManager
 **Reviewed against:** Sparks Tool Project Review Checklist v1
 **Audit date:** 2026-08-22
-**Files reviewed:** `Set-ProfileUnitySplashScreenLogo.ps1` (637 lines), `Build-Exe.ps1`, `app-icon.ico`, `README.md`, `CLAUDE.md`
+**Files reviewed:** `Set-ProfileUnitySplashScreenLogo.ps1` (637 lines at audit time), `Build-Exe.ps1`, `app-icon.ico`, `README.md`, `CLAUDE.md`
 **Reference material supplied:** Sparks Tool License PDF, `Spark_Liquidware_style_guide_baseline.zip`, PrimeUI license key
-**Phase:** 1 — audit complete, **no files have been edited**. Phase 2 summary is at the bottom. Awaiting approval before any change.
+**Phase:** 3 — approved changes applied. The Phase 1 findings below are preserved as written, so what was broken stays distinguishable from what was changed. **What was actually changed, what was deferred, and what is still open is in "Phase 3 — what was actually changed" immediately after the summary table.**
+
+**Approvals recorded before any edit was made:** all blocking plus all should-fix items; version `0.2.0`; both the `.ps1` and the `.exe` ship (so ps2exe enters the SBOM); timestamps made culture-invariant only, with the UTC-with-offset migration (S3) deferred.
 
 ---
 
 ## Summary table
 
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 1 | Double-byte / Unicode handling | **Fail** | BOM-less source; two unencoded JSON reads; **no `-LiteralPath` anywhere** — a `logo[1].png` from a browser breaks the copy |
-| 2 | Regional date, time, number formats | **Fail** | Culture-dependent timestamp *write* + culture-invariant *read* — breaks the history grid on some locales; local time, no offset |
-| 3 | External URL / CDN references | **Fail (disclosure only)** | One retained endpoint (Google image search) is undisclosed in the README. No CDNs, no secrets, no telemetry, git history clean |
-| 4 | Open source identified + CycloneDX 1.6 JSON SBOM | **Fail — blocking** | No SBOM. Shipped components: zero. One decision needed re: ps2exe |
-| 5 | Zero Critical / High CVEs (Grype scan of SBOM) | **Not run — blocking** | Grype unavailable in this sandbox, and §4's SBOM must exist first |
-| 6 | Version number visible to end user | **Fail — blocking** | No version in the tool at all; the only version string (`1.0.0.0`) contradicts the README's v1.7. No `CHANGELOG.md` |
-| 7 | License PDF + SBOM packaged and visible | **Fail — blocking** | Neither file present; README carries none of the required disclaimers; no About screen |
-| 8 | UI consistency (style guide / PrimeNG) | **Mostly Pass** | Every colour token exact, both brand marks verified faithful to the source SVGs. Two off-scale type sizes to fix |
+Status columns show the Phase 1 verdict and, after the arrow, where the item stands after Phase 3.
 
-Also recorded below: four correctness findings (C1–C4) found while reading, outside the eight checklist items.
+| # | Item | Phase 1 → now | Notes |
+|---|------|--------|-------|
+| 1 | Double-byte / Unicode handling | Fail → **Fixed (evidence part-captured)** | BOM added; both JSON reads given explicit encoding; `-LiteralPath` applied at every call site. Logic proven by an automated test run; UI/clipboard/`System.Drawing` pass still needs Windows |
+| 2 | Regional date, time, number formats | Fail → **Fixed (S3 deferred by decision)** | Timestamps now written *and* parsed invariant, with a tolerant fallback for existing manifests. UTC-with-offset storage deferred per your call |
+| 3 | External URL / CDN references | Fail → **Fixed** | Endpoint table added to the README and summarised in the About dialog. Code was already clean |
+| 4 | Open source identified + CycloneDX 1.6 JSON SBOM | Fail → **Fixed** | `bom.cdx.json` added and schema-validated. ps2exe now enters the SBOM at build time, at the version actually resolved |
+| 5 | Zero Critical / High CVEs (Grype scan of SBOM) | Not run → **Still not run — blocking** | Needs a Windows/networked machine. The SBOM it must scan now exists |
+| 6 | Version number visible to end user | Fail → **Fixed** | `$AppVersion = '0.2.0'` is the single source; shown in the title bar, header tag and About dialog; `CHANGELOG.md` added |
+| 7 | License PDF + SBOM packaged and visible | Fail → **Fixed (zip pending build)** | PDF, SBOM and notices ship at the top level; README and About dialog point at both. The zip itself is built by `Build-Exe.ps1` on Windows |
+| 8 | UI consistency (style guide / PrimeNG) | Mostly Pass → **Fixed** | Type sizes moved onto the guide's scale. Colours and brand marks were already exact |
+
+Also recorded below: **five** correctness findings outside the eight checklist items — C1–C4 from the Phase 1 read, plus **C6, which the Phase 3 test harness discovered** (see below).
+
+---
+
+## Phase 3 — what was actually changed
+
+Everything in the approved list was applied. Nothing outside it was applied except the two items called out under "Beyond the approved list" below.
+
+### Verification actually performed
+
+Worth stating plainly, because the Phase 1 report said none of this was possible: PowerShell 7.4.6 turned out to be installable in this environment, which moved a lot of this from "reasoned about" to "executed".
+
+- **Both scripts parse.** Checked with `System.Management.Automation.Language.Parser` after every edit batch, and again after the BOM was added. Clean, no warnings.
+- **42 automated logic tests pass.** `tests/Invoke-LogicTests.ps1` lifts the eleven manifest/timestamp/path functions straight out of the app with the PowerShell parser — so there is no second copy of the logic to drift — and exercises them against a temporary fixture. Captured output is in `tests/logic-test-output.txt`.
+- **Both original bugs were confirmed real before being fixed**, rather than assumed:
+  - The test asserts that `Test-Path -Path 'logo[1].png'` returns `$false` for a file that demonstrably exists, and that `-LiteralPath` finds it.
+  - The test asserts that under `fi-FI`, the pre-fix format produced `2026-08-22 15.00.18` and that `[datetime]` refused to parse it. Six cultures are covered (`en-US`, `de-DE`, `ja-JP`, `fi-FI`, `sv-SE`, `ar-SA`).
+- **Double-byte round trip through the real write path.** `日本語データ.png`, `简体中文.png`, `한국어.png`, `Данные.png`, `Ångström café naïve.png` and `logo[1].png` all survive manifest write → read, and `会社ロゴ.png` goes through `Set-NewLogo` end to end with the name preserved in `current.json`. `manifest.json` was confirmed to be valid UTF-8 on disk with the CJK bytes intact.
+- **The SBOM validates against the real CycloneDX 1.6 JSON schema** (`jsonschema` against the schema bundled with `cyclonedx-python-lib`) — both the committed empty-components form and a simulated post-build form carrying the ps2exe component, so the build's rewrite is known to produce a schema-valid document rather than only a plausible one.
+- **The build script's version read was tested and was initially broken.** The first version of the regex used `` `$AppVersion `` inside a double-quoted PowerShell string, which collapses to a bare `$` — an end-of-line anchor to the regex engine — so it could never match. Caught by running it; fixed to a single-quoted pattern; re-run and confirmed it reads `0.2.0`.
+- **The unpinned-install refusal was tested** by running `Build-Exe.ps1` with no ps2exe present: it reads the version, then stops with the instructions to pin, exactly as intended.
+- **The three embedded brand assets are byte-identical** to their pre-change state (SHA-1 compared before and after every edit batch), and both XAML blocks — the main window and the new About dialog — are well-formed XML.
+
+### C6 — a bug the test harness found that the Phase 1 read missed
+
+While building the fixture, `Save-Manifest @()` turned out not to clear the manifest:
+
+```
+after saving 1 entry      : count=1  file bytes=48
+after Save-Manifest @()   : count=1  file bytes=48   <-- unchanged
+```
+
+Piping an empty collection to `ConvertTo-Json` sends nothing down the pipeline, so `Set-Content` is never handed a value and the file keeps its previous contents. The user-visible consequence: **deleting the last remaining history entry deleted its file from disk but left the row in the manifest.** The phantom row stayed in the grid, and selecting it and clicking Restore threw *"History file is missing on disk"*. Deleting when two or more entries remained worked correctly, which is why reading the code did not surface it — the failure only appears when the result set is empty.
+
+Fixed by writing with `-InputObject` instead of the pipeline, which also guarantees the manifest is always a JSON array even for a single entry. Covered by four new assertions.
+
+I am flagging this as a miss in the Phase 1 audit, not presenting it as a Phase 3 find: reading the function did not reveal it, and running it did.
+
+### Changes applied, by file
+
+**`Set-ProfileUnitySplashScreenLogo.ps1`** (637 → 983 lines)
+
+| Ref | Change |
+|---|---|
+| B5 | `$AppVersion = '0.2.0'` added as the single source of truth |
+| B6 | About dialog added (`Show-AboutDialog`), reachable from a new header-bar **About** button; version also in the window title and as a 10.5px header tag — the size the guide documents for a version tag |
+| S1 | `-LiteralPath` on every filesystem call. `New-Item` is the one exception: it has no `-LiteralPath` parameter, and its only argument is built from `$env:ProgramData` plus a fixed literal |
+| S2 | `Get-TimestampString` / `ConvertTo-SortableDate` added; all three writes and the history sort now go through them |
+| S4 | Saved as UTF-8 with BOM |
+| S5 | `-Encoding UTF8` on both JSON reads |
+| S6 | `Get-ImageDimensionsText` replaced by `Get-ImageDimensions` (integers + an `Ok` flag) and `Get-DimensionNote`; an undecodable file now says so instead of reporting "unknown" as a size |
+| S10 | Type sizes moved onto the guide's scale: grid 12px, body/status/search 14px, card titles 16px, version tag 10.5px |
+| S12 / C1 | `Set-NewLogo` refuses a source that is already the live logo, before anything is archived |
+| S13 / C2 | `Get-AllLiveLogos` added; `Archive-CurrentLogo` archives every stray rather than only the first; the UI warns when more than one is present |
+| S14 / C4 | `Load-ImagePreview` now reports success, and `Set-PendingPreview` treats a failed decode as a validation failure and leaves **Set as Splash Logo** disabled |
+| S15 | Clipboard temp files get a GUID suffix |
+| S16 | Radius/type comment corrected to the guide's actual token values |
+| C6 | `Save-Manifest` rewritten to use `-InputObject` |
+
+**`Build-Exe.ps1`** (52 → 233 lines) — rewritten to be the build authority
+
+- B5: reads `$AppVersion` from the script instead of hardcoding `1.0.0.0`, and stamps it into the exe metadata, the SBOM and the zip filename.
+- S9: refuses to install an unpinned ps2exe. Pass `-Ps2ExeVersion` to pin, or have it installed already; either way the resolved version is recorded.
+- B2/B7: rewrites `bom.cdx.json` after compiling — bumps `version`, refreshes `timestamp`, sets `metadata.component.version`, adds the exe's SHA-256, and adds the ps2exe component with its purl and MIT SPDX id.
+- S11: packages `ProfileUnitySplashScreenManager-<version>.zip` with the license PDF and SBOM side by side, failing loudly if any required file is missing.
+- Points at the installed module's own LICENSE file so `THIRD-PARTY-NOTICES.txt` can be confirmed against it.
+
+**Added**
+
+- `Spark_License.pdf` — the supplied v1.0, verified byte-identical (md5 `699f3a80f50d70f17af6684f8347ce1e`) to the copy shipping with `FlexAppOneDownloadMonitor`.
+- `bom.cdx.json` — CycloneDX 1.6, schema-validated, with `metadata.properties` stating exactly what the committed copy covers and that the build finalises it.
+- `CHANGELOG.md` — `0.2.0` plus the v1.0–v1.7 history preserved verbatim, and an explicit note on why the numbering reset.
+- `THIRD-PARTY-NOTICES.txt` — ps2exe, MIT.
+- `tests/Invoke-LogicTests.ps1` and `tests/logic-test-output.txt`.
+
+**`README.md`** — rewritten for B4 and S7: the "READ BEFORE DOWNLOADING OR USING" header, the not-a-commercial-product / AS-IS / no-support disclaimers, a Files table naming the PDF and SBOM (with the SBOM described as a CycloneDX 1.6 inventory for the customer's security team), a full external-endpoint table, a Version section, and the changelog moved out to `CHANGELOG.md`.
+
+### Beyond the approved list — two additions, flagged for your call
+
+1. **`tests/`** (2 files). Not in the approved list. Added because §§1 and 2 require round-trip evidence that otherwise did not exist, and this produces it reproducibly — it is also what found C6. Not included in the distributable zip. Say the word and I'll drop it.
+2. **C6's fix.** A correctness bug discovered during Phase 3 verification rather than during the audit, so it was not in the approved list. I applied it because it causes data loss in the same write path S1 and S2 were already changing, and shipping a known phantom-row bug alongside those fixes would have been worse. Flagging rather than burying it.
+
+### Deferred, by your decision
+
+- **S3 — UTC with offset.** Timestamps remain local wall-clock, now written and read invariantly. §2's *"store UTC with offset"* is therefore still not met. This is a recorded exception, not an oversight: it needs a read-both-formats migration for manifests already in the field. `ConvertTo-SortableDate` is where that migration would go.
+
+### Still open — cannot be closed in this environment
+
+- **§5 — Grype.** Not run. Needs a machine with network access and the scan run against the final, post-build `bom.cdx.json`. This is the one remaining blocker.
+- **The runtime evidence** for §§1, 2, 6 and 7: the UI itself. Specifically still unexercised — the clipboard import, `System.Drawing`'s dimension read, the splash-screen preview launch, the About dialog rendering, the header version tag, and the type-scale changes. WPF cannot load here at all.
+- **The distributable zip.** Built by `Build-Exe.ps1` on Windows, after the exe. §7's file-listing evidence comes from that.
+- **ps2exe's license and version.** PSGallery is blocked by this environment's network policy (403 at the proxy), so the MIT identification in `THIRD-PARTY-NOTICES.txt` is unverified and no version could be pinned here. Deliberately left for the build machine rather than guessed — `Build-Exe.ps1` records the resolved version and reports where the module's own LICENSE file is, and the notices file says so in a Verification Note.
 
 ---
 
@@ -431,6 +526,12 @@ Same shape as the F1.3 failure — both leave the tool mid-transaction, which is
 
 `:29`–`:30` relaunches via `powershell.exe -File "$PSCommandPath"`. Under a ps2exe build `$PSCommandPath` isn't a script path, so this fallback wouldn't work — but `-requireAdmin` means Windows elevates before the script runs, so the branch is never reached. Correct as-is; noting it because the README describes the internal logic as a "fallback," which it isn't for the exe.
 
+### C6 — clearing the manifest did not clear it *(fixed in Phase 3; missed at Phase 1)*
+
+Found by running the code, not by reading it. `Save-Manifest @()` left the previous manifest contents on disk, so deleting the last remaining history entry removed its file but kept its row — a phantom entry that then failed to restore. Full detail, including the captured before/after, is in the Phase 3 section above.
+
+Listed here so the correctness findings read as one set rather than being split across the report.
+
 ---
 
 ## Phase 2 — Summary of changes needed
@@ -500,31 +601,31 @@ Same shape as the F1.3 failure — both leave the tool mid-transaction, which is
 
 ---
 
-## Submission Summary *(draft — not submittable yet)*
+## Submission Summary *(draft — one blocker remains)*
 
 | # | Item | Status | Notes / evidence location |
 |---|------|--------|---------------------------|
-| 1 | Double-byte / Unicode handling | **Fail** | F1.1–F1.3 open; no round-trip evidence yet |
-| 2 | Regional date, time, number formats | **Fail** | F2.1 breaks the history grid on some locales; no non-US-locale run yet |
-| 3 | External URL / CDN references | **Fail (disclosure)** | Code clean; endpoint list missing from README |
-| 4 | Open source identified + CycloneDX 1.6 JSON SBOM | **Fail** | No SBOM; ps2exe scope undecided |
-| 5 | Zero Critical / High CVEs | **Not run** | Grype unavailable here; needs the final SBOM first |
-| 6 | Version number visible to end user | **Fail** | No version in the tool; `1.0.0.0` vs README v1.7 |
-| 7 | License PDF + SBOM packaged and visible | **Fail** | Neither file present; no About surface |
-| 8 | UI consistency (style guide / PrimeNG) | **Mostly Pass** | All colours exact, marks verified; F8.1/F8.2 open |
+| 1 | Double-byte / Unicode handling | **Fixed** | BOM, explicit read encoding, `-LiteralPath` throughout. Evidence: `tests/logic-test-output.txt` (CJK/Cyrillic/accented-Latin/bracketed names through the real write path). UI pass still needed on Windows |
+| 2 | Regional date, time, number formats | **Fixed** (S3 deferred) | Invariant write and parse, tolerant fallback. Evidence: six-culture round trip in `tests/logic-test-output.txt`, including the pre-fix failure under `fi-FI`. UTC-with-offset storage deferred by decision |
+| 3 | External URL / CDN references | **Pass** | Endpoint table in `README.md`; summarised in the About dialog. No CDNs, no secrets, no telemetry; git history swept clean |
+| 4 | Open source identified + CycloneDX 1.6 JSON SBOM | **Fixed** | `bom.cdx.json`, validated against the CycloneDX 1.6 JSON schema in both its committed and post-build forms |
+| 5 | Zero Critical / High CVEs (Grype scan of SBOM) | **Not run — blocking** | Requires a networked machine, scanning the post-build SBOM |
+| 6 | Version number visible to end user | **Fixed** | `$AppVersion = '0.2.0'`; title bar, header tag, About dialog; `CHANGELOG.md`. Screenshot still needed |
+| 7 | License PDF + SBOM packaged and visible | **Fixed** (zip pending) | PDF, SBOM, notices at the top level; README and About dialog point at both. Zip produced by `Build-Exe.ps1` on Windows |
+| 8 | UI consistency (style guide / PrimeNG) | **Fixed** | Type scale corrected; colours and brand marks verified exact against `colors_and_type.css` and the source SVGs |
 
 **Project:** ProfileUnitySplashScreenManager
-**Version submitted:** *undecided — see B5*
+**Version submitted:** 0.2.0
 **Repository / artifact location:** `LaurensLiquidware/LW`, branch `claude/profileunity-splashscreen-manager-35z0ef`
-**Third-party components:** none in the shipped `.ps1`; ps2exe (MIT) if the `.exe` ships — see B7
+**Third-party components:** one — ps2exe (MIT), present in the `.exe` distribution because its generated host stub is embedded in the artifact. The `.ps1` itself has none
 **Critical / High CVEs outstanding:** unknown — scan not yet run
-**Grype scan date / DB version:** *not yet run*
-**External endpoints retained:** `www.google.com` (image search, opened in the user's default browser, search term transmitted, TLS, no runtime fetch by the tool). Build-time only: `www.powershellgallery.com` (ps2exe)
-**Open escalations / requested exceptions:** version number (B5); ps2exe/SBOM scope (B7); manifest migration (S3); PrimeUI key rotation
-**Changes approved by (name / date):** *pending — nothing has been changed*
-**Approved changes deferred, not made:** *n/a*
-**Packaged path of license PDF + SBOM:** *not yet packaged — proposed at the project root, side by side*
+**Grype scan date / DB version:** *not yet run — the remaining blocker*
+**External endpoints retained:** `www.google.com` (image search, opened in the user's own default browser; the typed search term is what is sent; HTTPS; no runtime fetch by the tool). Build-time only: `www.powershellgallery.com` (pinned ps2exe)
+**Open escalations / requested exceptions:** S3 (UTC-with-offset storage) deferred by decision — recorded exception, non-blocking. ps2exe's MIT license identification and pinned version to be confirmed on the build machine. Recommend rotating the PrimeUI key on exposure-in-transit grounds
+**Changes approved by (name / date):** *approved before any edit was made — see the header. Countersign with name and date before submitting*
+**Approved changes deferred, not made:** S3 only
+**Packaged path of license PDF + SBOM:** top level of `ProfileUnitySplashScreenManager-0.2.0.zip`, side by side, alongside `THIRD-PARTY-NOTICES.txt`
 
 ### Attestation
 
-*Not signed. This is a Phase 1 audit report, not a submission. The attestation is the SE's to sign once the approved changes are applied and the outstanding evidence has been captured on a Windows machine.*
+*Not signed. Two things must happen on a Windows machine before this is submittable: the Grype scan against the final SBOM (§5), and a run of the built artifact to capture the §§1, 2, 6 and 7 screenshots. The attestation is the SE's to sign once those exist.*

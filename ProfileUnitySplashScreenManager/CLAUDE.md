@@ -61,3 +61,34 @@ SVGs rather than re-compressing the already-lossy embedded PNGs.
 -requireAdmin -STA`. **Must run on Windows** — it can't be built or tested from a
 Linux sandbox, so changes made here are unverified until run on a real machine.
 Output is unsigned, so expect SmartScreen/AV friction on first run until signed.
+
+## Sparks Tool review status
+
+This project is prepared for release under the Liquidware Sparks Tool License and
+has been through the Sparks Tool Project Review Checklist v1 — see
+`SPARKS-AUDIT.md` for the audit, what was changed, and what is still open.
+
+Things to keep true when changing this project:
+
+- **Version lives in exactly one place:** `$AppVersion` in
+  `Set-ProfileUnitySplashScreenLogo.ps1`. `Build-Exe.ps1` reads it; the SBOM,
+  the exe metadata and the zip filename all derive from it. Never hardcode it
+  a second time. Bump it for every release, including fix-only releases, and add
+  a `CHANGELOG.md` entry.
+- **`Spark_License.pdf` and `bom.cdx.json` ship side by side** at the top level
+  of the repo and of every distributable, and both the README and the About
+  dialog point at them. Don't move or bury either.
+- **Any dependency change invalidates the SBOM and the CVE scan.** Regenerate
+  `bom.cdx.json` and re-run Grype against it, in that order, before shipping.
+- **`-LiteralPath`, not `-Path`,** on every filesystem call. Browser-named files
+  like `logo[1].png` are a normal input for this tool, and `-Path` treats the
+  brackets as a wildcard. `New-Item` is the exception — it has no
+  `-LiteralPath` parameter.
+- **Timestamps use `Get-TimestampString` / `ConvertTo-SortableDate`,** never a
+  bare `.ToString('...')` or `[datetime]` cast. `:` in a .NET custom format
+  string is the culture's time separator, not a literal.
+- **Never commit a PrimeNG/PrimeUI license key** (or any other credential). This
+  is a WPF app with no web framework, so it has no legitimate use for one.
+- Run `tests/Invoke-LogicTests.ps1` after touching the manifest, timestamp or
+  file-path logic. It lifts the functions out of the app with the PowerShell
+  parser, so it tests the real code rather than a copy.

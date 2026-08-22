@@ -1,0 +1,66 @@
+Set-ProfileUnitySplashScreenLogo.ps1 parses clean (3345 tokens)
+Extracted 11 functions under test
+
+=== 1. Timestamp round trip across cultures (S2 / checklist section 2) ===
+  PASS  en-US (time separator ':') writes '2026-08-22 15:07:13' and parses back
+  PASS  de-DE (time separator ':') writes '2026-08-22 15:07:13' and parses back
+  PASS  ja-JP (time separator ':') writes '2026-08-22 15:07:13' and parses back
+  PASS  fi-FI (time separator '.') writes '2026-08-22 15:07:13' and parses back
+  PASS  fi-FI : pre-fix format '2026-08-22 15.07.13' would NOT have parsed (bug confirmed real)
+  PASS  sv-SE (time separator ':') writes '2026-08-22 15:07:13' and parses back
+  PASS  ar-SA (time separator ':') writes '2026-08-22 15:07:13' and parses back
+
+=== 2. Manifest sorts correctly with mixed/legacy timestamp formats ===
+  PASS  sort did not throw on a legacy '.' separator or on garbage
+  PASS  newest entry sorts first
+  PASS  unparseable entry sorts last rather than taking the grid down
+
+=== 3. Non-Latin filenames survive the manifest round trip (section 1) ===
+  PASS  '日本語データ.png' survived write -> read
+  PASS  '简体中文.png' survived write -> read
+  PASS  '한국어.png' survived write -> read
+  PASS  'Данные.png' survived write -> read
+  PASS  'Ångström café naïve.png' survived write -> read
+  PASS  'logo[1].png' survived write -> read
+  PASS  manifest.json is valid UTF-8 on disk (no mojibake)
+
+=== 3b. C6 -- clearing the manifest actually clears it ===
+  PASS  one entry saved
+  PASS  Save-Manifest @() empties the file (was a phantom-row bug)
+  PASS  manifest.json holds a JSON array, not stale content
+  PASS  a single entry serialises as a JSON array
+
+=== 4. Wildcard metacharacters in filenames (S1 / the -LiteralPath fix) ===
+  PASS  fixture 'logo[1].png' exists on disk
+  PASS  Test-Path -LiteralPath finds it (bare -Path would not)
+  PASS  bare -Path demonstrably does NOT find it (bug confirmed real)
+  PASS  Set-NewLogo copied 'logo[1].png' into the target folder
+  PASS  current.json recorded the bracketed original name
+
+=== 5. Non-Latin source filename through the real write path ===
+  PASS  Set-NewLogo applied a CJK-named source
+  PASS  previous logo was archived (history has 1 entry)
+  PASS  archived entry kept the bracketed original name
+  PASS  archived file exists on disk under its sanitised name
+  PASS  CJK name preserved by the \w sanitiser
+
+=== 6. C1 -- setting the live logo as its own source is refused ===
+  PASS  Set-NewLogo threw instead of destroying the live logo
+  PASS  the live logo is still present afterwards
+  PASS  error names the cause
+
+=== 7. C2 -- multiple stray live logos are all archived, none lost ===
+  PASS  three live logo files now present
+  PASS  exactly one live logo remains after Set
+  PASS  all three strays were archived (manifest grew by 3)
+  PASS  no archived file overwrote another (all StoredFile names unique)
+
+=== 8. Restore round trip ===
+  PASS  Restore produced a live logo
+  PASS  Restore recorded the original name
+  PASS  Remove-HistoryEntry dropped exactly one manifest entry
+  PASS  Remove-HistoryEntry deleted the backing file
+
+================================
+  PASS: 42    FAIL: 0
+================================
