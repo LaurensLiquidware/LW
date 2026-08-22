@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* primeicons is the npm package — vendored into the build, not loaded
+   from a CDN. See project brief §8.1. */
+@import 'primeicons/primeicons.css';
+
+@import './styles/fonts.css';
+@import './styles/tokens.css';
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--p-text-color);
+  background: var(--p-content-background);
+}

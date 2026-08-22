@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+	<assemblyIdentity version="1.0.0.0" processorArchitecture="*" name="Liquidware.FlexAppVulnScanner.Tray" type="win32"/>
+	<!-- Stage 1 mounts the VHDX being scanned (Mount-DiskImage plus
+	     Add-PartitionAccessPath, see stage1-extract/Mount-ClassicFlexApp.ps1),
+	     which needs Administrator: "A required privilege is not held by
+	     the client" is exactly what an unelevated Mount-DiskImage call
+	     fails with. requireAdministrator makes Explorer show the UAC
+	     prompt once when this launcher starts; the server it spawns as a
+	     child process inherits the same elevated token. Must come before
+	     the dependency element below: the asm.v1 schema fixes the order
+	     of assembly's children, and trustInfo after application or
+	     dependency produces "the application has failed to start because
+	     its side-by-side configuration is incorrect" instead of a
+	     working manifest. NOTE: XML comments cannot contain a literal
+	     double hyphen anywhere in their text; that breaks the parse the
+	     exact same way, so keep this comment free of that sequence. -->
+	<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+		<security>
+			<requestedPrivileges>
+				<requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
+			</requestedPrivileges>
+		</security>
+	</trustInfo>
+	<dependency>
+		<dependentAssembly>
+			<assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>
+		</dependentAssembly>
+	</dependency>
+	<application xmlns="urn:schemas-microsoft-com:asm.v3">
+		<windowsSettings>
+			<dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>
+			<dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">True</dpiAware>
+		</windowsSettings>
+	</application>
+</assembly>

@@ -1,0 +1,41 @@
+<div class="mx-auto flex max-w-2xl flex-col gap-4 p-6">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'scanProgress.heading' | transloco }}</h1>
+      @if (job()) {
+        <p-tag [value]="job()!.status" />
+      }
+    </div>
+    @if (isRunning()) {
+      <p-button
+        [label]="'scanProgress.cancel' | transloco"
+        icon="pi pi-times"
+        severity="danger"
+        [outlined]="true"
+        size="small"
+        [loading]="canceling()"
+        (onClick)="cancel()"
+      />
+    }
+  </div>
+
+  @if (job()) {
+    <p class="lwl-muted">{{ job()!.packagePath }}</p>
+
+    @if (job()!.progressPhase) {
+      <div class="flex flex-col gap-1">
+        <span class="lwl-micro">{{ job()!.progressPhase }}: {{ job()!.progressDone }} / {{ job()!.progressTotal }}</span>
+        <p-progressBar [value]="progressPercent()" [showValue]="false" />
+      </div>
+    }
+
+    <pre class="lwl-log">{{ job()!.log.join('\n') }}</pre>
+
+    @if (job()!.status === 'error') {
+      <p class="lwl-muted" style="color: var(--poor-color);">{{ job()!.error }}</p>
+    }
+    @if (job()!.status === 'canceled') {
+      <p class="lwl-muted">{{ 'scanProgress.canceled' | transloco }}</p>
+    }
+  }
+</div>

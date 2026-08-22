@@ -1,0 +1,80 @@
+{
+  "app": {
+    "title": "FlexApp Vulnerability Scanner"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "newScan": "New Scan",
+    "results": "Results",
+    "compare": "Compare",
+    "about": "About"
+  },
+  "about": {
+    "heading": "About",
+    "version": "Version",
+    "notice": "This is a Liquidware Sparks Tool — a community/field-contributed utility, not a Liquidware commercial product. It is provided outside Liquidware's standard product development lifecycle, \"AS IS\" with no warranty, support, or maintenance, and used at your own risk.",
+    "licenseLink": "Sparks Tool License and Disclaimer (Spark_License.pdf)",
+    "sbomLink": "Software Bill of Materials (bom.cdx.json)",
+    "sbomDescription": "A CycloneDX 1.6 inventory of third-party components, provided so your security team can review it against your own policy.",
+    "developer": "Developed by Laurens van Duijn"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "newScan": "New Scan",
+    "noScans": "No scans yet — start one from \"New Scan\".",
+    "package": "Package",
+    "status": "Status",
+    "coverage": "Coverage",
+    "severities": "Severities",
+    "created": "Created"
+  },
+  "newScan": {
+    "heading": "New Scan",
+    "packagePath": "Package Path",
+    "packagePathPlaceholder": "e.g. D:\\FlexAppShare\\myapp.vhdx",
+    "outputDir": "Output Folder",
+    "advanced": "Advanced",
+    "nvdApiKey": "NVD API Key",
+    "nvdApiKeyHint": "Optional — raises the NVD rate limit from 5 to 50 requests per 30 seconds.",
+    "start": "Start Scan",
+    "genericError": "Could not start the scan."
+  },
+  "scanProgress": {
+    "heading": "Scan Progress",
+    "cancel": "Cancel",
+    "canceled": "Canceled."
+  },
+  "results": {
+    "coverage": "Resolution Coverage",
+    "resolved": "Resolved",
+    "severities": "Severities",
+    "severity": "Severity",
+    "id": "ID",
+    "component": "Component",
+    "version": "Version",
+    "affectedFiles": "Affected Files",
+    "files": "files",
+    "summary": "Summary",
+    "confidence": "Confidence",
+    "downloadPdf": "PDF Report",
+    "downloadSbom": "SBOM",
+    "downloadCsv": "CSV",
+    "noVulnData": "No vulnerability-matching data was supplied for this scan — that is not the same thing as \"no vulnerabilities found.\"",
+    "noFindings": "No vulnerability matches found.",
+    "noScanSpecified": "No scan specified.",
+    "noScansYet": "No scans have finished yet.",
+    "severityLegend": "C = Critical, H = High, M = Medium, L = Low",
+    "loadError": "Could not load this scan's results."
+  },
+  "compare": {
+    "heading": "Compare Scans",
+    "oldDir": "Old Scan Output Folder",
+    "newDir": "New Scan Output Folder",
+    "run": "Compare",
+    "unchanged": "unchanged",
+    "newFindings": "New Findings",
+    "resolvedFindings": "Resolved Findings",
+    "none": "None.",
+    "genericError": "Could not compare these scans."
+  }
+}

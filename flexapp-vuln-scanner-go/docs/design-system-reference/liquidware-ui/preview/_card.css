@@ -1,0 +1,76 @@
+/* Shared styles for Design System preview cards (~700px wide).
+   Each card is a bare specimen — no titles, minimal chrome. */
+@import url('../colors_and_type.css');
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  color: var(--p-text-color);
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv05' 1;
+}
+.card {
+  padding: 22px 24px;
+}
+
+/* ---- Color swatch rows ---- */
+.scale {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--frame-border-color);
+}
+.scale .swatch {
+  height: 76px;
+  display: flex;
+  align-items: flex-end;
+  padding: 6px;
+}
+.scale .swatch span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.swatch-labels {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  margin-top: 7px;
+}
+.swatch-labels span {
+  font-size: 9.5px;
+  color: var(--p-text-muted-color);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- generic chip row ---- */
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; gap: 4px; }
+.label { font-size: 10.5px; color: var(--p-text-muted-color); font-weight: 500; }
+.mono { font-family: var(--font-mono); }
+
+/* ---- buttons (PrimeNG-style) ---- */
+.btn {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.75rem;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  line-height: 1;
+}
+.btn-primary { background: var(--p-primary-600); color: #fff; border-color: var(--p-primary-600); }
+.btn-outlined { background: transparent; color: var(--p-surface-900); border-color: var(--p-surface-300); }
+.btn-outlined-primary { background: transparent; color: var(--p-surface-950); border-color: color-mix(in srgb, var(--p-primary-600), transparent 50%); }
+.btn-text { background: transparent; color: var(--p-surface-950); }
+.btn .pi { font-size: 14px; }

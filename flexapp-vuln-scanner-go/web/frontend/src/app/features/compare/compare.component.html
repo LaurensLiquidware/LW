@@ -1,0 +1,61 @@
+<div class="mx-auto flex max-w-2xl flex-col gap-4 p-6">
+  <h1 class="lwl-card-title" style="font-size: var(--text-xl);">{{ 'compare.heading' | transloco }}</h1>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
+    @if (error()) {
+      <p-message severity="error" styleClass="w-full">{{ errorIsRaw() ? error()! : (error()! | transloco) }}</p-message>
+    }
+    <div class="flex flex-col gap-1">
+      <label for="oldDir" class="lwl-micro">{{ 'compare.oldDir' | transloco }}</label>
+      <input pInputText id="oldDir" formControlName="oldDir" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="newDir" class="lwl-micro">{{ 'compare.newDir' | transloco }}</label>
+      <input pInputText id="newDir" formControlName="newDir" />
+    </div>
+    <div class="flex justify-end">
+      <p-button type="submit" [label]="'compare.run' | transloco" icon="pi pi-sort-alt" [loading]="loading()" [disabled]="form.invalid" />
+    </div>
+  </form>
+
+  @if (diff(); as diff) {
+    <div class="flex flex-col gap-4">
+      <p class="lwl-cell">
+        {{ diff.old.packageName }} → {{ diff.new.packageName }}
+        ({{ 'compare.unchanged' | transloco }}: {{ diff.unchangedCount }})
+      </p>
+
+      <div>
+        <h2 class="lwl-card-title">{{ 'compare.newFindings' | transloco }} ({{ diff.newFindings.length }})</h2>
+        @if (diff.newFindings.length === 0) {
+          <p class="lwl-muted">{{ 'compare.none' | transloco }}</p>
+        } @else {
+          <ul class="flex flex-col gap-1">
+            @for (row of diff.newFindings; track row.id + row.product + row.version) {
+              <li class="lwl-cell">
+                <p-tag [value]="row.severityLevel || 'UNKNOWN'" />
+                {{ row.id }} — {{ row.product }} v{{ row.version }}
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div>
+        <h2 class="lwl-card-title">{{ 'compare.resolvedFindings' | transloco }} ({{ diff.resolvedFindings.length }})</h2>
+        @if (diff.resolvedFindings.length === 0) {
+          <p class="lwl-muted">{{ 'compare.none' | transloco }}</p>
+        } @else {
+          <ul class="flex flex-col gap-1">
+            @for (row of diff.resolvedFindings; track row.id + row.product + row.version) {
+              <li class="lwl-cell">
+                <p-tag [value]="row.severityLevel || 'UNKNOWN'" severity="success" />
+                {{ row.id }} — {{ row.product }} v{{ row.version }}
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -1,4 +1,0 @@
-# webui-only dependency. Also needs everything in ../requirements.txt
-# (flexapp_vuln itself) - install both:
-#   pip install -r ../requirements.txt -r requirements.txt
-Flask==3.1.3
