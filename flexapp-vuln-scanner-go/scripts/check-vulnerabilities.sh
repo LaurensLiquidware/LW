@@ -67,9 +67,24 @@ if ! grype sbom:bom.cdx.json -o json --file "$output" 2>"$output.stderr"; then
 fi
 rm -f "$output.stderr"
 
+# On Git Bash (MSYS), $output is a POSIX-style path like /tmp/tmp.xxxx.
+# Grype itself (a native .exe) understands it fine -- MSYS auto-converts
+# standalone path-like argv entries for native executables. But here the
+# path is embedded as a substring inside a larger Python source string
+# passed via -c, which that auto-conversion doesn't touch, and a native
+# Windows python.exe has no idea what /tmp means. cygpath -m (forward
+# slashes, safe inside a Python string literal with no escaping needed)
+# gives the same file its real Windows path when cygpath exists;
+# elsewhere (Linux/macOS, no MSYS involved) $output is already the real
+# path, so this is a no-op.
+python_output="$output"
+if command -v cygpath >/dev/null 2>&1; then
+  python_output="$(cygpath -m "$output")"
+fi
+
 critical_and_high="$("$python_cmd" -c "
 import json, sys
-with open('$output') as f:
+with open('$python_output') as f:
     data = json.load(f)
 matches = [m for m in data.get('matches', []) if m.get('vulnerability', {}).get('severity', '').lower() in ('critical', 'high')]
 for m in matches:

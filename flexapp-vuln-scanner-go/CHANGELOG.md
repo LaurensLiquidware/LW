@@ -287,3 +287,16 @@
   via CI (GitHub-hosted runners, real internet access) that this
   project has **zero Critical/High vulnerabilities** in its full Go +
   npm dependency graph -- the Sparks Tool checklist's last open item.
+- Fixed a second Windows-only bug in `scripts/check-vulnerabilities.sh`,
+  found immediately after the `python3`/`python` fix above on the same
+  real Windows machine: `mktemp`'s output on Git Bash (MSYS) is a
+  POSIX-style path (`/tmp/tmp.xxxx`). Grype itself (a native `.exe`)
+  handles that fine -- MSYS auto-converts a standalone path-like argv
+  entry when invoking a native executable -- but that path was also
+  embedded as a substring inside a larger Python source string passed
+  via `python -c`, which that auto-conversion doesn't touch, so the
+  native Windows `python.exe` failed with `FileNotFoundError: No such
+  file or directory: '/tmp/tmp.xxxx'` -- correct behavior given what it
+  was actually asked to open, not a bug in Python. Converts the path via
+  `cygpath -m` (present on Git Bash, a no-op everywhere else) before
+  handing it to Python.
