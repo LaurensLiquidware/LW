@@ -62,6 +62,7 @@
     "noVulnData": "No vulnerability-matching data was supplied for this scan — that is not the same thing as \"no vulnerabilities found.\"",
     "noFindings": "No vulnerability matches found.",
     "noScanSpecified": "No scan specified.",
+    "noScansYet": "No scans have finished yet.",
     "loadError": "Could not load this scan's results."
   },
   "compare": {

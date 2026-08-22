@@ -228,3 +228,16 @@
   both manifest files' comments. Verified with `xmllint --noout` against
   both files (clean) and a real Windows cross-compile; full end-to-end
   launch behavior still needs confirming on a real Windows machine.
+- Fixed the sidebar's Results link (and any bare `/results` visit)
+  showing "No scan specified" even with finished scans on the
+  Dashboard: `ResultsComponent` only ever looked at `?jobId=`/
+  `?inventoryPath=`, which the sidebar link never sets. It now falls
+  back to `GET /api/scans` (the same list the Dashboard shows, already
+  sorted newest first) and opens the most recently created `done`/
+  `error` scan -- live or historical -- updating the URL to match so
+  refresh/share/back keep working. A genuinely empty history now shows
+  a "No scans have finished yet" message with a New Scan button instead
+  of the confusing "No scan specified." Verified with a live server (a
+  historical scan-history.json entry, and separately an empty one) and
+  Playwright, confirming both the auto-redirect and the empty state
+  render correctly.

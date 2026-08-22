@@ -62,6 +62,7 @@
     "noVulnData": "Voor deze scan is geen kwetsbaarheidsdata aangeleverd — dat is niet hetzelfde als \"geen kwetsbaarheden gevonden\".",
     "noFindings": "Geen kwetsbaarheden gevonden.",
     "noScanSpecified": "Geen scan opgegeven.",
+    "noScansYet": "Er zijn nog geen scans voltooid.",
     "loadError": "Kon de resultaten van deze scan niet laden."
   },
   "compare": {

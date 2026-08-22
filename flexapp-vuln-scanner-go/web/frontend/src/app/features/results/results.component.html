@@ -104,6 +104,13 @@
         </ng-template>
       </p-table>
     }
+  } @else if (noScansYet()) {
+    <p class="lwl-muted">{{ 'results.noScansYet' | transloco }}</p>
+    <div>
+      <a routerLink="/new-scan">
+        <p-button [label]="'newScan.heading' | transloco" icon="pi pi-search" size="small" />
+      </a>
+    </div>
   } @else if (!loading() && !loadError()) {
     <p class="lwl-muted">{{ 'results.noScanSpecified' | transloco }}</p>
   }
