@@ -22,6 +22,25 @@ if ! command -v grype >/dev/null 2>&1; then
   exit 1
 fi
 
+# A typical Windows machine (this project's actual target platform) has
+# `python`, not `python3` -- and worse, running a bare `python3` there
+# can silently invoke the Microsoft Store's "python3.exe" alias shim
+# instead of failing cleanly, printing a confusing "Python was not
+# found; run without arguments to install from the Microsoft Store"
+# error. Resolve a real interpreter explicitly instead of hardcoding
+# python3, and verify it actually runs before relying on it.
+python_cmd=""
+for candidate in python3 python; do
+  if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c "" >/dev/null 2>&1; then
+    python_cmd="$candidate"
+    break
+  fi
+done
+if [[ -z "$python_cmd" ]]; then
+  echo "check-vulnerabilities: no working Python interpreter found on PATH (tried python3, python) -- install Python 3 from https://python.org" >&2
+  exit 1
+fi
+
 if [[ ! -f bom.cdx.json ]]; then
   echo "check-vulnerabilities: bom.cdx.json not found -- run scripts/generate-sbom.sh first" >&2
   exit 1
@@ -48,7 +67,7 @@ if ! grype sbom:bom.cdx.json -o json --file "$output" 2>"$output.stderr"; then
 fi
 rm -f "$output.stderr"
 
-critical_and_high="$(python3 -c "
+critical_and_high="$("$python_cmd" -c "
 import json, sys
 with open('$output') as f:
     data = json.load(f)

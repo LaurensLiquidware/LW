@@ -275,3 +275,15 @@
   `@cyclonedx/cyclonedx-npm@6.0.1` and regenerated `bom.cdx.json` with
   it so the committed file matches what CI now deterministically
   produces.
+- Fixed `scripts/check-vulnerabilities.sh` hardcoding `python3`, found
+  running it locally on a real Windows machine: a typical Windows
+  install only has `python`, not `python3`, and running a bare
+  `python3` there can silently invoke the Microsoft Store's alias shim
+  instead of failing cleanly ("Python was not found; run without
+  arguments to install from the Microsoft Store"). Now resolves a real,
+  working interpreter (`python3` first, falling back to `python`) and
+  fails with a clear message if neither works, instead of failing
+  confusingly on this project's own actual target platform. Confirmed
+  via CI (GitHub-hosted runners, real internet access) that this
+  project has **zero Critical/High vulnerabilities** in its full Go +
+  npm dependency graph -- the Sparks Tool checklist's last open item.
