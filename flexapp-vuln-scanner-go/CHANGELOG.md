@@ -241,3 +241,10 @@
   historical scan-history.json entry, and separately an empty one) and
   Playwright, confirming both the auto-redirect and the empty state
   render correctly.
+- Colorized the plain "6C / 29H / 27M / 4L" severity counts on the
+  Results and Dashboard screens with a small dot per severity (using
+  the existing `--cell-crit`/`--cell-elev`/`--cell-warn`/`--cell-good`
+  heatmap tokens already in `tokens.css`, not invented colors) plus a
+  "C = Critical, H = High, M = Medium, L = Low" legend, so the counts
+  read at a glance instead of needing the letter abbreviations decoded
+  every time.

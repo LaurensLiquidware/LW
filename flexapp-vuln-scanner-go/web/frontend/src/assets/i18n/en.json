@@ -63,6 +63,7 @@
     "noFindings": "No vulnerability matches found.",
     "noScanSpecified": "No scan specified.",
     "noScansYet": "No scans have finished yet.",
+    "severityLegend": "C = Critical, H = High, M = Medium, L = Low",
     "loadError": "Could not load this scan's results."
   },
   "compare": {

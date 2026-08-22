@@ -15,7 +15,10 @@
           <th>{{ 'dashboard.package' | transloco }}</th>
           <th>{{ 'dashboard.status' | transloco }}</th>
           <th>{{ 'dashboard.coverage' | transloco }}</th>
-          <th>{{ 'dashboard.severities' | transloco }}</th>
+          <th>
+            {{ 'dashboard.severities' | transloco }}
+            <span class="lwl-micro" style="font-weight: var(--weight-normal);">({{ 'results.severityLegend' | transloco }})</span>
+          </th>
           <th>{{ 'dashboard.created' | transloco }}</th>
         </tr>
       </ng-template>
@@ -32,11 +35,23 @@
           </td>
           <td>
             @if (scan.severityCounts) {
-              <span class="lwl-micro">
-                {{ scan.severityCounts['CRITICAL'] }}C
-                / {{ scan.severityCounts['HIGH'] }}H
-                / {{ scan.severityCounts['MEDIUM'] }}M
-                / {{ scan.severityCounts['LOW'] }}L
+              <span class="flex items-center gap-2 lwl-micro">
+                <span class="flex items-center gap-1">
+                  <span class="lwl-severity-dot" style="background: var(--cell-crit);"></span>
+                  {{ scan.severityCounts['CRITICAL'] }}C
+                </span>
+                <span class="flex items-center gap-1">
+                  <span class="lwl-severity-dot" style="background: var(--cell-elev);"></span>
+                  {{ scan.severityCounts['HIGH'] }}H
+                </span>
+                <span class="flex items-center gap-1">
+                  <span class="lwl-severity-dot" style="background: var(--cell-warn);"></span>
+                  {{ scan.severityCounts['MEDIUM'] }}M
+                </span>
+                <span class="flex items-center gap-1">
+                  <span class="lwl-severity-dot" style="background: var(--cell-good);"></span>
+                  {{ scan.severityCounts['LOW'] }}L
+                </span>
               </span>
             } @else {
               —

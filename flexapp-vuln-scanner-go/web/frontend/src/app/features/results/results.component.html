@@ -43,12 +43,25 @@
         </div>
         <div>
           <span class="lwl-micro">{{ 'results.severities' | transloco }}</span>
-          <div class="lwl-metric-label">
-            {{ result.severityCounts['CRITICAL'] }}C
-            / {{ result.severityCounts['HIGH'] }}H
-            / {{ result.severityCounts['MEDIUM'] }}M
-            / {{ result.severityCounts['LOW'] }}L
+          <div class="flex items-center gap-3 lwl-metric-label">
+            <span class="flex items-center gap-1">
+              <span class="lwl-severity-dot" style="background: var(--cell-crit);"></span>
+              {{ result.severityCounts['CRITICAL'] }}C
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="lwl-severity-dot" style="background: var(--cell-elev);"></span>
+              {{ result.severityCounts['HIGH'] }}H
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="lwl-severity-dot" style="background: var(--cell-warn);"></span>
+              {{ result.severityCounts['MEDIUM'] }}M
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="lwl-severity-dot" style="background: var(--cell-good);"></span>
+              {{ result.severityCounts['LOW'] }}L
+            </span>
           </div>
+          <div class="lwl-micro">{{ 'results.severityLegend' | transloco }}</div>
         </div>
       </div>
     </p-card>

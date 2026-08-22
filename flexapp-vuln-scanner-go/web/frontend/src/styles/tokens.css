@@ -221,6 +221,18 @@ html {
   color: var(--p-text-color);
 }
 
+/* Small color swatch for a severity count (Critical/High/Medium/Low) --
+   colors pulled from the existing data-table heatmap scale above
+   (--cell-crit/--cell-elev/--cell-warn/--cell-good) rather than
+   invented, per the project brief's "use the tokens as given" rule. */
+.lwl-severity-dot {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  flex: none;
+}
+
 .lwl-row-clickable {
   cursor: pointer;
 }

@@ -63,6 +63,7 @@
     "noFindings": "Geen kwetsbaarheden gevonden.",
     "noScanSpecified": "Geen scan opgegeven.",
     "noScansYet": "Er zijn nog geen scans voltooid.",
+    "severityLegend": "C = Kritiek, H = Hoog, M = Gemiddeld, L = Laag",
     "loadError": "Kon de resultaten van deze scan niet laden."
   },
   "compare": {
