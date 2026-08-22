@@ -30,6 +30,7 @@ type options struct {
 	showVersion bool
 	searchURL   string
 	noElevate   bool
+	devTools    bool
 }
 
 func parseFlags(plat platform.Platform) options {
@@ -41,6 +42,8 @@ func parseFlags(plat platform.Platform) options {
 		"image-search URL template; %s is the encoded query. Pass an empty string to disable image search entirely, for air-gapped or policy-restricted sites.")
 	flag.BoolVar(&o.noElevate, "no-elevate", false,
 		"do not attempt to relaunch elevated; fail instead if not already elevated")
+	flag.BoolVar(&o.devTools, "devtools", false,
+		"enable the WebView developer tools (right-click, Inspect) for diagnosing interface problems")
 	flag.Parse()
 	return o
 }

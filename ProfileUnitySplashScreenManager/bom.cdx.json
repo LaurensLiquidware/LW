@@ -1,10 +1,10 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:45491ccb-842f-4d78-9cd9-852e396fb9d2",
+  "serialNumber": "urn:uuid:9240b479-d735-42a6-a65f-ccccd8d536f4",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-08-22T16:09:52Z",
+    "timestamp": "2026-08-22T16:26:28Z",
     "component": {
       "type": "application",
       "bom-ref": "ProfileUnitySplashScreenManager",
@@ -21,7 +21,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "7ef72c485cdeb3f62aed66f83bd308a26a2cbd67bd5d33344ca6317bfd45b0d7"
+          "content": "e8d4c44b05e45f0c30006eb8d88808099d527259dc9d77ea8cd4548fadf1b1d7"
         }
       ]
     },

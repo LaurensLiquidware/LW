@@ -70,7 +70,9 @@ func main() {
 	defer srv.Cleanup()
 
 	w := webview2.NewWithOptions(webview2.WebViewOptions{
-		Debug:     false,
+		// -devtools turns on the WebView's developer tools so an interface problem
+		// can be diagnosed from the console rather than guessed at.
+		Debug:     o.devTools,
 		AutoFocus: true,
 		WindowOptions: webview2.WindowOptions{
 			Title:  fmt.Sprintf("%s %s", version.ProductName, version.AppVersion),

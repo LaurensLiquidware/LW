@@ -102,6 +102,9 @@ ProfileUnitySplashScreenManager.exe [options]
                        Pass an empty string to disable image search entirely,
                        for air-gapped or policy-restricted sites.
   -no-elevate          Do not attempt to relaunch elevated; fail instead.
+  -devtools            Enable the WebView developer tools, so an interface
+                       problem can be inspected from the console rather than
+                       guessed at. Right-click in the window, then Inspect.
   -version             Print the version and exit.
 ```
 
