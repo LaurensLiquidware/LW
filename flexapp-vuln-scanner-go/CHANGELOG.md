@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.4 — unreleased
+
+- Made the Windows Defender scan detection-only:
+  `Invoke-DefenderScan.ps1` now passes `-DisableRemediation` to
+  `MpCmdRun.exe`, so Defender reports a detection instead of
+  automatically quarantining/removing/cleaning it. Previously
+  Defender's configured default action would run against the mounted
+  package the moment something was flagged -- surprising for a tool
+  whose job is to detect and report, not silently alter a customer's
+  package, and actively risky for a classic VHDX, where Defender
+  touching a file inside a live mount can corrupt the mount itself
+  rather than just the flagged file. Verified with `pwsh` under strict
+  error-action preference (this sandbox has no Defender install, so
+  the flag itself can't be exercised end-to-end here; the change is a
+  single added CLI argument, correctness confirmed against Microsoft's
+  documented `MpCmdRun.exe` switches).
+
 ## 0.1.3 — unreleased
 
 - Made the Windows Defender malware scan report what it actually did,

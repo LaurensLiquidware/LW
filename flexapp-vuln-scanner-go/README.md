@@ -74,6 +74,14 @@ than failing the scan on a machine without Defender (or one running a
 different antivirus product instead), and can be skipped outright with
 `FVS_SKIP_DEFENDER_SCAN=true` or the CLI's `-skip-defender-scan` flag.
 
+The scan is detection-only (`MpCmdRun.exe ... -DisableRemediation`):
+Defender reports what it finds but never quarantines, removes, or
+otherwise modifies anything in the scanned package. This tool's job is
+to detect and report, not to take action on a customer's package behind
+their back -- and for a classic VHDX, letting Defender's default action
+touch a file inside a live mount risks corrupting the mount itself, not
+just the file.
+
 Beyond the clean/threats-found verdict, the Results screen, the CLI
 summary, and the PDF report all show what the scan actually did: the
 path scanned, when it started/finished and how long it took, the

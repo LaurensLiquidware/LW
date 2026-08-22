@@ -23,6 +23,15 @@
     root -- that is treated as the actual verdict, not the raw exit
     code.
 
+    Detection-only: the scan runs with -DisableRemediation, so Defender
+    reports what it finds but never quarantines/removes/cleans anything
+    it flags. This tool's own contract is "detect and report" -- taking
+    a destructive default action on a customer's package (which this
+    Stage would otherwise keep inventorying right after the scan runs)
+    would be a surprising, out-of-scope side effect, and the mounted
+    VHDX case makes it worse: Defender modifying a file inside a live
+    mount can corrupt the mount, not just the file.
+
     Never throws: any failure along the way (Defender absent, disabled,
     or its cmdlets unavailable -- e.g. a non-Windows dev machine, or a
     Windows box running a different antivirus product entirely) reports
@@ -117,7 +126,14 @@ function Invoke-DefenderScan {
     $result.scanStartedUtc = $scanStart.ToUniversalTime().ToString('o')
 
     try {
-        $output = & $mpCmdRun -Scan -ScanType 3 -File $Path 2>&1 | Out-String
+        # -DisableRemediation: this is a detection-only pass. Without it,
+        # MpCmdRun applies Defender's configured default action (usually
+        # Quarantine/Remove) to anything it flags -- unacceptable here
+        # since $Path is a customer's mounted package: Stage 1 needs an
+        # intact, unmodified copy to keep inventorying after the scan
+        # runs, and silently deleting files out from under a mounted
+        # VHDX would also corrupt the mount itself, not just the file.
+        $output = & $mpCmdRun -Scan -ScanType 3 -File $Path -DisableRemediation 2>&1 | Out-String
         $exitCode = $LASTEXITCODE
         $result.ran = $true
     }
