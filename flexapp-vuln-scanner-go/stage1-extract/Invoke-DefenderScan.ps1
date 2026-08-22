@@ -151,10 +151,22 @@ function Invoke-DefenderScan {
 
     $detections = @()
     try {
+        # Get-MpThreatDetection's Resources entries are URI-like, not bare
+        # paths -- "file:_C:\mount\evil.exe", or for a nested archive hit
+        # (as with the EICAR test file inside a .zip) a chain like
+        # "containerfile:_C:\mount\a.zip->...->eicar.com". A prefix match
+        # against the raw scanned path (-like "$Path*") never matches
+        # either shape, silently turning every real detection into
+        # status "error" instead of "threats-found" -- caught by an
+        # actual EICAR-in-zip scan on Windows, not by this project's own
+        # synthetic test fixture, which encoded the same "file:_" prefix
+        # but never exercised this match against it. -like "*$Path*"
+        # matches the scanned path wherever it appears in the resource
+        # string.
         $detections = @(Get-MpThreatDetection -ErrorAction Stop |
             Where-Object {
                 $_.InitialDetectionTime -ge $scanStart.AddMinutes(-1) -and
-                (@($_.Resources) | Where-Object { $_ -like "$Path*" })
+                (@($_.Resources) | Where-Object { $_ -like "*$Path*" })
             })
     }
     catch {

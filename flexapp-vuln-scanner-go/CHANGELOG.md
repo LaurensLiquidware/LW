@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.5 — unreleased
+
+- Fixed a real-detection bug in the Defender scan's verdict cross-check:
+  `Invoke-DefenderScan.ps1` matched `Get-MpThreatDetection`'s `Resources`
+  entries against the scanned path with a prefix match
+  (`-like "$Path*"`), but those entries are URI-like
+  (`file:_C:\mount\evil.exe`) or, for a detection inside a nested
+  archive, a chain like `containerfile:_C:\mount\a.zip->...->eicar.com`
+  -- neither ever starts with the bare scanned path, so the prefix
+  match always failed and every real detection fell through to status
+  `error` ("MpCmdRun.exe exited with code 2 but no matching detection
+  was found...") instead of `threats-found`, even though MpCmdRun's own
+  output (visible in the "Raw scan output" section added in 0.1.3)
+  showed the detection plainly. Found from a real scan against a
+  package containing an EICAR test file inside a `.zip`. Changed the
+  match to `-like "*$Path*"` (the scanned path anywhere in the resource
+  string) and confirmed against the exact resource string from that
+  scan's output that the old pattern failed and the new one matches.
+  This project's own `with-malware-scan.inventory.json` test fixture
+  had encoded the same `file:_` prefix all along but never exercised
+  the match against it, since fixture-based inventory tests only cover
+  Go-side JSON decoding, not the PowerShell matching logic that
+  produces the JSON in the first place.
+
 ## 0.1.4 — unreleased
 
 - Made the Windows Defender scan detection-only:
