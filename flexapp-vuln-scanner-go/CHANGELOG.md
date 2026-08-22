@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.3 — unreleased
+
+- Made the Windows Defender malware scan report what it actually did,
+  not just the clean/threats-found verdict: the path scanned, when it
+  started/finished and how long it took, the signature and engine
+  versions Defender ran with, and (in a collapsible "Raw scan output"
+  section) the actual `MpCmdRun.exe` output.
+  `stage1-extract/Invoke-DefenderScan.ps1` now captures all of this
+  (best-effort via `Get-MpComputerStatus` for the signature/engine
+  info -- never fatal if unavailable), threaded through
+  `internal/inventory.MalwareScan` → `pipeline.Result` (already
+  exposed, no API shape change) → the Results screen, the CLI
+  summary, and a new "Malware Scan (Windows Defender)" section in the
+  PDF report (previously the PDF didn't mention the malware scan at
+  all). Verified with `go test ./...`, `npx tsc --noEmit`,
+  `npm run build`, and a live server + Playwright check of the
+  Results screen and a rendered PDF against a threats-found fixture,
+  confirming the new detail (path, duration, signature version,
+  threats, raw output) renders correctly in both.
+
 ## 0.1.2 — unreleased
 
 - Added native folder-picker Browse buttons to the Compare Scans

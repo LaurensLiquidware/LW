@@ -72,12 +72,19 @@ type MalwareThreat struct {
 // (the scan itself couldn't be completed or confirmed) -- Ran
 // distinguishes "unavailable" (never attempted) from a real attempt.
 type MalwareScan struct {
-	Tool           string          `json:"tool"`
-	Ran            bool            `json:"ran"`
-	Status         string          `json:"status"`
-	Threats        []MalwareThreat `json:"threats"`
-	ScanStartedUTC *string         `json:"scanStartedUtc"`
-	Message        *string         `json:"message"`
+	Tool                    string          `json:"tool"`
+	Ran                     bool            `json:"ran"`
+	Status                  string          `json:"status"`
+	Threats                 []MalwareThreat `json:"threats"`
+	PathScanned             *string         `json:"pathScanned"`
+	ScanStartedUTC          *string         `json:"scanStartedUtc"`
+	ScanFinishedUTC         *string         `json:"scanFinishedUtc"`
+	DurationSeconds         *float64        `json:"durationSeconds"`
+	SignatureVersion        *string         `json:"signatureVersion"`
+	SignatureLastUpdatedUTC *string         `json:"signatureLastUpdatedUtc"`
+	EngineVersion           *string         `json:"engineVersion"`
+	Details                 *string         `json:"details"`
+	Message                 *string         `json:"message"`
 }
 
 // Inventory is the full decoded Stage 1 output.

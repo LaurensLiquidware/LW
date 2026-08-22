@@ -79,8 +79,45 @@
             }
           </ul>
         }
+        @if (malwareScan.ran) {
+          <dl class="lwl-micro" style="margin-top: 0.5rem; display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.75rem;">
+            @if (malwareScan.pathScanned) {
+              <dt>{{ 'results.malwareDetail.pathScanned' | transloco }}</dt>
+              <dd>{{ malwareScan.pathScanned }}</dd>
+            }
+            @if (malwareScan.scanStartedUtc && malwareScan.scanFinishedUtc) {
+              <dt>{{ 'results.malwareDetail.scanned' | transloco }}</dt>
+              <dd>
+                {{ malwareScan.scanStartedUtc | date: 'medium' }} –
+                {{ malwareScan.scanFinishedUtc | date: 'medium' }}
+                @if (malwareScan.durationSeconds != null) {
+                  ({{ malwareScan.durationSeconds }}s)
+                }
+              </dd>
+            }
+            @if (malwareScan.signatureVersion) {
+              <dt>{{ 'results.malwareDetail.signatureVersion' | transloco }}</dt>
+              <dd>
+                {{ malwareScan.signatureVersion }}
+                @if (malwareScan.signatureLastUpdatedUtc) {
+                  ({{ 'results.malwareDetail.updated' | transloco }} {{ malwareScan.signatureLastUpdatedUtc | date: 'medium' }})
+                }
+              </dd>
+            }
+            @if (malwareScan.engineVersion) {
+              <dt>{{ 'results.malwareDetail.engineVersion' | transloco }}</dt>
+              <dd>{{ malwareScan.engineVersion }}</dd>
+            }
+          </dl>
+        }
         @if (malwareScan.message) {
           <p class="lwl-micro" style="margin-top: 0.5rem;">{{ malwareScan.message }}</p>
+        }
+        @if (malwareScan.details) {
+          <details style="margin-top: 0.5rem;">
+            <summary class="lwl-micro" style="cursor: pointer;">{{ 'results.malwareDetail.rawOutput' | transloco }}</summary>
+            <pre class="lwl-micro" style="white-space: pre-wrap; margin-top: 0.35rem;">{{ malwareScan.details }}</pre>
+          </details>
         }
       </p-card>
     }

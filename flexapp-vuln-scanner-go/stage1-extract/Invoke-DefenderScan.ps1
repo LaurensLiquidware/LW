@@ -75,18 +75,42 @@ function Invoke-DefenderScan {
     )
 
     $result = [ordered]@{
-        tool           = 'Windows Defender'
-        ran            = $false
-        status         = 'unavailable'
-        threats        = @()
-        scanStartedUtc = $null
-        message        = $null
+        tool                  = 'Windows Defender'
+        ran                   = $false
+        status                = 'unavailable'
+        threats               = @()
+        pathScanned           = $Path
+        scanStartedUtc        = $null
+        scanFinishedUtc       = $null
+        durationSeconds       = $null
+        signatureVersion      = $null
+        signatureLastUpdatedUtc = $null
+        engineVersion         = $null
+        details               = $null
+        message               = $null
     }
 
     $mpCmdRun = Find-MpCmdRunPath
     if (-not $mpCmdRun) {
         $result.message = 'MpCmdRun.exe not found -- Windows Defender does not appear to be installed on this machine.'
         return [PSCustomObject]$result
+    }
+
+    # Best-effort -- shown alongside the verdict so a reader can tell how
+    # current the signatures were at scan time, not just that "something"
+    # ran. Never fatal: Get-MpComputerStatus can be unavailable even when
+    # MpCmdRun.exe itself is present (e.g. the real-time protection
+    # service isn't running).
+    try {
+        $mpStatus = Get-MpComputerStatus -ErrorAction Stop
+        $result.signatureVersion = $mpStatus.AntivirusSignatureVersion
+        if ($mpStatus.AntivirusSignatureLastUpdated) {
+            $result.signatureLastUpdatedUtc = $mpStatus.AntivirusSignatureLastUpdated.ToUniversalTime().ToString('o')
+        }
+        $result.engineVersion = $mpStatus.AMEngineVersion
+    }
+    catch {
+        # Left null -- not treated as a scan failure.
     }
 
     $scanStart = Get-Date
@@ -102,6 +126,12 @@ function Invoke-DefenderScan {
         $result.message = "Failed to run MpCmdRun.exe: $_"
         return [PSCustomObject]$result
     }
+    finally {
+        $scanEnd = Get-Date
+        $result.scanFinishedUtc = $scanEnd.ToUniversalTime().ToString('o')
+        $result.durationSeconds = [math]::Round(($scanEnd - $scanStart).TotalSeconds, 1)
+    }
+    $result.details = $output.Trim()
 
     $detections = @()
     try {

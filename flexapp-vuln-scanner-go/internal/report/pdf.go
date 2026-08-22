@@ -9,6 +9,7 @@ import (
 	"github.com/go-pdf/fpdf"
 
 	"flexapp-vuln-scanner/internal/coverage"
+	"flexapp-vuln-scanner/internal/inventory"
 	"flexapp-vuln-scanner/internal/resolve"
 )
 
@@ -82,7 +83,7 @@ func renderBrandBanner(pdf *fpdf.Fpdf) {
 // RenderPDF writes a combined coverage + findings PDF report to outPath.
 // This is a presentation-layer alternative for a human reader -- the
 // Markdown/JSON outputs remain the source of truth.
-func RenderPDF(outPath, packageName string, meta PackageMeta, cov coverage.Coverage, vulnMatches *resolve.Result) error {
+func RenderPDF(outPath, packageName string, meta PackageMeta, cov coverage.Coverage, vulnMatches *resolve.Result, malwareScan *inventory.MalwareScan) error {
 	pdf := fpdf.New("P", "mm", "Letter", "")
 	pdf.SetMargins(15, brandBannerHeightMM+8, 15)
 	pdf.SetAutoPageBreak(true, 15)
@@ -110,6 +111,10 @@ func RenderPDF(outPath, packageName string, meta PackageMeta, cov coverage.Cover
 	pdf.Ln(3)
 
 	renderCoverageSection(pdf, cov)
+
+	if malwareScan != nil {
+		renderMalwareSection(pdf, malwareScan)
+	}
 
 	pdf.AddPage()
 	renderFindingsSection(pdf, vulnMatches)
@@ -196,6 +201,87 @@ func renderCoverageSection(pdf *fpdf.Fpdf, cov coverage.Coverage) {
 		for _, f := range cov.UnresolvedFiles {
 			pdf.MultiCell(0, 5, fmt.Sprintf("%s  (%s)", f.RelativePath, f.ComponentType), "", "L", false)
 		}
+		pdf.SetFont("Helvetica", "", 10)
+	}
+}
+
+// malwareStatusColor mirrors the Angular Results screen's p-tag severity
+// mapping (MALWARE_STATUS_SEVERITY in results.component.ts) so the PDF
+// and the live UI read the same status the same way.
+func malwareStatusColor(status string) (r, g, b int) {
+	switch status {
+	case "clean":
+		return 0x16, 0x7a, 0x3e // success green
+	case "threats-found":
+		return 0xdc, 0x26, 0x26 // danger red, matches severityColor("HIGH")
+	case "error":
+		return 0xca, 0x8a, 0x04 // warn amber, matches severityColor("MEDIUM")
+	default: // "unavailable"
+		return 0x71, 0x71, 0x7a // secondary gray, matches severityColor("LOW")
+	}
+}
+
+// renderMalwareSection reports what Invoke-DefenderScan.ps1 actually did
+// during Stage 1 -- not just the clean/threats-found verdict, but the
+// path it scanned, when, how long it took, and which signature/engine
+// version it ran with, so a reader can tell a real, current scan from a
+// stale or degraded one. Absent entirely when Stage 1 ran with
+// -SkipDefenderScan (malwareScan is nil in that case).
+func renderMalwareSection(pdf *fpdf.Fpdf, scan *inventory.MalwareScan) {
+	h2(pdf, "Malware Scan (Windows Defender)")
+
+	sr, sg, sb := malwareStatusColor(scan.Status)
+	pdf.SetFont("Helvetica", "B", 11)
+	pdf.SetTextColor(sr, sg, sb)
+	pdf.MultiCell(0, 6, "Status: "+strings.ToUpper(scan.Status), "", "L", false)
+	pdf.SetTextColor(brandTextDark[0], brandTextDark[1], brandTextDark[2])
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.Ln(1)
+
+	var rows [][2]string
+	if scan.PathScanned != nil {
+		rows = append(rows, [2]string{"Path scanned", *scan.PathScanned})
+	}
+	if scan.ScanStartedUTC != nil {
+		rows = append(rows, [2]string{"Scan started (UTC)", *scan.ScanStartedUTC})
+	}
+	if scan.ScanFinishedUTC != nil {
+		rows = append(rows, [2]string{"Scan finished (UTC)", *scan.ScanFinishedUTC})
+	}
+	if scan.DurationSeconds != nil {
+		rows = append(rows, [2]string{"Duration", fmt.Sprintf("%.1fs", *scan.DurationSeconds)})
+	}
+	if scan.SignatureVersion != nil {
+		rows = append(rows, [2]string{"Signature version", *scan.SignatureVersion})
+	}
+	if scan.SignatureLastUpdatedUTC != nil {
+		rows = append(rows, [2]string{"Signatures last updated (UTC)", *scan.SignatureLastUpdatedUTC})
+	}
+	if scan.EngineVersion != nil {
+		rows = append(rows, [2]string{"Engine version", *scan.EngineVersion})
+	}
+	if len(rows) > 0 {
+		kvTable(pdf, nil, rows, false)
+	}
+
+	if len(scan.Threats) > 0 {
+		h3(pdf, fmt.Sprintf("Threats detected (%d)", len(scan.Threats)))
+		pdf.SetFont("Helvetica", "", 9)
+		for _, t := range scan.Threats {
+			pdf.SetTextColor(0xdc, 0x26, 0x26)
+			pdf.MultiCell(0, 5, t.ThreatName, "", "L", false)
+			pdf.SetTextColor(brandTextDark[0], brandTextDark[1], brandTextDark[2])
+			if len(t.Resources) > 0 {
+				pdf.MultiCell(0, 5, "  "+strings.Join(t.Resources, "; "), "", "L", false)
+			}
+		}
+		pdf.SetFont("Helvetica", "", 10)
+	}
+
+	if scan.Message != nil && *scan.Message != "" {
+		pdf.Ln(1)
+		pdf.SetFont("Helvetica", "I", 9)
+		pdf.MultiCell(0, 5, *scan.Message, "", "L", false)
 		pdf.SetFont("Helvetica", "", 10)
 	}
 }

@@ -202,7 +202,7 @@ func WriteReports(sink ProgressSink, inv *inventory.Inventory, inventoryPath str
 		packageMeta.VersionMajorMinorBuildRevision = *inv.Package.FlexAppXML.VersionMajorMinorBuildRevision
 	}
 	packageMeta.ScanFinishedUTC = inv.Package.ScanFinishedUTC
-	if err := report.RenderPDF(pdfPath, packageName, packageMeta, cov, vulnMatches); err != nil {
+	if err := report.RenderPDF(pdfPath, packageName, packageMeta, cov, vulnMatches, inv.Package.MalwareScan); err != nil {
 		return nil, err
 	}
 

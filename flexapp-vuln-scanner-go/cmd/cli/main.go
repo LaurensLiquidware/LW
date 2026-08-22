@@ -146,18 +146,30 @@ func run(args []string) error {
 	fmt.Printf("Findings: %dC / %dH / %dM / %dL\n",
 		result.SeverityCounts["CRITICAL"], result.SeverityCounts["HIGH"], result.SeverityCounts["MEDIUM"], result.SeverityCounts["LOW"])
 	if result.MalwareScan != nil {
-		switch result.MalwareScan.Status {
+		scan := result.MalwareScan
+		switch scan.Status {
 		case "clean":
 			fmt.Println("Malware:  clean (Windows Defender)")
 		case "threats-found":
-			fmt.Printf("Malware:  %d threat(s) found by Windows Defender:\n", len(result.MalwareScan.Threats))
-			for _, t := range result.MalwareScan.Threats {
+			fmt.Printf("Malware:  %d threat(s) found by Windows Defender:\n", len(scan.Threats))
+			for _, t := range scan.Threats {
 				fmt.Printf("  - %s\n", t.ThreatName)
 			}
 		case "unavailable":
 			fmt.Println("Malware:  Windows Defender not available on this machine -- not scanned")
 		default:
 			fmt.Println("Malware:  scan could not be completed/confirmed -- see the log above")
+		}
+		if scan.Ran {
+			if scan.PathScanned != nil {
+				fmt.Printf("          Scanned:  %s\n", *scan.PathScanned)
+			}
+			if scan.DurationSeconds != nil {
+				fmt.Printf("          Duration: %.1fs\n", *scan.DurationSeconds)
+			}
+			if scan.SignatureVersion != nil {
+				fmt.Printf("          Signature: %s\n", *scan.SignatureVersion)
+			}
 		}
 	}
 	fmt.Println()

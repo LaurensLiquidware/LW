@@ -56,7 +56,14 @@ export interface MalwareScan {
   ran: boolean;
   status: 'clean' | 'threats-found' | 'unavailable' | 'error';
   threats: MalwareThreat[];
+  pathScanned: string | null;
   scanStartedUtc: string | null;
+  scanFinishedUtc: string | null;
+  durationSeconds: number | null;
+  signatureVersion: string | null;
+  signatureLastUpdatedUtc: string | null;
+  engineVersion: string | null;
+  details: string | null;
   message: string | null;
 }
 

@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { TableModule } from 'primeng/table';
@@ -38,7 +38,7 @@ const MALWARE_STATUS_SEVERITY: Record<string, 'success' | 'danger' | 'info' | 'w
  * Dashboard shows, so Results is never just a dead end. */
 @Component({
   selector: 'app-results',
-  imports: [TranslocoModule, TableModule, TagModule, ButtonModule, CardModule, DecimalPipe, RouterLink],
+  imports: [TranslocoModule, TableModule, TagModule, ButtonModule, CardModule, DecimalPipe, DatePipe, RouterLink],
   changeDetection: ChangeDetectionStrategy.Default,
   templateUrl: './results.component.html',
 })

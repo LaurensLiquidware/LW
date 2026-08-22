@@ -83,6 +83,14 @@
       "unavailable": "Not Scanned (Defender Unavailable)",
       "error": "Scan Error"
     },
+    "malwareDetail": {
+      "pathScanned": "Path scanned",
+      "scanned": "Scanned",
+      "signatureVersion": "Signature version",
+      "engineVersion": "Engine version",
+      "updated": "updated",
+      "rawOutput": "Raw scan output"
+    },
     "loadError": "Could not load this scan's results."
   },
   "compare": {

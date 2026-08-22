@@ -83,6 +83,14 @@
       "unavailable": "Niet Gescand (Defender Niet Beschikbaar)",
       "error": "Scanfout"
     },
+    "malwareDetail": {
+      "pathScanned": "Gescand pad",
+      "scanned": "Gescand",
+      "signatureVersion": "Handtekeningversie",
+      "engineVersion": "Engineversie",
+      "updated": "bijgewerkt",
+      "rawOutput": "Ruwe scanuitvoer"
+    },
     "loadError": "Kon de resultaten van deze scan niet laden."
   },
   "compare": {

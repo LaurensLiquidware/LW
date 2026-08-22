@@ -74,6 +74,13 @@ than failing the scan on a machine without Defender (or one running a
 different antivirus product instead), and can be skipped outright with
 `FVS_SKIP_DEFENDER_SCAN=true` or the CLI's `-skip-defender-scan` flag.
 
+Beyond the clean/threats-found verdict, the Results screen, the CLI
+summary, and the PDF report all show what the scan actually did: the
+path scanned, when it started/finished and how long it took, the
+signature and engine versions Defender ran with (so a reader can tell a
+current scan from a stale one), and — when threats are found — the raw
+`MpCmdRun.exe` output for troubleshooting.
+
 This is one additional signal, not a certification -- it only catches
 what Defender's current signatures recognize, on whatever definitions
 happen to be installed on the scanning machine.

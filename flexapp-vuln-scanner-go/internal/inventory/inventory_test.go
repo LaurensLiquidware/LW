@@ -62,6 +62,18 @@ func TestLoad_MalwareScanThreatsFound(t *testing.T) {
 	if scan.Threats[0].ThreatName != "Trojan:Win32/Fake" {
 		t.Errorf("Threats[0].ThreatName = %q, want Trojan:Win32/Fake", scan.Threats[0].ThreatName)
 	}
+	if scan.PathScanned == nil || *scan.PathScanned != `C:\mount` {
+		t.Errorf("PathScanned = %v, want C:\\mount", scan.PathScanned)
+	}
+	if scan.DurationSeconds == nil || *scan.DurationSeconds != 12.3 {
+		t.Errorf("DurationSeconds = %v, want 12.3", scan.DurationSeconds)
+	}
+	if scan.SignatureVersion == nil || *scan.SignatureVersion != "1.423.100.0" {
+		t.Errorf("SignatureVersion = %v, want 1.423.100.0", scan.SignatureVersion)
+	}
+	if scan.Details == nil || *scan.Details == "" {
+		t.Errorf("Details = %v, want non-empty scan output", scan.Details)
+	}
 }
 
 func TestDisplayName_FallsBackToSourcePathStem(t *testing.T) {
