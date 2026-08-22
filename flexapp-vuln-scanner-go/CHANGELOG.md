@@ -350,3 +350,17 @@
   and a failed job (log panel showing the real `pwsh` invocation and
   output, main area showing the plain-language status and the error
   message).
+- Branded the PDF report to match the rest of the app: a running
+  Liquidware-blue (`--p-primary-600`) header banner with the white
+  wordmark repeats on every page (rendered once from
+  `web/frontend/src/assets/images/logo-primary-light.svg` -- the same
+  asset the Angular header bar already uses over the same blue -- into
+  `internal/report/assets/liquidware-logo-white.png`, since `fpdf` can't
+  embed SVG directly), and every heading/table header uses the brand
+  blue/dark-gray tokens instead of plain black. Verified by generating a
+  real PDF (via the CLI's `-refresh` path) and viewing it rendered in
+  Chromium: the banner and wordmark repeat correctly on both pages, and
+  headings render in the correct brand color. Noted, not fixed as
+  out-of-scope for this change: table headers already used a pre-existing
+  em dash (`—`) that Helvetica's built-in Latin-1 encoding can't render,
+  showing as `â€"` -- pre-existing, unrelated to branding.
