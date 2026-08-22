@@ -33,7 +33,7 @@ var iconBytes []byte
 var logoBytes []byte
 
 const (
-	appTitle            = "FlexApp Vulnerability Scanner"
+	appTitle            = "FlexApp Vulnerability and Security Scanner"
 	serverExeName       = "flexapp-vuln-scanner-server.exe"
 	gracefulStopTimeout = 10 * time.Second
 	logTailInterval     = 500 * time.Millisecond

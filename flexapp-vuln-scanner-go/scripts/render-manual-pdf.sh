@@ -39,7 +39,7 @@ trap 'rm -f "$html_tmp"' EXIT
 pandoc docs/MANUAL.md \
   --standalone \
   --embed-resources \
-  --metadata pagetitle="FlexApp Vulnerability Scanner — User Manual" \
+  --metadata pagetitle="FlexApp Vulnerability and Security Scanner — User Manual" \
   --css <(cat <<'CSS'
 body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 46em; margin: 2em auto; padding: 0 1.5em; line-height: 1.5; color: #1a1a1a; }
 h1, h2, h3 { color: #0b3d5c; }

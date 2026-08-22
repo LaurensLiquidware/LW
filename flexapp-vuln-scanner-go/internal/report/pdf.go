@@ -91,7 +91,7 @@ func RenderPDF(outPath, packageName string, meta PackageMeta, cov coverage.Cover
 
 	pdf.SetTextColor(brandPrimary[0], brandPrimary[1], brandPrimary[2])
 	pdf.SetFont("Helvetica", "B", 20)
-	pdf.MultiCell(0, 9, "FlexApp Vulnerability Scan Report", "", "L", false)
+	pdf.MultiCell(0, 9, "FlexApp Vulnerability and Security Scan Report", "", "L", false)
 	pdf.SetTextColor(brandTextDark[0], brandTextDark[1], brandTextDark[2])
 	pdf.SetFont("Helvetica", "B", 14)
 	pdf.MultiCell(0, 7, packageName, "", "L", false)

@@ -1,4 +1,4 @@
-# FlexApp Vulnerability Scanner: Go + Angular Rewrite Plan
+# FlexApp Vulnerability and Security Scanner: Go + Angular Rewrite Plan
 
 **Status: COMPLETE.** All 7 build-order steps below finished and validated
 on a real Windows machine (real scans, real UAC elevation, real file

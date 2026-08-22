@@ -1,4 +1,4 @@
-// Command server runs the FlexApp Vulnerability Scanner's headless HTTP
+// Command server runs the FlexApp Vulnerability and Security Scanner's headless HTTP
 // API + embedded Angular frontend. It has no database and no auth --
 // this is a local, single-user tool, launched and supervised by
 // cmd/tray, listening on loopback only by default.

@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.1 — unreleased
+
+- Renamed the product, in every user-facing surface, from "FlexApp
+  Vulnerability Scanner" to "FlexApp Vulnerability and Security
+  Scanner" -- reflecting that it now does more than CVE matching (see
+  the Windows Defender malware scan above). Changed: the web app's
+  `<title>` and i18n `app.title` (English and Dutch), the README
+  heading, the tray app's window/status-bar title, the server's
+  package doc comment, the PDF report's title text, the Windows
+  `.exe` version-info metadata (`ProductName`/`FileDescription` --
+  the internal names and actual `.exe` filenames are unchanged, so
+  existing shortcuts/scripts/Scheduled Tasks keep working), the
+  rewrite plan doc heading, and the generated
+  `THIRD-PARTY-NOTICES.txt` title (also fixed a pre-existing bug
+  where the underline below it was a hardcoded length that no longer
+  matched the title -- it's now computed from the actual title
+  length). Deliberately left unchanged, per the scope of this
+  request: the Go module path and binary/package names
+  (`flexapp-vuln-scanner*`) and the `flexapp-vuln-scanner-go/`
+  directory name. Verified with `npx tsc --noEmit`, `npm run build`,
+  `gofmt`, `go vet`, `go test ./...`, a full cross-compiled Windows
+  build via `scripts/build-windows.sh`, and `strings` on the built
+  `.exe` confirming the new name is embedded in the binary's
+  version-info resource.
+
 ## 0.1.0 — unreleased
 
 - Initial skeleton: Go backend (`cmd/server` + `cmd/tray`) + Angular

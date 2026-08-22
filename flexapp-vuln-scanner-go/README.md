@@ -1,4 +1,4 @@
-# FlexApp Vulnerability Scanner (Go + Angular)
+# FlexApp Vulnerability and Security Scanner (Go + Angular)
 
 A local, single-user, no-auth Windows tool that scans FlexApp packages
 (classic VHDX or Package Manager ZIP) for known-vulnerable third-party

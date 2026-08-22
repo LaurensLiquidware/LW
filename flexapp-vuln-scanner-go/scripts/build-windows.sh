@@ -71,7 +71,7 @@ generate_syso() {
     "InternalName": "${internal_name}",
     "LegalCopyright": "(c) Liquidware. See Spark_License.pdf.",
     "OriginalFilename": "${original_filename}",
-    "ProductName": "FlexApp Vulnerability Scanner",
+    "ProductName": "FlexApp Vulnerability and Security Scanner",
     "ProductVersion": "${version}"
   },
   "VarFileInfo": {
@@ -89,9 +89,9 @@ cleanup_paths=()
 trap 'rm -f "${cleanup_paths[@]}"' EXIT
 
 echo "build-windows: generating Windows resources (icon + version info)..."
-generate_syso cmd/tray flexapp-vuln-scanner flexapp-vuln-scanner.exe "FlexApp Vulnerability Scanner" cmd/tray/app.manifest
-generate_syso cmd/server flexapp-vuln-scanner-server flexapp-vuln-scanner-server.exe "FlexApp Vulnerability Scanner (Server)" cmd/server/app.manifest
-generate_syso cmd/cli flexapp-vuln-scanner-cli flexapp-vuln-scanner-cli.exe "FlexApp Vulnerability Scanner (CLI)"
+generate_syso cmd/tray flexapp-vuln-scanner flexapp-vuln-scanner.exe "FlexApp Vulnerability and Security Scanner" cmd/tray/app.manifest
+generate_syso cmd/server flexapp-vuln-scanner-server flexapp-vuln-scanner-server.exe "FlexApp Vulnerability and Security Scanner (Server)" cmd/server/app.manifest
+generate_syso cmd/cli flexapp-vuln-scanner-cli flexapp-vuln-scanner-cli.exe "FlexApp Vulnerability and Security Scanner (CLI)"
 
 echo "build-windows: cross-compiling windows/amd64..."
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-H=windowsgui" -o "$out_dir/flexapp-vuln-scanner.exe" ./cmd/tray

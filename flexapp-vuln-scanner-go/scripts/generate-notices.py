@@ -41,9 +41,10 @@ def main() -> None:
     for c in bom.get("components", []):
         by_license[component_license(c)].append((component_name(c), c.get("version", "")))
 
+    title = "FlexApp Vulnerability and Security Scanner — Third-Party Notices"
     lines = [
-        "FlexApp Vulnerability Scanner — Third-Party Notices",
-        "=====================================================",
+        title,
+        "=" * len(title),
         "",
         "This tool bundles the third-party components listed below, generated from",
         "bom.cdx.json (the accompanying CycloneDX 1.6 SBOM). Grouped by license;",
