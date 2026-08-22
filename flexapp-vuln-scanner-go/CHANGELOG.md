@@ -300,3 +300,32 @@
   was actually asked to open, not a bug in Python. Converts the path via
   `cygpath -m` (present on Git Bash, a no-op everywhere else) before
   handing it to Python.
+- Added a Windows Defender malware scan as a complementary signal
+  alongside CVE matching: `stage1-extract/Invoke-DefenderScan.ps1` shells
+  out to `MpCmdRun.exe` (ships with every Windows install, no extra
+  dependency) to scan the mounted package's contents, then cross-checks
+  `Get-MpThreatDetection` for a real, scoped verdict rather than trusting
+  `MpCmdRun.exe`'s own undocumented exit code -- degrades gracefully to
+  `unavailable`/`error` instead of failing Stage 1 outright when Defender
+  isn't present or the scan can't be confirmed. The result
+  (`clean`/`threats-found`/`unavailable`/`error`, plus threat names when
+  found) flows through the new `inventory.MalwareScan` field into
+  `pipeline.Result`, the Results screen (a colored status badge and
+  threat list), the Dashboard (a compact badge column, persisted to
+  `scanstore` so it survives restarts), and the CLI's summary output.
+  Opt-out via `FVS_SKIP_DEFENDER_SCAN=true` or the CLI's
+  `-skip-defender-scan` flag, or `-SkipDefenderScan` directly on the
+  PowerShell script, for machines running a different antivirus product
+  or where the extra scan time isn't wanted. Verified: new Go unit tests
+  (`internal/inventory`, `internal/config`), a real `pwsh` syntax check
+  and function-level exercise of the graceful-degradation path (this
+  sandbox has no Defender, so this is the actual "unavailable" code path
+  running for real, not simulated) -- which caught and fixed a genuine
+  bug where `$env:ProgramData`/`$env:ProgramFiles` being unset would
+  have thrown a terminating error under `Invoke-FlexAppInventory.ps1`'s
+  `$ErrorActionPreference = 'Stop'` instead of degrading gracefully --
+  and a live server + Playwright check of both the clean and
+  threats-found states on Results and the Dashboard. The actual Windows
+  Defender integration (the scan itself running against a real mounted
+  VHDX) still needs verification on a real Windows machine, the same
+  boundary every other Windows-only piece of this project has.

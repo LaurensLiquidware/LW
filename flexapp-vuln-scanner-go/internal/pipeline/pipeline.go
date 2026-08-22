@@ -41,7 +41,7 @@ var wroteInventoryRe = regexp.MustCompile(`(?m)^Wrote (.+\.inventory\.json)`)
 // RunStage1 shells out to the Stage 1 PowerShell script, streaming its
 // output to sink, and returns the inventory JSON path it wrote.
 // Canceling ctx kills the pwsh subprocess and returns ctx.Err().
-func RunStage1(ctx context.Context, sink ProgressSink, stage1Script, packagePath, outputDir string) (string, error) {
+func RunStage1(ctx context.Context, sink ProgressSink, stage1Script, packagePath, outputDir string, skipDefenderScan bool) (string, error) {
 	sink.SetStatus("stage1")
 
 	if _, err := os.Stat(stage1Script); err != nil {
@@ -53,7 +53,11 @@ func RunStage1(ctx context.Context, sink ProgressSink, stage1Script, packagePath
 		return "", fmt.Errorf("pwsh (PowerShell 7) not found on PATH - Stage 1 needs it to mount the package and run the inventory scan")
 	}
 
-	cmd := exec.CommandContext(ctx, pwsh, "-NoLogo", "-NoProfile", "-File", stage1Script, "-Path", packagePath, "-OutputDir", outputDir)
+	args := []string{"-NoLogo", "-NoProfile", "-File", stage1Script, "-Path", packagePath, "-OutputDir", outputDir}
+	if skipDefenderScan {
+		args = append(args, "-SkipDefenderScan")
+	}
+	cmd := exec.CommandContext(ctx, pwsh, args...)
 	sink.AppendLog("$ " + strings.Join(cmd.Args, " "))
 
 	stdout, err := cmd.StdoutPipe()
@@ -130,15 +134,16 @@ func RunStage2(ctx context.Context, sink ProgressSink, inventoryPath, outputDir,
 
 // Result is the result summary a results view renders.
 type Result struct {
-	PackageName    string              `json:"packageName"`
-	Coverage       coverage.Coverage   `json:"coverage"`
-	ConfirmedRows  []report.FindingRow `json:"confirmedRows"`
-	HeuristicRows  []report.FindingRow `json:"heuristicRows"`
-	SeverityCounts map[string]int      `json:"severityCounts"`
-	HasVulnMatches bool                `json:"hasVulnMatches"`
-	InventoryPath  string              `json:"inventoryPath"`
-	OutputDir      string              `json:"outputDir"`
-	Files          ResultFiles         `json:"files"`
+	PackageName    string                 `json:"packageName"`
+	Coverage       coverage.Coverage      `json:"coverage"`
+	ConfirmedRows  []report.FindingRow    `json:"confirmedRows"`
+	HeuristicRows  []report.FindingRow    `json:"heuristicRows"`
+	SeverityCounts map[string]int         `json:"severityCounts"`
+	HasVulnMatches bool                   `json:"hasVulnMatches"`
+	InventoryPath  string                 `json:"inventoryPath"`
+	OutputDir      string                 `json:"outputDir"`
+	Files          ResultFiles            `json:"files"`
+	MalwareScan    *inventory.MalwareScan `json:"malwareScan,omitempty"`
 }
 
 // ResultFiles is the set of report artifact paths WriteReports wrote.
@@ -233,6 +238,7 @@ func WriteReports(sink ProgressSink, inv *inventory.Inventory, inventoryPath str
 			PDF:            pdfPath,
 			FindingsCSV:    findingsCSVPath,
 		},
+		MalwareScan: inv.Package.MalwareScan,
 	}, nil
 }
 

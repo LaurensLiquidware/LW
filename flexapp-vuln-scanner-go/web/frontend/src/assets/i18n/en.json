@@ -64,6 +64,13 @@
     "noScanSpecified": "No scan specified.",
     "noScansYet": "No scans have finished yet.",
     "severityLegend": "C = Critical, H = High, M = Medium, L = Low",
+    "malwareScan": "Malware Scan (Windows Defender)",
+    "malwareStatus": {
+      "clean": "Clean",
+      "threats-found": "Threats Found",
+      "unavailable": "Not Scanned (Defender Unavailable)",
+      "error": "Scan Error"
+    },
     "loadError": "Could not load this scan's results."
   },
   "compare": {

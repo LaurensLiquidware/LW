@@ -40,6 +40,26 @@ export interface ResultFiles {
   findingsCsv?: string;
 }
 
+export interface MalwareThreat {
+  threatName: string;
+  resources: string[];
+  severity: string;
+}
+
+/** Stage 1's Windows Defender scan result for the mounted package (see
+ * stage1-extract/Invoke-DefenderScan.ps1). Absent when Stage 1 ran with
+ * -SkipDefenderScan. status is one of "clean", "threats-found",
+ * "unavailable" (Defender not installed), or "error" (the scan itself
+ * couldn't be completed or confirmed). */
+export interface MalwareScan {
+  tool: string;
+  ran: boolean;
+  status: 'clean' | 'threats-found' | 'unavailable' | 'error';
+  threats: MalwareThreat[];
+  scanStartedUtc: string | null;
+  message: string | null;
+}
+
 export interface ScanResult {
   packageName: string;
   coverage: Coverage;
@@ -50,6 +70,7 @@ export interface ScanResult {
   inventoryPath: string;
   outputDir: string;
   files: ResultFiles;
+  malwareScan?: MalwareScan;
 }
 
 export interface ScanDiff {
@@ -88,4 +109,8 @@ export interface ScanSnapshot {
   coveragePercent?: number;
   severityCounts?: Record<string, number>;
   inventoryPath?: string;
+  /** Mirrors ScanResult.malwareScan.status ("clean", "threats-found",
+   * "unavailable", "error") -- empty/absent when the scan was skipped
+   * or predates this field. */
+  malwareStatus?: string;
 }

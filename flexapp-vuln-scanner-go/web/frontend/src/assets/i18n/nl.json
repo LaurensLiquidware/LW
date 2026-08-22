@@ -64,6 +64,13 @@
     "noScanSpecified": "Geen scan opgegeven.",
     "noScansYet": "Er zijn nog geen scans voltooid.",
     "severityLegend": "C = Kritiek, H = Hoog, M = Gemiddeld, L = Laag",
+    "malwareScan": "Malwarescan (Windows Defender)",
+    "malwareStatus": {
+      "clean": "Schoon",
+      "threats-found": "Bedreigingen Gevonden",
+      "unavailable": "Niet Gescand (Defender Niet Beschikbaar)",
+      "error": "Scanfout"
+    },
     "loadError": "Kon de resultaten van deze scan niet laden."
   },
   "compare": {

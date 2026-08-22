@@ -18,8 +18,8 @@ this project followed.
 **Status:** feature-complete and validated on Windows. Real scans against
 real VHDX packages, real UAC-elevated Stage 1 (VHDX mounting), real
 native file/folder picker, live SSE-streamed progress, scan history that
-survives restarts, cancellation, and a scripted/CI-friendly CLI all work
-end-to-end.
+survives restarts, cancellation, a Windows Defender malware scan of the
+mounted package, and a scripted/CI-friendly CLI all work end-to-end.
 
 ## Running it
 
@@ -57,6 +57,26 @@ Copy `.env.example` to `.env` next to the binary to override any
 `FVS_*` setting (HTTP port, log level, cache/output directories, NVD API
 key, ...) without exporting environment variables by hand — see
 `internal/dotenv` and `.env.example` itself for the full list.
+
+## Malware scanning
+
+This tool's core job is CVE matching (known-vulnerable component
+versions), which is a different problem from malware detection
+(malicious code that isn't a "vulnerability" in any known-good library).
+As a complementary signal, Stage 1 also runs a Windows Defender scan of
+the mounted package's contents (`stage1-extract/Invoke-DefenderScan.ps1`,
+shelling out to `MpCmdRun.exe` — no extra install, since Defender ships
+with every Windows machine) and reports the verdict (`clean`,
+`threats-found`, `unavailable` if Defender isn't present, or `error`)
+alongside the CVE findings on the Results screen, the Dashboard, and in
+the CLI's summary output. It degrades gracefully to `unavailable` rather
+than failing the scan on a machine without Defender (or one running a
+different antivirus product instead), and can be skipped outright with
+`FVS_SKIP_DEFENDER_SCAN=true` or the CLI's `-skip-defender-scan` flag.
+
+This is one additional signal, not a certification -- it only catches
+what Defender's current signatures recognize, on whatever definitions
+happen to be installed on the scanning machine.
 
 ## Build (from source)
 
@@ -96,8 +116,10 @@ change.
 `scripts/check-vulnerabilities.sh` runs Grype against `bom.cdx.json` for
 the checklist's "zero Critical/High CVEs" requirement, and fails loudly
 (rather than reporting a false clean bill of health) if Grype's own
-vulnerability database is unreachable. A real pass/fail verdict still
-needs to be captured by actually running it from a machine (or CI
-runner) whose network egress isn't blocking `grype.anchore.io` — this
-project's own dev sandbox blocks that host, the same restriction already
-documented for `FlexAppOneDownloadMonitor`'s Sparks audit.
+vulnerability database is unreachable -- which is exactly what happens
+in this project's own dev sandbox, since it blocks `grype.anchore.io`
+(the same restriction already documented for
+`FlexAppOneDownloadMonitor`'s Sparks audit). CI (GitHub-hosted runners,
+normal internet access) and a real Windows machine have both confirmed
+the actual verdict: **zero Critical/High vulnerabilities** in the full
+Go + npm dependency graph.

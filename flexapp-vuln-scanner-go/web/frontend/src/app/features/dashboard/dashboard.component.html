@@ -19,6 +19,7 @@
             {{ 'dashboard.severities' | transloco }}
             <span class="lwl-micro" style="font-weight: var(--weight-normal);">({{ 'results.severityLegend' | transloco }})</span>
           </th>
+          <th>{{ 'results.malwareScan' | transloco }}</th>
           <th>{{ 'dashboard.created' | transloco }}</th>
         </tr>
       </ng-template>
@@ -53,6 +54,13 @@
                   {{ scan.severityCounts['LOW'] }}L
                 </span>
               </span>
+            } @else {
+              —
+            }
+          </td>
+          <td>
+            @if (scan.malwareStatus) {
+              <p-tag [value]="'results.malwareStatus.' + scan.malwareStatus | transloco" [severity]="malwareSeverityFor(scan.malwareStatus)" />
             } @else {
               —
             }

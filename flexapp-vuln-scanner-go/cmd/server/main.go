@@ -69,11 +69,12 @@ func run() error {
 
 	scanDeps := httpapi.ScanAPIDeps{
 		Scan: httpapi.ScanDeps{
-			Registry:       httpapi.NewJobRegistry(),
-			Store:          scanstore.New(cfg.ScanHistoryFile),
-			Mappings:       mappings,
-			StageOneScript: cfg.StageOneScript,
-			CacheDir:       cfg.CacheDir,
+			Registry:         httpapi.NewJobRegistry(),
+			Store:            scanstore.New(cfg.ScanHistoryFile),
+			Mappings:         mappings,
+			StageOneScript:   cfg.StageOneScript,
+			CacheDir:         cfg.CacheDir,
+			SkipDefenderScan: cfg.SkipDefenderScan,
 		},
 		Mappings: mappings,
 	}

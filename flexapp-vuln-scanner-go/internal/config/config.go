@@ -49,6 +49,13 @@ type Config struct {
 	// (see internal/cpemap) used during vulnerability matching and SBOM
 	// building.
 	CPEMappingsPath string
+
+	// SkipDefenderScan disables Stage 1's Windows Defender scan of the
+	// mounted package (see stage1-extract/Invoke-DefenderScan.ps1). The
+	// scan already degrades gracefully on its own when Defender isn't
+	// present, so this is only needed to save the time it takes, or on
+	// a machine deliberately running a different antivirus product.
+	SkipDefenderScan bool
 }
 
 const (
@@ -62,6 +69,7 @@ const (
 	envScanHistoryFile  = "FVS_SCAN_HISTORY_FILE"
 	envStageOneScript   = "FVS_STAGE1_SCRIPT"
 	envCPEMappingsPath  = "FVS_CPE_MAPPINGS_PATH"
+	envSkipDefenderScan = "FVS_SKIP_DEFENDER_SCAN"
 )
 
 var validLogLevels = map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
@@ -80,6 +88,7 @@ func Load() (Config, error) {
 		ScanHistoryFile:  firstNonEmpty(os.Getenv(envScanHistoryFile), "./scan-history.json"),
 		StageOneScript:   firstNonEmpty(os.Getenv(envStageOneScript), "./stage1-extract/Invoke-FlexAppInventory.ps1"),
 		CPEMappingsPath:  firstNonEmpty(os.Getenv(envCPEMappingsPath), "./config/cpe-mappings.yaml"),
+		SkipDefenderScan: parseBool(os.Getenv(envSkipDefenderScan)),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -122,4 +131,19 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// parseBool treats "1"/"true"/"yes" (case-insensitive) as true and
+// everything else -- including an unset/empty value -- as false. Not
+// strconv.ParseBool: that rejects "yes"/"no" and errors on anything
+// unrecognized, which would need its own handling here for no benefit,
+// since an unrecognized value should just mean "not enabled" for a
+// simple opt-out flag like this.
+func parseBool(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes":
+		return true
+	default:
+		return false
+	}
 }

@@ -1,7 +1,6 @@
 // Package inventory loads and represents a Stage 1 inventory JSON --
 // the contract between Stage 1 (PowerShell extraction/inventory) and
-// Stage 2 (this Go module's resolution/matching), per
-// ../../../flexapp-vuln-scanner/schemas/inventory.schema.json.
+// Stage 2 (this Go module's resolution/matching).
 package inventory
 
 import (
@@ -50,12 +49,35 @@ type FlexAppXML struct {
 
 // Package is the inventory's "package" object.
 type Package struct {
-	SourcePath      string      `json:"sourcePath"`
-	PackageType     string      `json:"packageType"`
-	FlexAppXML      *FlexAppXML `json:"flexAppXml,omitempty"`
-	ScanStartedUTC  string      `json:"scanStartedUtc"`
-	ScanFinishedUTC string      `json:"scanFinishedUtc"`
-	ToolVersion     string      `json:"toolVersion"`
+	SourcePath      string       `json:"sourcePath"`
+	PackageType     string       `json:"packageType"`
+	FlexAppXML      *FlexAppXML  `json:"flexAppXml,omitempty"`
+	ScanStartedUTC  string       `json:"scanStartedUtc"`
+	ScanFinishedUTC string       `json:"scanFinishedUtc"`
+	ToolVersion     string       `json:"toolVersion"`
+	MalwareScan     *MalwareScan `json:"malwareScan,omitempty"`
+}
+
+// MalwareThreat is one Windows Defender detection within a MalwareScan.
+type MalwareThreat struct {
+	ThreatName string   `json:"threatName"`
+	Resources  []string `json:"resources"`
+	Severity   string   `json:"severity"`
+}
+
+// MalwareScan is Stage 1's Windows Defender scan result for the mounted
+// package (see stage1-extract/Invoke-DefenderScan.ps1). Absent (nil)
+// when Stage 1 was run with -SkipDefenderScan. Status is one of "clean",
+// "threats-found", "unavailable" (Defender not installed), or "error"
+// (the scan itself couldn't be completed or confirmed) -- Ran
+// distinguishes "unavailable" (never attempted) from a real attempt.
+type MalwareScan struct {
+	Tool           string          `json:"tool"`
+	Ran            bool            `json:"ran"`
+	Status         string          `json:"status"`
+	Threats        []MalwareThreat `json:"threats"`
+	ScanStartedUTC *string         `json:"scanStartedUtc"`
+	Message        *string         `json:"message"`
 }
 
 // Inventory is the full decoded Stage 1 output.

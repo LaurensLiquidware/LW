@@ -18,6 +18,13 @@ const STATUS_SEVERITY: Record<ScanStatus, 'success' | 'danger' | 'info' | 'warn'
   canceled: 'warn',
 };
 
+const MALWARE_STATUS_SEVERITY: Record<string, 'success' | 'danger' | 'info' | 'warn' | 'secondary'> = {
+  clean: 'success',
+  'threats-found': 'danger',
+  unavailable: 'secondary',
+  error: 'warn',
+};
+
 /** Dashboard: every scan job started this process's lifetime, plus
  * scan history persisted across restarts (internal/scanstore), newest
  * first. Polls so status/coverage updates without a manual refresh.
@@ -60,6 +67,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   severityFor(status: ScanStatus): 'success' | 'danger' | 'info' | 'warn' {
     return STATUS_SEVERITY[status] ?? 'info';
+  }
+
+  malwareSeverityFor(status: string): 'success' | 'danger' | 'info' | 'warn' | 'secondary' {
+    return MALWARE_STATUS_SEVERITY[status] ?? 'secondary';
   }
 
   open(scan: ScanSnapshot): void {

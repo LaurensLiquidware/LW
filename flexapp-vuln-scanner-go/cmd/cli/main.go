@@ -76,6 +76,7 @@ func run(args []string) error {
 	stage1Script := fs.String("stage1-script", "", "path to the Stage 1 PowerShell script (defaults to FVS_STAGE1_SCRIPT or ./stage1-extract/Invoke-FlexAppInventory.ps1)")
 	cacheDir := fs.String("cache-dir", "", "OSV/NVD response cache directory (defaults to FVS_CACHE_DIR or ./cache)")
 	cpeMappingsPath := fs.String("cpe-mappings", "", "path to cpe-mappings.yaml (defaults to FVS_CPE_MAPPINGS_PATH or ./config/cpe-mappings.yaml)")
+	skipDefenderScan := fs.Bool("skip-defender-scan", false, "skip Stage 1's Windows Defender scan of the mounted package (defaults to FVS_SKIP_DEFENDER_SCAN, or false)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -103,6 +104,12 @@ func run(args []string) error {
 	if *cpeMappingsPath == "" {
 		*cpeMappingsPath = cfg.CPEMappingsPath
 	}
+	// Either source asking to skip is enough to skip -- there's no clean
+	// way to tell "the flag was explicitly passed as false" apart from
+	// "the flag was never passed" with the standard flag package, so
+	// this ORs them rather than letting an unset flag silently override
+	// FVS_SKIP_DEFENDER_SCAN=true back to false.
+	effectiveSkipDefenderScan := *skipDefenderScan || cfg.SkipDefenderScan
 
 	mappings, err := cpemap.Load(*cpeMappingsPath)
 	if err != nil {
@@ -116,7 +123,7 @@ func run(args []string) error {
 	inventoryPath := *refreshInventory
 	if *packagePath != "" {
 		fmt.Printf("Scanning %s -> %s\n", *packagePath, *outputDir)
-		inventoryPath, err = pipeline.RunStage1(ctx, sink, *stage1Script, *packagePath, *outputDir)
+		inventoryPath, err = pipeline.RunStage1(ctx, sink, *stage1Script, *packagePath, *outputDir, effectiveSkipDefenderScan)
 		if err != nil {
 			return fmt.Errorf("stage 1: %w", err)
 		}
@@ -138,6 +145,21 @@ func run(args []string) error {
 	}
 	fmt.Printf("Findings: %dC / %dH / %dM / %dL\n",
 		result.SeverityCounts["CRITICAL"], result.SeverityCounts["HIGH"], result.SeverityCounts["MEDIUM"], result.SeverityCounts["LOW"])
+	if result.MalwareScan != nil {
+		switch result.MalwareScan.Status {
+		case "clean":
+			fmt.Println("Malware:  clean (Windows Defender)")
+		case "threats-found":
+			fmt.Printf("Malware:  %d threat(s) found by Windows Defender:\n", len(result.MalwareScan.Threats))
+			for _, t := range result.MalwareScan.Threats {
+				fmt.Printf("  - %s\n", t.ThreatName)
+			}
+		case "unavailable":
+			fmt.Println("Malware:  Windows Defender not available on this machine -- not scanned")
+		default:
+			fmt.Println("Malware:  scan could not be completed/confirmed -- see the log above")
+		}
+	}
 	fmt.Println()
 	fmt.Println("Reports written:")
 	fmt.Printf("  SBOM:     %s\n", result.Files.SBOM)

@@ -44,7 +44,7 @@ func copyFixture(t *testing.T, dstDir string) string {
 // test_run_stage1_missing_script_raises.
 func TestRunStage1_MissingScriptRaises(t *testing.T) {
 	sink := &fakeSink{}
-	_, err := RunStage1(context.Background(), sink, "/nonexistent/Invoke-FlexAppInventory.ps1", "whatever.vhdx", t.TempDir())
+	_, err := RunStage1(context.Background(), sink, "/nonexistent/Invoke-FlexAppInventory.ps1", "whatever.vhdx", t.TempDir(), false)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -72,7 +72,7 @@ func TestRunStage1_CancelStopsSubprocessPromptly(t *testing.T) {
 
 	sink := &fakeSink{}
 	start := time.Now()
-	_, err := RunStage1(ctx, sink, "testdata/slow-stage1.ps1", "pkg", t.TempDir())
+	_, err := RunStage1(ctx, sink, "testdata/slow-stage1.ps1", "pkg", t.TempDir(), false)
 	elapsed := time.Since(start)
 
 	if !errors.Is(err, context.Canceled) {

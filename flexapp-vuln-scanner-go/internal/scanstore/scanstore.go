@@ -37,6 +37,10 @@ type Entry struct {
 	CoveragePercent *float64       `json:"coveragePercent,omitempty"`
 	SeverityCounts  map[string]int `json:"severityCounts,omitempty"`
 	InventoryPath   string         `json:"inventoryPath,omitempty"`
+	// MalwareStatus mirrors pipeline.Result.MalwareScan.Status ("clean",
+	// "threats-found", "unavailable", "error") -- empty when the scan
+	// was skipped (-SkipDefenderScan) or predates this field.
+	MalwareStatus string `json:"malwareStatus,omitempty"`
 }
 
 // Store is a flat JSON array of entries, newest first, at Path. Every

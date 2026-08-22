@@ -66,6 +66,25 @@
       </div>
     </p-card>
 
+    @if (result.malwareScan; as malwareScan) {
+      <p-card>
+        <div class="flex items-center gap-3">
+          <span class="lwl-micro">{{ 'results.malwareScan' | transloco }}</span>
+          <p-tag [value]="'results.malwareStatus.' + malwareScan.status | transloco" [severity]="malwareSeverityFor(malwareScan.status)" />
+        </div>
+        @if (malwareScan.status === 'threats-found') {
+          <ul class="lwl-cell" style="margin-top: 0.5rem;">
+            @for (threat of malwareScan.threats; track threat.threatName) {
+              <li>{{ threat.threatName }}</li>
+            }
+          </ul>
+        }
+        @if (malwareScan.message) {
+          <p class="lwl-micro" style="margin-top: 0.5rem;">{{ malwareScan.message }}</p>
+        }
+      </p-card>
+    }
+
     @if (!result.hasVulnMatches) {
       <p class="lwl-muted">{{ 'results.noVulnData' | transloco }}</p>
     } @else if (allRows().length === 0) {

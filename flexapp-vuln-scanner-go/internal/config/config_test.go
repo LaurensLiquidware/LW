@@ -128,3 +128,41 @@ func TestLoad_NVDAPIKeyExplicit(t *testing.T) {
 		}
 	})
 }
+
+func TestLoad_SkipDefenderScanDefaultsFalse(t *testing.T) {
+	withEnv(t, map[string]string{envSkipDefenderScan: ""}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.SkipDefenderScan {
+			t.Error("SkipDefenderScan = true, want false")
+		}
+	})
+}
+
+func TestLoad_SkipDefenderScanExplicit(t *testing.T) {
+	for _, v := range []string{"1", "true", "TRUE", "yes"} {
+		withEnv(t, map[string]string{envSkipDefenderScan: v}, func() {
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !cfg.SkipDefenderScan {
+				t.Errorf("SkipDefenderScan = false for %q, want true", v)
+			}
+		})
+	}
+}
+
+func TestLoad_SkipDefenderScanRejectsUnrecognizedValue(t *testing.T) {
+	withEnv(t, map[string]string{envSkipDefenderScan: "banana"}, func() {
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.SkipDefenderScan {
+			t.Error("SkipDefenderScan = true for an unrecognized value, want false")
+		}
+	})
+}

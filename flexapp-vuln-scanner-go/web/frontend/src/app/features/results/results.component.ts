@@ -18,6 +18,13 @@ const SEVERITY_SEVERITY: Record<string, 'success' | 'danger' | 'info' | 'warn' |
   LOW: 'secondary',
 };
 
+const MALWARE_STATUS_SEVERITY: Record<string, 'success' | 'danger' | 'info' | 'warn' | 'secondary'> = {
+  clean: 'success',
+  'threats-found': 'danger',
+  unavailable: 'secondary',
+  error: 'warn',
+};
+
 /** Results screen: coverage summary, severity counts, and the findings
  * table -- one row per distinct (component, vulnerability), with every
  * file sharing that finding collapsed into an expandable "Affected
@@ -128,6 +135,10 @@ export class ResultsComponent implements OnInit {
 
   severityFor(level: string): 'success' | 'danger' | 'info' | 'warn' | 'secondary' {
     return SEVERITY_SEVERITY[(level || '').toUpperCase()] ?? 'secondary';
+  }
+
+  malwareSeverityFor(status: string): 'success' | 'danger' | 'info' | 'warn' | 'secondary' {
+    return MALWARE_STATUS_SEVERITY[status] ?? 'secondary';
   }
 
   downloadUrl(kind: 'sbom' | 'coverage' | 'findings' | 'pdf' | 'csv'): string | null {

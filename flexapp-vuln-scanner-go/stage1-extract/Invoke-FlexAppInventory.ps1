@@ -28,6 +28,12 @@
     it doesn't exist.
 .PARAMETER TempRoot
     Scratch directory for FlexApp One extraction. Cleaned up per package.
+.PARAMETER SkipDefenderScan
+    Skip the Windows Defender scan of each package's mounted contents
+    (see Invoke-DefenderScan.ps1). The scan degrades gracefully on its
+    own when Defender isn't present, so this is only needed to save the
+    time it takes, or on a machine deliberately running a different
+    antivirus product instead.
 #>
 
 [CmdletBinding()]
@@ -38,7 +44,9 @@ param(
     [Parameter(Mandatory)]
     [string]$OutputDir,
 
-    [string]$TempRoot = (Join-Path ([System.IO.Path]::GetTempPath()) 'flexapp-vuln-scanner')
+    [string]$TempRoot = (Join-Path ([System.IO.Path]::GetTempPath()) 'flexapp-vuln-scanner'),
+
+    [switch]$SkipDefenderScan
 )
 
 $ErrorActionPreference = 'Stop'
@@ -49,6 +57,7 @@ $ToolVersion = '0.1.0'
 . (Join-Path $PSScriptRoot 'Read-PackageMetadataXml.ps1')
 . (Join-Path $PSScriptRoot 'Get-FileInventory.ps1')
 . (Join-Path $PSScriptRoot 'Resolve-VersionIdentity.ps1')
+. (Join-Path $PSScriptRoot 'Invoke-DefenderScan.ps1')
 
 if (-not (Test-Path -LiteralPath $OutputDir)) {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
@@ -132,6 +141,15 @@ function Invoke-SinglePackage {
 
             $metadata = if ($xmlPath) { Read-FlexAppPackageXml -XmlPath $xmlPath } else { $null }
 
+            $malwareScan = $null
+            if (-not $SkipDefenderScan) {
+                Write-Verbose "Running Windows Defender scan of '$($mountInfo.RootPath)'"
+                $malwareScan = Invoke-DefenderScan -Path $mountInfo.RootPath
+                if ($malwareScan.status -eq 'threats-found') {
+                    Write-Warning "Windows Defender flagged $($malwareScan.threats.Count) threat(s) in '$PackagePath' -- see the inventory's malwareScan field."
+                }
+            }
+
             Write-Verbose "Walking '$($mountInfo.RootPath)'"
             $fileRecords = @(Get-FileInventoryRecord -RootPath $mountInfo.RootPath)
 
@@ -167,6 +185,7 @@ function Invoke-SinglePackage {
                     scanStartedUtc  = $scanStartedUtc
                     scanFinishedUtc = $scanFinishedUtc
                     toolVersion     = $ToolVersion
+                    malwareScan     = $malwareScan
                 }
                 files = $fileRecords
             }

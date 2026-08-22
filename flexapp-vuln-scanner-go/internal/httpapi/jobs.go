@@ -147,6 +147,7 @@ type Snapshot struct {
 	CoveragePercent *float64       `json:"coveragePercent,omitempty"`
 	SeverityCounts  map[string]int `json:"severityCounts,omitempty"`
 	InventoryPath   string         `json:"inventoryPath,omitempty"`
+	MalwareStatus   string         `json:"malwareStatus,omitempty"`
 }
 
 // Snapshot returns a consistent, JSON-serializable view of the job's
@@ -167,6 +168,9 @@ func (j *ScanJob) Snapshot() Snapshot {
 		snap.CoveragePercent = j.result.Coverage.CoveragePercent
 		snap.SeverityCounts = j.result.SeverityCounts
 		snap.InventoryPath = j.result.InventoryPath
+		if j.result.MalwareScan != nil {
+			snap.MalwareStatus = j.result.MalwareScan.Status
+		}
 	}
 	return snap
 }
@@ -179,6 +183,7 @@ func snapshotFromEntry(e scanstore.Entry) Snapshot {
 		Status: e.Status, Error: e.Error, CreatedAt: e.CreatedAt,
 		PackageName: e.PackageName, CoveragePercent: e.CoveragePercent,
 		SeverityCounts: e.SeverityCounts, InventoryPath: e.InventoryPath,
+		MalwareStatus: e.MalwareStatus,
 	}
 }
 
@@ -256,11 +261,12 @@ func newJobID() string {
 
 // ScanDeps are the dependencies StartScan/StartRefresh need.
 type ScanDeps struct {
-	Registry       *JobRegistry
-	Store          *scanstore.Store // nil disables cross-restart persistence
-	Mappings       *cpemap.Mappings
-	StageOneScript string
-	CacheDir       string
+	Registry         *JobRegistry
+	Store            *scanstore.Store // nil disables cross-restart persistence
+	Mappings         *cpemap.Mappings
+	StageOneScript   string
+	CacheDir         string
+	SkipDefenderScan bool
 }
 
 // ListScans returns every scan job started this process's lifetime,
@@ -317,7 +323,7 @@ func (d ScanDeps) StartScan(packagePath, outputDir, nvdAPIKey string) *ScanJob {
 }
 
 func (d ScanDeps) runJob(ctx context.Context, job *ScanJob, nvdAPIKey string) {
-	inventoryPath, err := pipeline.RunStage1(ctx, job, d.StageOneScript, job.PackagePath, job.OutputDir)
+	inventoryPath, err := pipeline.RunStage1(ctx, job, d.StageOneScript, job.PackagePath, job.OutputDir, d.SkipDefenderScan)
 	if err != nil {
 		d.finishWithError(job, err)
 		return
@@ -378,5 +384,8 @@ func (d ScanDeps) finishWithResult(job *ScanJob, result *pipeline.Result) {
 		e.CoveragePercent = result.Coverage.CoveragePercent
 		e.SeverityCounts = result.SeverityCounts
 		e.InventoryPath = result.InventoryPath
+		if result.MalwareScan != nil {
+			e.MalwareStatus = result.MalwareScan.Status
+		}
 	})
 }
